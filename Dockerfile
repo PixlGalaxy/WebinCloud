@@ -9,6 +9,9 @@ RUN npm run build
 
 # 2: Backend build
 FROM node:24-slim AS build-backend
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends python3 make g++ \
+    && rm -rf /var/lib/apt/lists/*
 WORKDIR /app/backend
 COPY backend/package.json backend/package-lock.json ./
 RUN npm ci
