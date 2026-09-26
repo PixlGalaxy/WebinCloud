@@ -6,6 +6,7 @@ import type { AuthenticatedRequest } from '../auth/session.middleware.js';
 import { createAuthGuards } from '../auth/session.middleware.js';
 import { asyncHandler } from '../../middleware/async-handler.js';
 import { badRequest } from '../../errors.js';
+import { routeParam } from '../../route-params.js';
 import { PathNamesService } from '../path-names/path-names.service.js';
 import { SharesService, type CreateShareInput, type UpdateShareInput } from './shares.service.js';
 
@@ -36,11 +37,11 @@ export function createSharesRoutes(
   router.patch('/path-names/:id', (req: AuthenticatedRequest, res) => {
     const { name } = req.body as { name?: unknown };
     if (typeof name !== 'string') throw badRequest('pathNames.invalid');
-    res.json(pathNames.rename(req.params.id, req.user!.id, name));
+    res.json(pathNames.rename(routeParam(req.params.id), req.user!.id, name));
   });
 
   router.delete('/path-names/:id', (req: AuthenticatedRequest, res) => {
-    pathNames.remove(req.params.id, req.user!.id);
+    pathNames.remove(routeParam(req.params.id), req.user!.id);
     res.status(204).end();
   });
 
@@ -60,12 +61,12 @@ export function createSharesRoutes(
   router.patch(
     '/:id',
     asyncHandler(async (req: AuthenticatedRequest, res) => {
-      res.json(await shares.update(req.params.id, req.user!, req.body as UpdateShareInput));
+      res.json(await shares.update(routeParam(req.params.id), req.user!, req.body as UpdateShareInput));
     }),
   );
 
   router.delete('/:id', (req: AuthenticatedRequest, res) => {
-    shares.remove(req.params.id, req.user!.id);
+    shares.remove(routeParam(req.params.id), req.user!.id);
     res.status(204).end();
   });
 

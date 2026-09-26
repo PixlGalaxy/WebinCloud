@@ -4,6 +4,7 @@ import type { Translate } from '../../i18n/index.js';
 import type { AuthenticatedRequest } from '../auth/session.middleware.js';
 import { createAuthGuards } from '../auth/session.middleware.js';
 import { asyncHandler } from '../../middleware/async-handler.js';
+import { routeParam } from '../../route-params.js';
 import { UsersService, type CreateUserInput, type UpdateUserInput } from './users.service.js';
 
 export function createUsersRoutes(db: Db, t: Translate): Router {
@@ -26,12 +27,12 @@ export function createUsersRoutes(db: Db, t: Translate): Router {
   router.patch(
     '/:id',
     asyncHandler(async (req, res) => {
-      res.json(await users.update(req.params.id, req.body as UpdateUserInput));
+      res.json(await users.update(routeParam(req.params.id), req.body as UpdateUserInput));
     }),
   );
 
   router.delete('/:id', (req: AuthenticatedRequest, res) => {
-    users.remove(req.params.id, req.user!.id);
+    users.remove(routeParam(req.params.id), req.user!.id);
     res.status(204).end();
   });
 
