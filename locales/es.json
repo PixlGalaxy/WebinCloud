@@ -19,6 +19,10 @@
   "files.invalidContent": "Contenido inválido",
   "files.searchQueryRequired": "Hace falta un término de búsqueda",
 
+  "archives.nothingSelected": "Selecciona al menos un elemento",
+  "archives.tooManyItems": "Has seleccionado demasiados elementos a la vez",
+  "archives.notReady": "El archivo ZIP todavía no está listo",
+
   "users.invalidEmail": "Dirección de email inválida",
   "users.invalidUsername": "El usuario debe tener entre 3 y 32 caracteres (letras, números, punto, guion o guion bajo)",
   "users.emailTaken": "Ese email ya está en uso",
@@ -54,6 +58,11 @@
   "nav.share": "Compartir",
   "nav.users": "Usuarios",
   "nav.logout": "Cerrar sesión",
+  "logout.title": "¿Cerrar sesión?",
+  "logout.archivesRunning": "Todavía se están comprimiendo {count} archivo(s). Si cierras sesión se cancelan y perderás el progreso.",
+  "logout.stay": "Quedarme",
+  "logout.confirm": "Cerrar sesión igualmente",
+
   "nav.themeDark": "Cambiar a modo oscuro",
   "nav.themeLight": "Cambiar a modo claro",
 
@@ -78,6 +87,19 @@
   "files.searchTruncated": "Mostrando solo las primeras coincidencias",
   "files.clearSearch": "Limpiar búsqueda",
   "files.goToFolder": "Abrir la carpeta que lo contiene",
+  "files.select": "Seleccionar",
+  "files.selectedCount": "{count} seleccionados",
+  "files.downloadEach": "Descargar",
+  "files.downloadZip": "Descargar en ZIP",
+  "files.foldersNeedZip": "Las carpetas solo se pueden descargar en ZIP",
+  "files.downloadFolderZip": "Descargar esta carpeta en ZIP",
+
+  "archive.measuring": "Preparando…",
+  "archive.building": "Comprimiendo {done} de {total}",
+  "archive.keepBrowsing": "Puedes seguir navegando mientras termina",
+  "archive.ready": "Listo · {size} · descarga iniciada",
+  "archive.downloadAgain": "Descargar de nuevo",
+  "archive.failed": "No se pudo crear el ZIP",
   "files.uploading": "Subiendo…",
   "files.newFolder": "Nueva carpeta",
   "files.folderName": "Nombre de la carpeta",

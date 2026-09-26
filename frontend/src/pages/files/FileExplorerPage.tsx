@@ -5,9 +5,11 @@ import {
   FolderPlus,
   Loader2,
   Pencil,
+  FileArchive,
   RefreshCw,
   Search,
   Share2,
+  SquareCheck,
   Trash2,
   Upload,
   FolderOpen,
@@ -25,6 +27,7 @@ import {
 } from '../../api/files';
 import { ApiError } from '../../api/client';
 import { useI18n } from '../../i18n/I18nContext';
+import { useArchives } from '../../context/ArchiveContext';
 import Modal from '../../components/ui/Modal';
 import { btn, card, errorBox, input, label } from '../../components/ui/styles';
 import Breadcrumbs from './Breadcrumbs';
@@ -38,6 +41,7 @@ const FileExplorerPage = () => {
   const path = useParams()['*'] ?? '';
   const navigate = useNavigate();
   const { t, language } = useI18n();
+  const { createArchive } = useArchives();
 
   const [listing, setListing] = useState<Listing | null>(null);
   const [loading, setLoading] = useState(true);
@@ -50,6 +54,8 @@ const FileExplorerPage = () => {
   const [preview, setPreview] = useState<DirEntry | null>(null);
   const [sharing, setSharing] = useState<DirEntry | null>(null);
   const [refreshing, setRefreshing] = useState(false);
+  const [selecting, setSelecting] = useState(false);
+  const [selected, setSelected] = useState<Set<string>>(new Set());
   const [query, setQuery] = useState('');
   const [search, setSearch] = useState<SearchResponse | null>(null);
   const [searching, setSearching] = useState(false);
@@ -76,10 +82,12 @@ const FileExplorerPage = () => {
   // Picks up changes made by anyone else while this folder is open.
   useFolderWatch(path, reload);
 
-  // Moving to another folder ends the current search.
+  // Moving to another folder ends the current search and selection.
   useEffect(() => {
     setQuery('');
     setSearch(null);
+    setSelecting(false);
+    setSelected(new Set());
   }, [path]);
 
   const runSearch = async () => {
@@ -98,6 +106,43 @@ const FileExplorerPage = () => {
   const clearSearch = () => {
     setQuery('');
     setSearch(null);
+  };
+
+  const toggleSelected = (entryPath: string) => {
+    setSelected((current) => {
+      const next = new Set(current);
+      if (next.has(entryPath)) next.delete(entryPath);
+      else next.add(entryPath);
+      return next;
+    });
+  };
+
+  const exitSelection = () => {
+    setSelecting(false);
+    setSelected(new Set());
+  };
+
+  const downloadZip = async () => {
+    setError('');
+    try {
+      await createArchive([...selected]);
+      exitSelection();
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : t('files.actionFailed'));
+    }
+  };
+
+  /** Files download straight from the browser; folders have to go through a zip. */
+  const downloadEach = () => {
+    for (const entryPath of selected) {
+      const link = document.createElement('a');
+      link.href = filesApi.downloadUrl(entryPath);
+      link.download = '';
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+    }
+    exitSelection();
   };
 
   const refreshNow = async () => {
@@ -167,6 +212,9 @@ const FileExplorerPage = () => {
   const parentByPath = new Map(
     search ? search.results.map((result) => [result.entry.path, result.parentPath]) : [],
   );
+  const hasSelectedFolder = rows.some(
+    (entry) => selected.has(entry.path) && entry.type === 'folder',
+  );
 
   return (
     <div
@@ -208,6 +256,17 @@ const FileExplorerPage = () => {
             )}
           </form>
 
+          <button
+            onClick={() => (selecting ? exitSelection() : setSelecting(true))}
+            className={
+              selecting
+                ? 'inline-flex items-center justify-center gap-2 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-indigo-700'
+                : btn.secondary
+            }
+          >
+            <SquareCheck size={16} /> {t('files.select')}
+          </button>
+
           {canWrite && (
             <>
               <button onClick={() => setNewFolder('')} className={btn.secondary}>
@@ -241,6 +300,43 @@ const FileExplorerPage = () => {
       </div>
 
       {error && <div className={errorBox}>{error}</div>}
+
+      {selecting && (
+        <div className="flex flex-wrap items-center gap-3 rounded-xl border border-indigo-200 bg-indigo-50 px-4 py-3 dark:border-indigo-500/30 dark:bg-indigo-500/10">
+          <label className="flex items-center gap-2 text-sm font-medium text-indigo-900 dark:text-indigo-200">
+            <input
+              type="checkbox"
+              checked={rows.length > 0 && selected.size === rows.length}
+              onChange={(e) =>
+                setSelected(e.target.checked ? new Set(rows.map((entry) => entry.path)) : new Set())
+              }
+              className="h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
+            />
+            {t('files.selectedCount', { count: selected.size })}
+          </label>
+
+          <div className="ml-auto flex flex-wrap items-center gap-2">
+            <button
+              onClick={downloadEach}
+              disabled={selected.size === 0 || hasSelectedFolder}
+              title={hasSelectedFolder ? t('files.foldersNeedZip') : undefined}
+              className={`${btn.secondary} disabled:opacity-40`}
+            >
+              <Download size={16} /> {t('files.downloadEach')}
+            </button>
+            <button
+              onClick={() => void downloadZip()}
+              disabled={selected.size === 0}
+              className="inline-flex items-center justify-center gap-2 rounded-lg bg-amber-500 px-4 py-2 text-sm font-medium text-white transition hover:bg-amber-600 disabled:opacity-40"
+            >
+              <FileArchive size={16} /> {t('files.downloadZip')}
+            </button>
+            <button onClick={exitSelection} className={btn.iconGhost} title={t('common.cancel')}>
+              <X size={18} />
+            </button>
+          </div>
+        </div>
+      )}
 
       {progress !== null && (
         <div className={`${card} p-4`}>
@@ -288,6 +384,7 @@ const FileExplorerPage = () => {
           <table className="w-full text-sm">
             <thead className="border-b border-slate-200 bg-slate-50 text-left text-slate-500 dark:border-slate-800 dark:bg-slate-800/50 dark:text-slate-400">
               <tr>
+                {selecting && <th className="w-10 pl-5" />}
                 <th className="px-5 py-3 font-medium">{t('files.name')}</th>
                 <th className="hidden w-32 px-5 py-3 font-medium sm:table-cell">{t('files.size')}</th>
                 <th className="hidden w-56 px-5 py-3 font-medium md:table-cell">{t('files.modified')}</th>
@@ -301,8 +398,22 @@ const FileExplorerPage = () => {
                 return (
                   <tr
                     key={entry.path}
-                    className="border-b border-slate-100 last:border-0 hover:bg-slate-50 dark:border-slate-800 dark:hover:bg-slate-800/50"
+                    className={`border-b border-slate-100 last:border-0 dark:border-slate-800 ${
+                      selected.has(entry.path)
+                        ? 'bg-indigo-50 dark:bg-indigo-500/10'
+                        : 'hover:bg-slate-50 dark:hover:bg-slate-800/50'
+                    }`}
                   >
+                    {selecting && (
+                      <td className="pl-5">
+                        <input
+                          type="checkbox"
+                          checked={selected.has(entry.path)}
+                          onChange={() => toggleSelected(entry.path)}
+                          className="h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
+                        />
+                      </td>
+                    )}
                     <td className="px-5 py-3">
                       {entry.type === 'folder' ? (
                         <button
@@ -354,7 +465,7 @@ const FileExplorerPage = () => {
                             <Eye size={16} />
                           </button>
                         )}
-                        {entry.type === 'file' && (
+                        {entry.type === 'file' ? (
                           <a
                             href={filesApi.downloadUrl(entry.path)}
                             className={btn.iconGhost}
@@ -362,6 +473,14 @@ const FileExplorerPage = () => {
                           >
                             <Download size={16} />
                           </a>
+                        ) : (
+                          <button
+                            onClick={() => void createArchive([entry.path])}
+                            title={t('files.downloadFolderZip')}
+                            className={btn.iconGhost}
+                          >
+                            <Download size={16} />
+                          </button>
                         )}
                         <button
                           onClick={() => setSharing(entry)}

@@ -7,6 +7,7 @@
 # Local volume contents; the image ships empty and mounts them at runtime.
 data
 appdata
+temp
 
 *.log
 .env

@@ -19,6 +19,10 @@
   "files.invalidContent": "Invalid content",
   "files.searchQueryRequired": "A search term is required",
 
+  "archives.nothingSelected": "Select at least one item",
+  "archives.tooManyItems": "Too many items selected at once",
+  "archives.notReady": "The archive is not ready yet",
+
   "users.invalidEmail": "Invalid email address",
   "users.invalidUsername": "The username must be 3-32 characters (letters, numbers, dot, dash or underscore)",
   "users.emailTaken": "That email is already in use",
@@ -54,6 +58,11 @@
   "nav.share": "Share",
   "nav.users": "Users",
   "nav.logout": "Logout",
+  "logout.title": "Sign out?",
+  "logout.archivesRunning": "{count} archive(s) are still being compressed. Signing out cancels them and the progress is lost.",
+  "logout.stay": "Stay",
+  "logout.confirm": "Sign out anyway",
+
   "nav.themeDark": "Switch to dark mode",
   "nav.themeLight": "Switch to light mode",
 
@@ -78,6 +87,19 @@
   "files.searchTruncated": "Showing the first matches only",
   "files.clearSearch": "Clear search",
   "files.goToFolder": "Open the containing folder",
+  "files.select": "Select",
+  "files.selectedCount": "{count} selected",
+  "files.downloadEach": "Download",
+  "files.downloadZip": "Download as ZIP",
+  "files.foldersNeedZip": "Folders can only be downloaded as a ZIP",
+  "files.downloadFolderZip": "Download this folder as a ZIP",
+
+  "archive.measuring": "Preparing…",
+  "archive.building": "Compressing {done} of {total}",
+  "archive.keepBrowsing": "You can keep browsing while it finishes",
+  "archive.ready": "Ready · {size} · download started",
+  "archive.downloadAgain": "Download again",
+  "archive.failed": "The archive could not be created",
   "files.uploading": "Uploading…",
   "files.newFolder": "New folder",
   "files.folderName": "Folder name",

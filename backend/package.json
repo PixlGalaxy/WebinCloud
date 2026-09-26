@@ -9,6 +9,7 @@
     "migrate": "tsx src/db/migrate.ts"
   },
   "dependencies": {
+    "archiver": "^8.0.0",
     "argon2": "^0.45.1",
     "better-sqlite3": "^13.0.3",
     "busboy": "^1.6.0",
@@ -16,6 +17,7 @@
     "express": "^5.2.1"
   },
   "devDependencies": {
+    "@types/archiver": "^8.0.0",
     "@types/better-sqlite3": "^9.6.0",
     "@types/busboy": "^1.5.4",
     "@types/cookie-parser": "^1.4.7",

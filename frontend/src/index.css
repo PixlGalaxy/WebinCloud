@@ -24,3 +24,14 @@ html.dark {
 .animate-toast-in {
   animation: toast-in 160ms ease-out;
 }
+
+@keyframes toast-out {
+  to {
+    opacity: 0;
+    transform: translateX(24px);
+  }
+}
+
+.animate-toast-out {
+  animation: toast-out 260ms ease-in forwards;
+}

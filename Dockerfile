@@ -39,12 +39,14 @@ ENV NODE_ENV=production \
     PORT=4000 \
     DATA_ROOT=/data \
     APPDATA_ROOT=/appdata \
+    TEMP_ROOT=/temp \
     LOCALES_DIR=/app/locales \
     LANGUAGE=en \
     THEME=dark
 
-# WebinCloud_Data holds user files; WebinCloud_AppData holds the database and user avatars.
-VOLUME ["/data", "/appdata"]
+# WebinCloud_Data holds user files, WebinCloud_AppData the database and avatars,
+# and WebinCloud_Temp the generated archives, which are disposable.
+VOLUME ["/data", "/appdata", "/temp"]
 EXPOSE 80
 
 HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 \

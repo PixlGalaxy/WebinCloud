@@ -19,6 +19,7 @@ export interface EnvConfig {
   THEME: Theme;
   DATA_ROOT: string;
   APPDATA_ROOT: string;
+  TEMP_ROOT: string;
   DB_PATH: string;
   AVATARS_DIR: string;
   LOCALES_DIR: string;
@@ -27,6 +28,8 @@ export interface EnvConfig {
   ADMIN_PASSWORD?: string;
   SESSION_TTL_HOURS: number;
   COOKIE_SECURE: boolean;
+  /** Seconds without a progress poll before a running archive is cancelled. */
+  ARCHIVE_ABANDON_SECONDS: number;
   LANGUAGE: Language;
 }
 
@@ -37,6 +40,8 @@ export function loadEnv(): EnvConfig {
   // Mounted volumes in production; folders at the repo root in development.
   const DATA_ROOT = resolve(env.DATA_ROOT || (isProd ? '/data' : join(repoRoot, 'data')));
   const APPDATA_ROOT = resolve(env.APPDATA_ROOT || (isProd ? '/appdata' : join(repoRoot, 'appdata')));
+  // Scratch space for generated archives; safe to wipe at any time.
+  const TEMP_ROOT = resolve(env.TEMP_ROOT || (isProd ? '/temp' : join(repoRoot, 'temp')));
 
   if (env.LANGUAGE && !isLanguage(env.LANGUAGE)) {
     logger.warn(`Unsupported LANGUAGE "${env.LANGUAGE}", falling back to "en"`);
@@ -52,6 +57,7 @@ export function loadEnv(): EnvConfig {
     THEME: isTheme(env.THEME) ? env.THEME : 'dark',
     DATA_ROOT,
     APPDATA_ROOT,
+    TEMP_ROOT,
     DB_PATH: env.DB_PATH || join(APPDATA_ROOT, 'webincloud.sqlite'),
     AVATARS_DIR: env.AVATARS_DIR || join(APPDATA_ROOT, 'avatars'),
     // Shared with the frontend so both render the same strings.
@@ -60,6 +66,7 @@ export function loadEnv(): EnvConfig {
     ADMIN_USERNAME: env.ADMIN_USERNAME || (isProd ? undefined : 'admin'),
     ADMIN_PASSWORD: env.ADMIN_PASSWORD || (isProd ? undefined : 'admin1234'),
     SESSION_TTL_HOURS: parseInt(env.SESSION_TTL_HOURS || '24', 10),
+    ARCHIVE_ABANDON_SECONDS: parseInt(env.ARCHIVE_ABANDON_SECONDS || '30', 10),
     // Off by default: behind plain-HTTP nginx a Secure cookie would never be sent back.
     COOKIE_SECURE: env.COOKIE_SECURE === 'true',
     LANGUAGE: isLanguage(env.LANGUAGE) ? env.LANGUAGE : 'en',

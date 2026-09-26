@@ -14,6 +14,7 @@ async function main() {
 
   mkdirSync(config.APPDATA_ROOT, { recursive: true });
   mkdirSync(config.DATA_ROOT, { recursive: true });
+  mkdirSync(config.TEMP_ROOT, { recursive: true });
   mkdirSync(config.AVATARS_DIR, { recursive: true });
 
   const db = initializeDb(config.DB_PATH);

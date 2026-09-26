@@ -11,6 +11,8 @@ import { hashPassword, verifyPassword } from './modules/auth/password.js';
 import { createUsersRoutes } from './modules/users/users.routes.js';
 import { createPermissionsRoutes } from './modules/permissions/permissions.routes.js';
 import { createFilesRoutes } from './modules/files/files.routes.js';
+import { ArchivesService } from './modules/archives/archives.service.js';
+import { createArchivesRoutes } from './modules/archives/archives.routes.js';
 import { SharesService } from './modules/shares/shares.service.js';
 import { createSharesRoutes } from './modules/shares/shares.routes.js';
 import { createPublicShareRoutes } from './modules/shares/public-shares.routes.js';
@@ -45,6 +47,22 @@ export function createApp(db: Db, config: EnvConfig): express.Application {
   app.use('/api/users', createUsersRoutes(db, t));
   app.use('/api/permissions', createPermissionsRoutes(db, config, t));
   app.use('/api/files', createFilesRoutes(db, config, t));
+
+  const archives = new ArchivesService(
+    db,
+    config.DATA_ROOT,
+    config.TEMP_ROOT,
+    config.ARCHIVE_ABANDON_SECONDS * 1000,
+  );
+  void archives.sweep();
+  // Frees compressions whose client closed the tab or lost connection. Checked
+  // several times per window, so abandonment is never missed between ticks.
+  const abandonCheckMs = Math.max(1000, Math.min(10_000, (config.ARCHIVE_ABANDON_SECONDS * 1000) / 3));
+  setInterval(() => void archives.dropAbandoned(), abandonCheckMs).unref();
+  // Keeps the temp volume from growing without bound on a long-lived server.
+  setInterval(() => void archives.sweep(), 15 * 60 * 1000).unref();
+  app.use('/api/archives', createArchivesRoutes(t, archives));
+
   app.use('/api/shares', createSharesRoutes(db, config, t, shares));
 
   app.use(createNotFoundHandler(t));
