@@ -1,5 +1,5 @@
 # 1: Frontend build
-FROM node:24-slim AS build-frontend
+FROM node:26-slim AS build-frontend
 WORKDIR /app/frontend
 COPY frontend/package.json frontend/package-lock.json ./
 RUN npm ci
@@ -8,7 +8,7 @@ COPY locales /app/locales
 RUN npm run build
 
 # 2: Backend build
-FROM node:24-slim AS build-backend
+FROM node:26-slim AS build-backend
 RUN apt-get update \
     && apt-get install -y --no-install-recommends python3 make g++ \
     && rm -rf /var/lib/apt/lists/*
@@ -19,7 +19,7 @@ COPY backend ./
 RUN npm run build && npm prune --omit=dev
 
 # 3: Final image, nginx + Node.js
-FROM node:24-slim
+FROM node:26-slim
 WORKDIR /app
 
 RUN apt-get update \
