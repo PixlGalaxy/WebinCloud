@@ -1,0 +1,7 @@
+* text=auto
+
+# Must keep LF: CRLF here makes the container fail with "no such file or directory".
+*.sh text eol=lf
+entrypoint.sh text eol=lf
+Dockerfile text eol=lf
+nginx.conf text eol=lf

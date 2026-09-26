@@ -1,0 +1,21 @@
+**/node_modules
+**/dist
+.git
+.github
+.claude
+
+# Local volume contents; the image ships empty and mounts them at runtime.
+data
+appdata
+
+*.log
+.env
+.env.*
+!.env.example
+**/*.sqlite
+**/*.sqlite-shm
+**/*.sqlite-wal
+.vscode
+.idea
+.DS_Store
+Thumbs.db
