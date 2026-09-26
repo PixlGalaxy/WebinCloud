@@ -34,6 +34,7 @@ import Breadcrumbs from './Breadcrumbs';
 import PreviewPanel from './PreviewPanel';
 import ConflictModal from './ConflictModal';
 import ShareCreateModal from './ShareCreateModal';
+import DotfileNotice from '../../components/DotfileNotice';
 import { useFolderWatch } from './useFolderWatch';
 import { formatSize, iconFor, toFilesUrl } from './paths';
 
@@ -52,6 +53,7 @@ const FileExplorerPage = () => {
   const [renaming, setRenaming] = useState<{ entry: DirEntry; value: string } | null>(null);
   const [deleting, setDeleting] = useState<DirEntry | null>(null);
   const [preview, setPreview] = useState<DirEntry | null>(null);
+  const [dotfile, setDotfile] = useState<DirEntry | null>(null);
   const [sharing, setSharing] = useState<DirEntry | null>(null);
   const [refreshing, setRefreshing] = useState(false);
   const [selecting, setSelecting] = useState(false);
@@ -130,6 +132,15 @@ const FileExplorerPage = () => {
     } catch (err) {
       setError(err instanceof ApiError ? err.message : t('files.actionFailed'));
     }
+  };
+
+  const startDownload = (entryPath: string) => {
+    const link = document.createElement('a');
+    link.href = filesApi.downloadUrl(entryPath);
+    // No download attribute: the server's Content-Disposition carries the name.
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
   };
 
   /** Files download straight from the browser; folders have to go through a zip. */
@@ -466,13 +477,15 @@ const FileExplorerPage = () => {
                           </button>
                         )}
                         {entry.type === 'file' ? (
-                          <a
-                            href={filesApi.downloadUrl(entry.path)}
+                          <button
+                            onClick={() =>
+                              entry.name.startsWith('.') ? setDotfile(entry) : startDownload(entry.path)
+                            }
                             className={btn.iconGhost}
                             title={t('files.download')}
                           >
                             <Download size={16} />
-                          </a>
+                          </button>
                         ) : (
                           <button
                             onClick={() => void createArchive([entry.path])}
@@ -518,10 +531,36 @@ const FileExplorerPage = () => {
       </div>
 
       {preview && (
-        <PreviewPanel entry={preview} onClose={() => setPreview(null)} onSaved={() => void reload()} />
+        <PreviewPanel
+          name={preview.name}
+          previewKind={preview.previewKind}
+          rawUrl={filesApi.rawUrl(preview.path)}
+          downloadUrl={filesApi.downloadUrl(preview.path)}
+          editor={{
+            load: () => filesApi.readText(preview.path),
+            save: (content) => filesApi.writeText(preview.path, content),
+          }}
+          onClose={() => setPreview(null)}
+          onSaved={() => void reload()}
+        />
       )}
 
       {sharing && <ShareCreateModal entry={sharing} onClose={() => setSharing(null)} />}
+
+      {dotfile && (
+        <DotfileNotice
+          name={dotfile.name}
+          onDownloadAnyway={() => {
+            startDownload(dotfile.path);
+            setDotfile(null);
+          }}
+          onDownloadZip={() => {
+            void createArchive([dotfile.path]);
+            setDotfile(null);
+          }}
+          onClose={() => setDotfile(null)}
+        />
+      )}
 
       {pending && (
         <ConflictModal

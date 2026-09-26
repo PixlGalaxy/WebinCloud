@@ -5,6 +5,7 @@ import { createAuthGuards } from '../auth/session.middleware.js';
 import { asyncHandler } from '../../middleware/async-handler.js';
 import { badRequest } from '../../errors.js';
 import { routeParam } from '../../route-params.js';
+import { SERVE_OPTIONS } from '../../serve-options.js';
 import type { ArchiveOwner, ArchivesService } from './archives.service.js';
 
 export function createArchivesRoutes(t: Translate, archives: ArchivesService): Router {
@@ -28,7 +29,7 @@ export function createArchivesRoutes(t: Translate, archives: ArchivesService): R
 
   router.get('/:id/download', (req: AuthenticatedRequest, res) => {
     const { absolute, fileName } = archives.ready(routeParam(req.params.id), owner(req));
-    res.download(absolute, fileName);
+    res.download(absolute, fileName, SERVE_OPTIONS);
   });
 
   router.delete(

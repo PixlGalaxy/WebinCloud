@@ -6,10 +6,8 @@
   "auth.passwordsRequired": "Current and new password are required",
   "auth.passwordTooShort": "New password must be at least 8 characters long",
   "auth.currentPasswordIncorrect": "Current password is incorrect",
-
   "error.internal": "Internal server error",
   "error.notFound": "Not found",
-
   "files.invalidPath": "Invalid path",
   "files.invalidName": "Invalid name",
   "files.alreadyExists": "An item with that name already exists",
@@ -18,40 +16,33 @@
   "files.tooLargeToEdit": "This file is too large to open in the editor",
   "files.invalidContent": "Invalid content",
   "files.searchQueryRequired": "A search term is required",
-
   "archives.nothingSelected": "Select at least one item",
   "archives.tooManyItems": "Too many items selected at once",
   "archives.notReady": "The archive is not ready yet",
-
   "users.invalidEmail": "Invalid email address",
   "users.invalidUsername": "The username must be 3-32 characters (letters, numbers, dot, dash or underscore)",
   "users.emailTaken": "That email is already in use",
   "users.usernameTaken": "That username is already in use",
   "users.cannotDeleteSelf": "You cannot delete your own account",
-
   "pathNames.invalid": "Use 2-63 characters: lowercase letters, numbers, dot, dash or underscore",
   "pathNames.reserved": "That name is reserved",
   "pathNames.taken": "That path name is already taken",
   "pathNames.inUse": "This path name is still used by a shared link",
-
   "shares.rootNotAllowed": "The root folder cannot be shared",
   "shares.nameTaken": "That path name already publishes something with this name",
   "shares.expired": "This link has expired",
   "shares.passwordRequired": "This link is password protected",
   "shares.wrongPassword": "Incorrect password",
-
   "permissions.userIdRequired": "A user must be specified",
   "permissions.rootNotAllowed": "The root folder cannot be granted; pick a folder inside it",
   "permissions.folderMissing": "That folder does not exist",
   "permissions.alreadyGranted": "That user already has access to this folder",
-
   "login.title": "Client Login",
   "login.usernameOrEmail": "Username or email",
   "login.password": "Password",
   "login.submit": "Sign in",
   "login.submitting": "Signing in…",
   "login.networkError": "Could not reach the server",
-
   "nav.logoAlt": "Webin Cloud Server",
   "nav.home": "Home",
   "nav.account": "Account",
@@ -62,17 +53,14 @@
   "logout.archivesRunning": "{count} archive(s) are still being compressed. Signing out cancels them and the progress is lost.",
   "logout.stay": "Stay",
   "logout.confirm": "Sign out anyway",
-
   "nav.themeDark": "Switch to dark mode",
   "nav.themeLight": "Switch to light mode",
-
   "common.cancel": "Cancel",
   "common.save": "Save",
   "common.create": "Create",
   "common.delete": "Delete",
   "common.add": "Add",
   "common.close": "Close",
-
   "files.root": "My files",
   "files.name": "Name",
   "files.size": "Size",
@@ -93,7 +81,6 @@
   "files.downloadZip": "Download as ZIP",
   "files.foldersNeedZip": "Folders can only be downloaded as a ZIP",
   "files.downloadFolderZip": "Download this folder as a ZIP",
-
   "archive.measuring": "Preparing…",
   "archive.building": "Compressing {done} of {total}",
   "archive.keepBrowsing": "You can keep browsing while it finishes",
@@ -114,7 +101,6 @@
   "files.unavailable": "This folder could not be opened",
   "files.loadFailed": "Could not load this folder",
   "files.actionFailed": "The action could not be completed",
-
   "conflict.title": "Files already exist",
   "conflict.description": "{count} of the files you are uploading already exist in this folder. Choose what to do with them.",
   "conflict.existing": "Current file",
@@ -122,7 +108,6 @@
   "conflict.overwrite": "Overwrite",
   "conflict.keepBoth": "Keep both",
   "conflict.safetyNote": "When overwriting, the current file is only replaced once the new one has finished uploading. \"Keep both\" adds \"(new)\" to the incoming file's name.",
-
   "users.new": "New user",
   "users.edit": "Edit user",
   "users.delete": "Delete user",
@@ -145,7 +130,6 @@
   "users.folderSelected": "Access will be granted to data/{path}",
   "users.noFolderSelected": "No folder selected — the user will not see anything until you grant one.",
   "users.adminSeesEverything": "Administrators already browse the whole data volume, so they need no folder grants.",
-
   "account.details": "Account details",
   "account.pathNames": "Path names",
   "account.pathNamesHint": "Friendly names for your public links. Pick one when sharing and the link becomes /public/<name>/<file>. Renaming one updates every link already using it.",
@@ -154,7 +138,6 @@
   "account.changePassword": "Change password",
   "account.currentPassword": "Current password",
   "account.passwordLogoutNote": "Changing your password signs you out of every device.",
-
   "share.action": "Share",
   "share.title": "Share \"{name}\"",
   "share.create": "Create link",
@@ -199,7 +182,6 @@
   "share.downloadFolderZip": "Download all as ZIP",
   "share.openDirect": "Open directly",
   "share.openDirectHint": "Opens the file itself: your browser displays it if it can, otherwise it downloads it.",
-
   "permissions.title": "Folder access for {user}",
   "permissions.addFolder": "Grant access to a folder",
   "permissions.pathPlaceholder": "Documents/Reports",
@@ -209,13 +191,15 @@
   "folderTree.empty": "No folders yet — use \"New folder at root\"",
   "folderTree.newAtRoot": "New folder at root",
   "folderTree.newHere": "New folder here",
-
   "permissions.read": "Read",
   "permissions.write": "Write",
-
   "page.files": "File explorer",
   "page.shared": "Shared links",
   "page.users": "User management",
   "page.profile": "My account",
-  "page.placeholder": "Coming in phase {phase}."
+  "page.placeholder": "Coming in phase {phase}.",
+  "dotfile.title": "This file name starts with a dot",
+  "dotfile.explanation": "Your browser will save \"{name}\" as \"{stripped}\", dropping the leading dot, and no server setting can prevent that. Download it as a ZIP to keep the exact name.",
+  "dotfile.downloadAnyway": "Download anyway",
+  "dotfile.downloadZip": "Download as ZIP"
 }

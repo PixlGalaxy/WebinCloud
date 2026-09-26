@@ -30,6 +30,15 @@ const TEXT_EXTENSIONS = new Set([
   '.php', '.sh', '.bash', '.zsh', '.ps1', '.sql', '.gitignore', '.dockerfile', '.tf', '.svg',
 ]);
 
+/**
+ * Extension-less names (.gitkeep, LICENSE, Dockerfile) are treated as text.
+ * Both helpers below go through this, so what is previewable and what is
+ * served inline can never disagree.
+ */
+function isTextExtension(ext: string): boolean {
+  return ext === '' || TEXT_EXTENSIONS.has(ext);
+}
+
 export function inlineMimeOf(name: string): string | null {
   const ext = extname(name).toLowerCase();
   const direct = INLINE_MIME[ext];
@@ -37,7 +46,7 @@ export function inlineMimeOf(name: string): string | null {
 
   // Text-ish files are always announced as text/plain, never text/html or
   // image/svg+xml, so the browser displays them instead of running them.
-  if (TEXT_EXTENSIONS.has(ext)) return 'text/plain; charset=utf-8';
+  if (isTextExtension(ext)) return 'text/plain; charset=utf-8';
   return null;
 }
 
@@ -49,7 +58,7 @@ export function previewKindOf(name: string): PreviewKind {
   if (mime?.startsWith('video/')) return 'video';
   if (mime?.startsWith('audio/')) return 'audio';
   if (mime === 'application/pdf') return 'pdf';
-  if (TEXT_EXTENSIONS.has(ext) || ext === '') return 'text';
+  if (isTextExtension(ext)) return 'text';
   return 'none';
 }
 

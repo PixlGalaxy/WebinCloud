@@ -6,10 +6,8 @@
   "auth.passwordsRequired": "La contraseña actual y la nueva son obligatorias",
   "auth.passwordTooShort": "La nueva contraseña debe tener al menos 8 caracteres",
   "auth.currentPasswordIncorrect": "La contraseña actual es incorrecta",
-
   "error.internal": "Error interno del servidor",
   "error.notFound": "No encontrado",
-
   "files.invalidPath": "Ruta inválida",
   "files.invalidName": "Nombre inválido",
   "files.alreadyExists": "Ya existe un elemento con ese nombre",
@@ -18,40 +16,33 @@
   "files.tooLargeToEdit": "Este archivo es demasiado grande para abrirlo en el editor",
   "files.invalidContent": "Contenido inválido",
   "files.searchQueryRequired": "Hace falta un término de búsqueda",
-
   "archives.nothingSelected": "Selecciona al menos un elemento",
   "archives.tooManyItems": "Has seleccionado demasiados elementos a la vez",
   "archives.notReady": "El archivo ZIP todavía no está listo",
-
   "users.invalidEmail": "Dirección de email inválida",
   "users.invalidUsername": "El usuario debe tener entre 3 y 32 caracteres (letras, números, punto, guion o guion bajo)",
   "users.emailTaken": "Ese email ya está en uso",
   "users.usernameTaken": "Ese nombre de usuario ya está en uso",
   "users.cannotDeleteSelf": "No puedes eliminar tu propia cuenta",
-
   "pathNames.invalid": "Usa de 2 a 63 caracteres: minúsculas, números, punto, guion o guion bajo",
   "pathNames.reserved": "Ese nombre está reservado",
   "pathNames.taken": "Ese path name ya está ocupado",
   "pathNames.inUse": "Este path name todavía lo usa un enlace compartido",
-
   "shares.rootNotAllowed": "No se puede compartir la carpeta raíz",
   "shares.nameTaken": "Ese path name ya publica algo con este nombre",
   "shares.expired": "Este enlace ha caducado",
   "shares.passwordRequired": "Este enlace está protegido con contraseña",
   "shares.wrongPassword": "Contraseña incorrecta",
-
   "permissions.userIdRequired": "Debes indicar un usuario",
   "permissions.rootNotAllowed": "No se puede conceder la carpeta raíz; elige una carpeta dentro de ella",
   "permissions.folderMissing": "Esa carpeta no existe",
   "permissions.alreadyGranted": "Ese usuario ya tiene acceso a esta carpeta",
-
   "login.title": "Acceso de cliente",
   "login.usernameOrEmail": "Usuario o email",
   "login.password": "Contraseña",
   "login.submit": "Iniciar sesión",
   "login.submitting": "Iniciando sesión…",
   "login.networkError": "No se pudo conectar con el servidor",
-
   "nav.logoAlt": "Webin Cloud Server",
   "nav.home": "Inicio",
   "nav.account": "Cuenta",
@@ -62,17 +53,14 @@
   "logout.archivesRunning": "Todavía se están comprimiendo {count} archivo(s). Si cierras sesión se cancelan y perderás el progreso.",
   "logout.stay": "Quedarme",
   "logout.confirm": "Cerrar sesión igualmente",
-
   "nav.themeDark": "Cambiar a modo oscuro",
   "nav.themeLight": "Cambiar a modo claro",
-
   "common.cancel": "Cancelar",
   "common.save": "Guardar",
   "common.create": "Crear",
   "common.delete": "Eliminar",
   "common.add": "Añadir",
   "common.close": "Cerrar",
-
   "files.root": "Mis archivos",
   "files.name": "Nombre",
   "files.size": "Tamaño",
@@ -93,7 +81,6 @@
   "files.downloadZip": "Descargar en ZIP",
   "files.foldersNeedZip": "Las carpetas solo se pueden descargar en ZIP",
   "files.downloadFolderZip": "Descargar esta carpeta en ZIP",
-
   "archive.measuring": "Preparando…",
   "archive.building": "Comprimiendo {done} de {total}",
   "archive.keepBrowsing": "Puedes seguir navegando mientras termina",
@@ -114,7 +101,6 @@
   "files.unavailable": "No se pudo abrir esta carpeta",
   "files.loadFailed": "No se pudo cargar esta carpeta",
   "files.actionFailed": "No se pudo completar la acción",
-
   "conflict.title": "Ya existen estos archivos",
   "conflict.description": "{count} de los archivos que vas a subir ya existen en esta carpeta. Elige qué hacer con ellos.",
   "conflict.existing": "Archivo actual",
@@ -122,7 +108,6 @@
   "conflict.overwrite": "Sobrescribir",
   "conflict.keepBoth": "Guardar ambos",
   "conflict.safetyNote": "Al sobrescribir, el archivo actual solo se reemplaza cuando el nuevo ha terminado de subirse. «Guardar ambos» añade «(new)» al nombre del archivo entrante.",
-
   "users.new": "Nuevo usuario",
   "users.edit": "Editar usuario",
   "users.delete": "Eliminar usuario",
@@ -145,7 +130,6 @@
   "users.folderSelected": "Se concederá acceso a data/{path}",
   "users.noFolderSelected": "Ninguna carpeta seleccionada; el usuario no verá nada hasta que le concedas una.",
   "users.adminSeesEverything": "Los administradores ya navegan todo el volumen de datos, así que no necesitan permisos de carpeta.",
-
   "account.details": "Datos de la cuenta",
   "account.pathNames": "Path names",
   "account.pathNamesHint": "Nombres propios para tus enlaces públicos. Al compartir eliges uno y el enlace pasa a ser /public/<nombre>/<archivo>. Si renombras uno, se actualizan todos los enlaces que ya lo usan.",
@@ -154,7 +138,6 @@
   "account.changePassword": "Cambiar contraseña",
   "account.currentPassword": "Contraseña actual",
   "account.passwordLogoutNote": "Al cambiar la contraseña se cierra la sesión en todos los dispositivos.",
-
   "share.action": "Compartir",
   "share.title": "Compartir «{name}»",
   "share.create": "Crear enlace",
@@ -199,7 +182,6 @@
   "share.downloadFolderZip": "Descargar todo en ZIP",
   "share.openDirect": "Abrir directo",
   "share.openDirectHint": "Abre el archivo en sí: el navegador lo muestra si puede y, si no, lo descarga.",
-
   "permissions.title": "Acceso a carpetas de {user}",
   "permissions.addFolder": "Conceder acceso a una carpeta",
   "permissions.pathPlaceholder": "Documentos/Informes",
@@ -209,13 +191,15 @@
   "folderTree.empty": "Todavía no hay carpetas; usa «Nueva carpeta en la raíz»",
   "folderTree.newAtRoot": "Nueva carpeta en la raíz",
   "folderTree.newHere": "Nueva carpeta aquí",
-
   "permissions.read": "Lectura",
   "permissions.write": "Escritura",
-
   "page.files": "Explorador de archivos",
   "page.shared": "Enlaces compartidos",
   "page.users": "Gestión de usuarios",
   "page.profile": "Mi cuenta",
-  "page.placeholder": "Disponible en la fase {phase}."
+  "page.placeholder": "Disponible en la fase {phase}.",
+  "dotfile.title": "Este nombre empieza por punto",
+  "dotfile.explanation": "Tu navegador guardará «{name}» como «{stripped}», quitándole el punto inicial, y no hay ajuste del servidor que lo evite. Descárgalo en ZIP para conservar el nombre exacto.",
+  "dotfile.downloadAnyway": "Descargar igualmente",
+  "dotfile.downloadZip": "Descargar en ZIP"
 }

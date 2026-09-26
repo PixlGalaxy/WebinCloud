@@ -4,6 +4,7 @@ import {
   ChevronRight,
   Download,
   ExternalLink,
+  Eye,
   FileArchive,
   Folder,
   Loader2,
@@ -12,12 +13,7 @@ import {
   Upload,
   X,
 } from 'lucide-react';
-import {
-  publicShareApi,
-  uploadToShare,
-  type PublicEntry,
-  type PublicShareInfo,
-} from '../../api/shares';
+import { publicShareApi, uploadToShare, type PublicEntry, type PublicShareInfo } from '../../api/shares';
 import { ApiError } from '../../api/client';
 import { useI18n } from '../../i18n/I18nContext';
 import { useTheme } from '../../context/ThemeContext';
@@ -25,6 +21,8 @@ import { useArchives } from '../../context/ArchiveContext';
 import Navbar from '../../components/Navbar';
 import { btn, card, errorBox, input } from '../../components/ui/styles';
 import { formatSize, iconFor } from '../files/paths';
+import PreviewPanel from '../files/PreviewPanel';
+import DotfileNotice from '../../components/DotfileNotice';
 
 const CodeEditor = lazy(() => import('../files/CodeEditor'));
 
@@ -37,6 +35,8 @@ const PublicSharePage = () => {
   const { createShareArchive } = useArchives();
   const [selecting, setSelecting] = useState(false);
   const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [preview, setPreview] = useState<PublicEntry | null>(null);
+  const [dotfile, setDotfile] = useState<{ name: string; path: string } | null>(null);
 
   const [textContent, setTextContent] = useState<string | null>(null);
   const [info, setInfo] = useState<PublicShareInfo | null>(null);
@@ -117,7 +117,23 @@ const PublicSharePage = () => {
   };
 
   const formatDate = (iso: string) =>
-    new Intl.DateTimeFormat(language, { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(iso));
+    new Intl.DateTimeFormat(language, {
+      dateStyle: 'medium',
+      timeStyle: 'short',
+    }).format(new Date(iso));
+
+  const startDownload = (path: string) => {
+    const link = document.createElement('a');
+    link.href = publicShareApi.downloadUrl(segment, shareName, path);
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+  };
+
+  const requestDownload = (name: string, path: string) => {
+    if (name.startsWith('.')) setDotfile({ name, path });
+    else startDownload(path);
+  };
 
   const exitSelection = () => {
     setSelecting(false);
@@ -249,9 +265,9 @@ const PublicSharePage = () => {
                   <ExternalLink size={16} /> {t('share.openDirect')}
                 </a>
               )}
-              <a href={publicShareApi.downloadUrl(segment, shareName)} className={btn.primary}>
+              <button onClick={() => requestDownload(info.name, '')} className={btn.primary}>
                 <Download size={16} /> {t('files.download')}
-              </a>
+              </button>
             </>
           )}
           {info.type === 'folder' && info.allowDownload && (
@@ -352,7 +368,11 @@ const PublicSharePage = () => {
               className="h-[75vh] w-full border-0"
             />
           ) : info.previewKind === 'video' ? (
-            <video src={publicShareApi.rawUrl(segment, shareName)} controls className="mx-auto max-h-[70vh]" />
+            <video
+              src={publicShareApi.rawUrl(segment, shareName)}
+              controls
+              className="mx-auto max-h-[70vh]"
+            />
           ) : info.previewKind === 'audio' ? (
             <audio src={publicShareApi.rawUrl(segment, shareName)} controls className="w-full" />
           ) : info.previewKind === 'text' ? (
@@ -404,7 +424,7 @@ const PublicSharePage = () => {
                   <th className="px-5 py-3 font-medium">{t('files.name')}</th>
                   <th className="hidden w-32 px-5 py-3 font-medium sm:table-cell">{t('files.size')}</th>
                   <th className="hidden w-56 px-5 py-3 font-medium md:table-cell">{t('files.modified')}</th>
-                  <th className="w-20 px-5 py-3" />
+                  <th className="w-28 px-5 py-3" />
                 </tr>
               </thead>
               <tbody>
@@ -445,11 +465,19 @@ const PublicSharePage = () => {
                             <Folder size={18} className="text-indigo-500" />
                             {entry.name}
                           </button>
-                        ) : (
+                        ) : entry.previewKind === 'none' ? (
                           <span className="flex items-center gap-2.5 text-slate-800 dark:text-slate-200">
                             <Icon size={18} className="text-slate-400 dark:text-slate-500" />
                             {entry.name}
                           </span>
+                        ) : (
+                          <button
+                            onClick={() => setPreview(entry)}
+                            className="flex items-center gap-2.5 text-slate-800 hover:text-indigo-600 dark:text-slate-200 dark:hover:text-indigo-400"
+                          >
+                            <Icon size={18} className="text-slate-400 dark:text-slate-500" />
+                            {entry.name}
+                          </button>
                         )}
                       </td>
                       <td className="hidden px-5 py-3 text-slate-500 dark:text-slate-400 sm:table-cell">
@@ -458,24 +486,35 @@ const PublicSharePage = () => {
                       <td className="hidden px-5 py-3 text-slate-500 dark:text-slate-400 md:table-cell">
                         {formatDate(entry.modifiedAt)}
                       </td>
-                      <td className="px-5 py-3 text-right">
-                        {entry.type === 'file' ? (
-                          <a
-                            href={publicShareApi.downloadUrl(segment, shareName, entry.path)}
-                            className={btn.iconGhost}
-                            title={t('files.download')}
-                          >
-                            <Download size={16} />
-                          </a>
-                        ) : (
-                          <button
-                            onClick={() => void zipSelection([entry.path])}
-                            className={btn.iconGhost}
-                            title={t('files.downloadFolderZip')}
-                          >
-                            <Download size={16} />
-                          </button>
-                        )}
+                      <td className="px-5 py-3">
+                        <div className="flex items-center justify-end gap-1">
+                          {entry.type === 'file' && entry.previewKind !== 'none' && (
+                            <button
+                              onClick={() => setPreview(entry)}
+                              className={btn.iconGhost}
+                              title={t('files.preview')}
+                            >
+                              <Eye size={16} />
+                            </button>
+                          )}
+                          {entry.type === 'file' ? (
+                            <button
+                              onClick={() => requestDownload(entry.name, entry.path)}
+                              className={btn.iconGhost}
+                              title={t('files.download')}
+                            >
+                              <Download size={16} />
+                            </button>
+                          ) : (
+                            <button
+                              onClick={() => void zipSelection([entry.path])}
+                              className={btn.iconGhost}
+                              title={t('files.downloadFolderZip')}
+                            >
+                              <Download size={16} />
+                            </button>
+                          )}
+                        </div>
                       </td>
                     </tr>
                   );
@@ -484,6 +523,31 @@ const PublicSharePage = () => {
             </table>
           )}
         </div>
+      )}
+
+      {dotfile && (
+        <DotfileNotice
+          name={dotfile.name}
+          onDownloadAnyway={() => {
+            startDownload(dotfile.path);
+            setDotfile(null);
+          }}
+          onDownloadZip={() => {
+            void zipSelection(dotfile.path ? [dotfile.path] : []);
+            setDotfile(null);
+          }}
+          onClose={() => setDotfile(null)}
+        />
+      )}
+
+      {preview && (
+        <PreviewPanel
+          name={preview.name}
+          previewKind={preview.previewKind}
+          rawUrl={publicShareApi.rawUrl(segment, shareName, preview.path)}
+          downloadUrl={publicShareApi.downloadUrl(segment, shareName, preview.path)}
+          onClose={() => setPreview(null)}
+        />
       )}
     </div>,
   );

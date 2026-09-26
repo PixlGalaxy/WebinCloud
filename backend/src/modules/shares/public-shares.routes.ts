@@ -13,6 +13,7 @@ import { inlineMimeOf, previewKindOf } from '../files/mime.js';
 import { SHARE_COOKIE_PREFIX, type SharesService } from './shares.service.js';
 import type { ArchiveOwner, ArchivesService } from '../archives/archives.service.js';
 import { routeParam } from '../../route-params.js';
+import { SERVE_OPTIONS } from '../../serve-options.js';
 
 interface PublicRequest extends Express.Request {
   share?: Share;
@@ -163,10 +164,10 @@ export function createPublicShareRoutes(
         res.setHeader('Content-Type', mime);
         res.setHeader('X-Content-Type-Options', 'nosniff');
         res.setHeader('Content-Security-Policy', "sandbox; default-src 'none'; object-src 'self'");
-        return res.sendFile(absolute);
+        return res.sendFile(absolute, SERVE_OPTIONS);
       }
 
-      return res.download(absolute, basename(absolute));
+      return res.download(absolute, basename(absolute), SERVE_OPTIONS);
     }),
   );
 
@@ -204,7 +205,7 @@ export function createPublicShareRoutes(
       routeParam(req.params.id),
       archiveOwner((req as PublicRequest).share!),
     );
-    res.download(absolute, fileName);
+    res.download(absolute, fileName, SERVE_OPTIONS);
   });
 
   router.delete(

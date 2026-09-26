@@ -12,6 +12,7 @@ import { badRequest, notFound } from '../../errors.js';
 import { logger } from '../../logger.js';
 import { FilesService, type ConflictMode } from './files.service.js';
 import { normalizeRelPath } from './path-safety.js';
+import { SERVE_OPTIONS } from '../../serve-options.js';
 
 const CONFLICT_MODES: ConflictMode[] = ['fail', 'overwrite', 'keepBoth'];
 
@@ -70,7 +71,7 @@ export function createFilesRoutes(db: Db, config: EnvConfig, t: Translate): Rout
     asyncHandler(async (req: AuthenticatedRequest, res) => {
       const { absolute, name } = await files.resolveFile(req.user!, queryPath(req.query.path));
       // res.download streams and honours Range requests.
-      res.download(absolute, name);
+      res.download(absolute, name, SERVE_OPTIONS);
     }),
   );
 
@@ -82,7 +83,7 @@ export function createFilesRoutes(db: Db, config: EnvConfig, t: Translate): Rout
       res.setHeader('Content-Type', mime);
       res.setHeader('X-Content-Type-Options', 'nosniff');
       res.setHeader('Content-Security-Policy', "sandbox; default-src 'none'; object-src 'self'");
-      res.sendFile(absolute);
+      res.sendFile(absolute, SERVE_OPTIONS);
     }),
   );
 
