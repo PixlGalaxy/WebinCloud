@@ -1,5 +1,6 @@
 import { useEffect, useState, type FormEvent } from 'react';
-import { Calendar, Check, Copy, Link2, Loader2 } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { AlertCircle, Calendar, Check, Copy, Link2, Loader2 } from 'lucide-react';
 import { sharesApi, type PathName, type Share } from '../../api/shares';
 import type { DirEntry } from '../../api/files';
 import { ApiError } from '../../api/client';
@@ -14,7 +15,10 @@ interface Props {
 
 const ShareCreateModal = ({ entry, onClose }: Props) => {
   const { t } = useI18n();
+  const navigate = useNavigate();
 
+  const [existing, setExisting] = useState<Share[] | null>(null);
+  const [forceNew, setForceNew] = useState(false);
   const [pathNames, setPathNames] = useState<PathName[]>([]);
   const [useAbsolute, setUseAbsolute] = useState(false);
   const [pathNameId, setPathNameId] = useState<string | null>(null);
@@ -38,6 +42,14 @@ const ShareCreateModal = ({ entry, onClose }: Props) => {
       })
       .catch(() => undefined);
   }, []);
+
+  // Sharing the same item twice is allowed, but rarely what someone means to do.
+  useEffect(() => {
+    sharesApi
+      .list()
+      .then((all) => setExisting(all.filter((share) => share.target_path === entry.path)))
+      .catch(() => setExisting([]));
+  }, [entry.path]);
 
   const submit = async (e: FormEvent) => {
     e.preventDefault();
@@ -86,6 +98,59 @@ const ShareCreateModal = ({ entry, onClose }: Props) => {
           <div className="flex justify-end">
             <button onClick={onClose} className={btn.secondary}>
               {t('common.close')}
+            </button>
+          </div>
+        </div>
+      </Modal>
+    );
+  }
+
+  if (existing === null) {
+    return (
+      <Modal title={t('share.title', { name: entry.name })} onClose={onClose}>
+        <div className="flex justify-center py-8">
+          <Loader2 className="animate-spin text-indigo-500" size={28} />
+        </div>
+      </Modal>
+    );
+  }
+
+  if (existing.length > 0 && !forceNew) {
+    return (
+      <Modal title={t('share.alreadyShared')} onClose={onClose}>
+        <div className="space-y-5">
+          <div className="flex items-start gap-3 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-200">
+            <AlertCircle size={18} className="mt-0.5 shrink-0" />
+            <p>{t('share.alreadySharedHint', { name: entry.name, count: existing.length })}</p>
+          </div>
+
+          <ul className="space-y-2">
+            {existing.map((share) => (
+              <li
+                key={share.id}
+                className="rounded-lg border border-slate-200 px-3 py-2 dark:border-slate-700"
+              >
+                <code className="block truncate font-mono text-xs text-indigo-600 dark:text-indigo-400">
+                  {share.url}
+                </code>
+                <span className="text-xs text-slate-500 dark:text-slate-400">
+                  {share.pathName ?? t('share.randomToken')}
+                  {share.hasPassword ? ` · ${t('share.hasPassword')}` : ''}
+                  {share.expires_at ? ` · ${t('share.expiresOn')}` : ` · ${t('share.neverExpires')}`}
+                </span>
+              </li>
+            ))}
+          </ul>
+
+          <div className="flex flex-wrap justify-end gap-2">
+            <button onClick={() => setForceNew(true)} className={btn.secondary}>
+              {t('share.createAnother')}
+            </button>
+            <button
+              onClick={() => navigate(`/share?path=${encodeURIComponent(entry.path)}`)}
+              className={btn.primary}
+            >
+              {t('share.goToExisting')}
             </button>
           </div>
         </div>
