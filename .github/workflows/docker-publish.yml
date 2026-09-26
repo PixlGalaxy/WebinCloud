@@ -48,7 +48,7 @@ jobs:
       # Pull requests only build, so nothing unreviewed ever reaches the registry.
       - name: 🔑 Log in to GitHub Container Registry
         if: github.event_name != 'pull_request'
-        uses: docker/login-action@v3
+        uses: docker/login-action@v4
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
