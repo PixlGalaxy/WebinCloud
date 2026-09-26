@@ -5,11 +5,12 @@ import { createAuthGuards } from '../auth/session.middleware.js';
 import { asyncHandler } from '../../middleware/async-handler.js';
 import { badRequest } from '../../errors.js';
 import { routeParam } from '../../route-params.js';
-import type { ArchivesService } from './archives.service.js';
+import type { ArchiveOwner, ArchivesService } from './archives.service.js';
 
 export function createArchivesRoutes(t: Translate, archives: ArchivesService): Router {
   const router = Router();
   const { requireAuth } = createAuthGuards(t);
+  const owner = (req: AuthenticatedRequest): ArchiveOwner => ({ kind: 'user', id: req.user!.id });
 
   router.use(requireAuth);
 
@@ -22,18 +23,18 @@ export function createArchivesRoutes(t: Translate, archives: ArchivesService): R
   });
 
   router.get('/:id', (req: AuthenticatedRequest, res) => {
-    res.json(archives.get(routeParam(req.params.id), req.user!));
+    res.json(archives.get(routeParam(req.params.id), owner(req)));
   });
 
   router.get('/:id/download', (req: AuthenticatedRequest, res) => {
-    const { absolute, fileName } = archives.ready(routeParam(req.params.id), req.user!);
+    const { absolute, fileName } = archives.ready(routeParam(req.params.id), owner(req));
     res.download(absolute, fileName);
   });
 
   router.delete(
     '/:id',
     asyncHandler(async (req: AuthenticatedRequest, res) => {
-      await archives.remove(routeParam(req.params.id), req.user!);
+      await archives.remove(routeParam(req.params.id), owner(req));
       res.status(204).end();
     }),
   );

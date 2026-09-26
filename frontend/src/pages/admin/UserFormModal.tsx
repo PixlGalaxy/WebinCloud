@@ -257,7 +257,7 @@ const UserFormModal = ({ user, onClose, onSaved }: Props) => {
                       <button
                         type="button"
                         onClick={() => void runGrant(() => permissionsApi.remove(grant.id))}
-                        className="rounded-lg p-1.5 text-slate-400 transition hover:bg-rose-50 hover:text-rose-600 dark:hover:bg-rose-500/15 dark:hover:text-rose-400"
+                        className={btn.iconDanger}
                         title={t('common.delete')}
                       >
                         <Trash2 size={15} />

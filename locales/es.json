@@ -191,6 +191,7 @@
   "share.unavailable": "Este enlace no está disponible",
   "share.uploadOnly": "Este enlace solo admite subidas. No puedes ver lo que hay dentro.",
   "share.notPreviewable": "Este tipo de archivo no se puede mostrar aquí; descárgalo para abrirlo.",
+  "share.downloadFolderZip": "Descargar todo en ZIP",
   "share.openDirect": "Abrir directo",
   "share.openDirectHint": "Abre el archivo en sí: el navegador lo muestra si puede y, si no, lo descarga.",
 

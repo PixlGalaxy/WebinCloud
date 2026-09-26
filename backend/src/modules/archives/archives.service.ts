@@ -11,9 +11,24 @@ import { normalizeRelPath, resolveSafePath } from '../files/path-safety.js';
 
 export type ArchiveStatus = 'preparing' | 'running' | 'done' | 'error';
 
+/**
+ * Who may poll and download a job. Signed-in users are identified by id;
+ * public links by the share, since holding the link is the credential.
+ */
+export type ArchiveOwner = { kind: 'user'; id: string } | { kind: 'share'; id: string };
+
+export function ownerKey(owner: ArchiveOwner): string {
+  return `${owner.kind}:${owner.id}`;
+}
+
+export interface ArchiveSource {
+  absolute: string;
+  nameInZip: string;
+}
+
 export interface ArchiveJob {
   id: string;
-  userId: string;
+  ownerKey: string;
   status: ArchiveStatus;
   fileName: string;
   totalBytes: number;
@@ -82,11 +97,15 @@ export class ArchivesService {
     };
   }
 
-  get(id: string, user: User): ArchiveJobView {
+  private owned(id: string, owner: ArchiveOwner): ArchiveJob {
     const job = this.jobs.get(id);
     if (!job) throw notFound();
-    if (job.userId !== user.id) throw forbidden();
+    if (job.ownerKey !== ownerKey(owner)) throw forbidden();
+    return job;
+  }
 
+  get(id: string, owner: ArchiveOwner): ArchiveJobView {
+    const job = this.owned(id, owner);
     job.lastPolledAt = Date.now();
     return this.view(job);
   }
@@ -101,18 +120,15 @@ export class ArchivesService {
   }
 
   /** Absolute path of a finished archive, for streaming it to the client. */
-  ready(id: string, user: User): { absolute: string; fileName: string } {
-    const job = this.jobs.get(id);
-    if (!job) throw notFound();
-    if (job.userId !== user.id) throw forbidden();
+  ready(id: string, owner: ArchiveOwner): { absolute: string; fileName: string } {
+    const job = this.owned(id, owner);
     if (job.status !== 'done') throw badRequest('archives.notReady');
     return { absolute: this.zipPath(id), fileName: job.fileName };
   }
 
-  async remove(id: string, user: User): Promise<void> {
-    const job = this.jobs.get(id);
-    if (!job) return;
-    if (job.userId !== user.id) throw forbidden();
+  async remove(id: string, owner: ArchiveOwner): Promise<void> {
+    if (!this.jobs.has(id)) return;
+    const job = this.owned(id, owner);
 
     job.abort?.();
     this.jobs.delete(id);
@@ -153,23 +169,54 @@ export class ArchivesService {
    * Starts building the archive and returns immediately, so the client can keep
    * browsing while it runs. Progress is polled through `get`.
    */
+  /** Selection made by a signed-in user, checked against their grants. */
   start(user: User, rawPaths: string[]): ArchiveJobView {
+    const paths = this.validateSelection(rawPaths);
+    for (const path of paths) {
+      if (!getAccess(this.db, user, path).read) throw forbidden();
+    }
+
+    return this.startJob(
+      { kind: 'user', id: user.id },
+      paths.map((path) => ({ absolute: resolveSafePath(this.dataRoot, path), nameInZip: basename(path) })),
+      this.nameFor(paths),
+    );
+  }
+
+  /**
+   * Selection made through a public link. The caller has already checked the
+   * share is readable and unlocked, and resolved the paths inside its subtree.
+   */
+  startForShare(shareId: string, sources: ArchiveSource[], fallbackName: string): ArchiveJobView {
+    if (sources.length === 0) throw badRequest('archives.nothingSelected');
+    if (sources.length > MAX_SELECTION) throw badRequest('archives.tooManyItems');
+
+    const fileName =
+      sources.length === 1 ? `${sources[0].nameInZip}.zip` : `${fallbackName}-${sources.length}-items.zip`;
+
+    return this.startJob({ kind: 'share', id: shareId }, sources, fileName);
+  }
+
+  private validateSelection(rawPaths: string[]): string[] {
     if (rawPaths.length === 0) throw badRequest('archives.nothingSelected');
     if (rawPaths.length > MAX_SELECTION) throw badRequest('archives.tooManyItems');
 
     const paths = rawPaths.map((path) => normalizeRelPath(path));
     for (const path of paths) {
       if (path === '') throw badRequest('files.invalidPath');
-      if (!getAccess(this.db, user, path).read) throw forbidden();
     }
+    return paths;
+  }
 
+  private nameFor(paths: string[]): string {
+    return paths.length === 1 ? `${basename(paths[0])}.zip` : `webincloud-${paths.length}-items.zip`;
+  }
+
+  private startJob(owner: ArchiveOwner, sources: ArchiveSource[], fileName: string): ArchiveJobView {
     const id = randomUUID();
-    const fileName =
-      paths.length === 1 ? `${basename(paths[0])}.zip` : `webincloud-${paths.length}-items.zip`;
-
     const job: ArchiveJob = {
       id,
-      userId: user.id,
+      ownerKey: ownerKey(owner),
       status: 'preparing',
       fileName,
       totalBytes: 0,
@@ -181,21 +228,17 @@ export class ArchivesService {
     };
     this.jobs.set(id, job);
 
-    void this.build(job, paths);
+    void this.build(job, sources);
     return this.view(job);
   }
 
-  private async build(job: ArchiveJob, paths: string[]): Promise<void> {
+  private async build(job: ArchiveJob, sources: ArchiveSource[]): Promise<void> {
     try {
       await fs.mkdir(this.tempRoot, { recursive: true });
 
       const planned: PlannedEntry[] = [];
-      for (const path of paths) {
-        job.totalBytes += await this.collect(
-          resolveSafePath(this.dataRoot, path),
-          basename(path),
-          planned,
-        );
+      for (const source of sources) {
+        job.totalBytes += await this.collect(source.absolute, source.nameInZip, planned);
       }
       job.totalEntries = planned.length;
 

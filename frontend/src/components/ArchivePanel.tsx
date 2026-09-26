@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { AlertCircle, CheckCircle2, Download, FileArchive, Loader2, X } from 'lucide-react';
-import { archivesApi } from '../api/archives';
-import { useArchives } from '../context/ArchiveContext';
+import { downloadUrlFor, useArchives } from '../context/ArchiveContext';
 import { useI18n } from '../i18n/I18nContext';
 import { formatSize } from '../pages/files/paths';
 
@@ -93,7 +92,7 @@ const ArchivePanel = () => {
 
                 {job.status === 'done' && (
                   <a
-                    href={archivesApi.downloadUrl(job.id)}
+                    href={downloadUrlFor(job)}
                     download={job.fileName}
                     className="mt-2 inline-flex items-center gap-1.5 rounded-lg bg-indigo-600 px-3 py-1.5 text-xs font-medium text-white transition hover:bg-indigo-700"
                   >

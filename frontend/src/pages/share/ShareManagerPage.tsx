@@ -178,7 +178,7 @@ const ShareManagerPage = () => {
                   </button>
                   <button
                     onClick={() => setDeleting(share)}
-                    className="rounded-lg p-2 text-slate-500 transition hover:bg-rose-50 hover:text-rose-600 dark:text-slate-400 dark:hover:bg-rose-500/15 dark:hover:text-rose-400"
+                    className={btn.iconDanger}
                     title={t('common.delete')}
                   >
                     <Trash2 size={16} />

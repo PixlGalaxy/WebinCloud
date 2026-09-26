@@ -28,6 +28,17 @@ export function createApp(db: Db, config: EnvConfig): express.Application {
     hashPassword,
     verifyPassword,
   );
+  const archives = new ArchivesService(
+    db,
+    config.DATA_ROOT,
+    config.TEMP_ROOT,
+    config.ARCHIVE_ABANDON_SECONDS * 1000,
+  );
+  void archives.sweep();
+  // Frees compressions whose client closed the tab or lost connection. Checked
+  // several times per window, so abandonment is never missed between ticks.
+  const abandonCheckMs = Math.max(1000, Math.min(10_000, (config.ARCHIVE_ABANDON_SECONDS * 1000) / 3));
+  setInterval(() => void archives.dropAbandoned(), abandonCheckMs).unref();
 
   app.set('trust proxy', 'loopback');
   app.disable('x-powered-by');
@@ -41,24 +52,13 @@ export function createApp(db: Db, config: EnvConfig): express.Application {
   app.get('/api/config', (_req, res) => res.json({ language: config.LANGUAGE, theme: config.THEME }));
 
   // Anonymous: everything below is reachable with just the link.
-  app.use('/api/public/:segment/:name', createPublicShareRoutes(config, shares));
+  app.use('/api/public/:segment/:name', createPublicShareRoutes(config, shares, archives));
 
   app.use('/api/auth', createAuthRoutes(db, config, t));
   app.use('/api/users', createUsersRoutes(db, t));
   app.use('/api/permissions', createPermissionsRoutes(db, config, t));
   app.use('/api/files', createFilesRoutes(db, config, t));
 
-  const archives = new ArchivesService(
-    db,
-    config.DATA_ROOT,
-    config.TEMP_ROOT,
-    config.ARCHIVE_ABANDON_SECONDS * 1000,
-  );
-  void archives.sweep();
-  // Frees compressions whose client closed the tab or lost connection. Checked
-  // several times per window, so abandonment is never missed between ticks.
-  const abandonCheckMs = Math.max(1000, Math.min(10_000, (config.ARCHIVE_ABANDON_SECONDS * 1000) / 3));
-  setInterval(() => void archives.dropAbandoned(), abandonCheckMs).unref();
   // Keeps the temp volume from growing without bound on a long-lived server.
   setInterval(() => void archives.sweep(), 15 * 60 * 1000).unref();
   app.use('/api/archives', createArchivesRoutes(t, archives));

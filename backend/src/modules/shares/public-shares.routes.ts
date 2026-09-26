@@ -11,12 +11,18 @@ import { logger } from '../../logger.js';
 import { assertValidName, normalizeRelPath, resolveSafePath } from '../files/path-safety.js';
 import { inlineMimeOf, previewKindOf } from '../files/mime.js';
 import { SHARE_COOKIE_PREFIX, type SharesService } from './shares.service.js';
+import type { ArchiveOwner, ArchivesService } from '../archives/archives.service.js';
+import { routeParam } from '../../route-params.js';
 
 interface PublicRequest extends Express.Request {
   share?: Share;
 }
 
-export function createPublicShareRoutes(config: EnvConfig, shares: SharesService): Router {
+export function createPublicShareRoutes(
+  config: EnvConfig,
+  shares: SharesService,
+  archives: ArchivesService,
+): Router {
   const router = Router({ mergeParams: true });
 
   /** Root of the shared subtree; nothing outside it is reachable. */
@@ -161,6 +167,53 @@ export function createPublicShareRoutes(config: EnvConfig, shares: SharesService
       }
 
       return res.download(absolute, basename(absolute));
+    }),
+  );
+
+  // --- archives -------------------------------------------------------------
+  // Holding the link is the credential, so jobs are owned by the share itself.
+
+  const archiveOwner = (share: Share): ArchiveOwner => ({ kind: 'share', id: share.id });
+
+  router.post('/archive', load, requireUnlocked, requireDownload, (req: any, res) => {
+    const share = (req as PublicRequest).share!;
+    if (share.target_type !== 'folder') throw badRequest('archives.nothingSelected');
+
+    const { paths } = req.body as { paths?: unknown };
+    if (!Array.isArray(paths) || paths.some((p) => typeof p !== 'string')) {
+      throw badRequest('archives.nothingSelected');
+    }
+
+    // Empty selection means the whole shared folder.
+    const inner = (paths as string[]).length > 0 ? (paths as string[]) : [''];
+    const sources = inner.map((raw) => {
+      const relative = innerPath(share, raw);
+      const absolute = resolveSafePath(shareRoot(share), relative);
+      return { absolute, nameInZip: relative === '' ? share.name : basename(relative) };
+    });
+
+    res.status(202).json(archives.startForShare(share.id, sources, share.name));
+  });
+
+  router.get('/archive/:id', load, requireUnlocked, (req: any, res) => {
+    res.json(archives.get(routeParam(req.params.id), archiveOwner((req as PublicRequest).share!)));
+  });
+
+  router.get('/archive/:id/download', load, requireUnlocked, requireDownload, (req: any, res) => {
+    const { absolute, fileName } = archives.ready(
+      routeParam(req.params.id),
+      archiveOwner((req as PublicRequest).share!),
+    );
+    res.download(absolute, fileName);
+  });
+
+  router.delete(
+    '/archive/:id',
+    load,
+    requireUnlocked,
+    asyncHandler(async (req: any, res) => {
+      await archives.remove(routeParam(req.params.id), archiveOwner((req as PublicRequest).share!));
+      res.status(204).end();
     }),
   );
 

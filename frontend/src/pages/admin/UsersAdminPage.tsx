@@ -106,7 +106,7 @@ const UsersAdminPage = () => {
                       <button
                         onClick={() => setDeleting(user)}
                         disabled={user.id === currentUser?.id}
-                        className="rounded-lg p-2 text-slate-500 transition hover:bg-rose-50 hover:text-rose-600 disabled:opacity-30 disabled:hover:bg-transparent disabled:hover:text-slate-500 dark:text-slate-400 dark:hover:bg-rose-500/15 dark:hover:text-rose-400"
+                        className={`${btn.iconDanger} disabled:opacity-30 disabled:hover:bg-transparent disabled:hover:text-slate-500`}
                         title={t('common.delete')}
                       >
                         <Trash2 size={16} />

@@ -1,6 +1,17 @@
 import { Suspense, lazy, useCallback, useEffect, useRef, useState, type FormEvent } from 'react';
 import { useParams } from 'react-router-dom';
-import { ChevronRight, Download, ExternalLink, Folder, Loader2, Lock, Upload } from 'lucide-react';
+import {
+  ChevronRight,
+  Download,
+  ExternalLink,
+  FileArchive,
+  Folder,
+  Loader2,
+  Lock,
+  SquareCheck,
+  Upload,
+  X,
+} from 'lucide-react';
 import {
   publicShareApi,
   uploadToShare,
@@ -10,6 +21,7 @@ import {
 import { ApiError } from '../../api/client';
 import { useI18n } from '../../i18n/I18nContext';
 import { useTheme } from '../../context/ThemeContext';
+import { useArchives } from '../../context/ArchiveContext';
 import Navbar from '../../components/Navbar';
 import { btn, card, errorBox, input } from '../../components/ui/styles';
 import { formatSize, iconFor } from '../files/paths';
@@ -22,6 +34,9 @@ const PublicSharePage = () => {
   const shareName = params.name ?? '';
   const { t, language } = useI18n();
   const { theme } = useTheme();
+  const { createShareArchive } = useArchives();
+  const [selecting, setSelecting] = useState(false);
+  const [selected, setSelected] = useState<Set<string>>(new Set());
 
   const [textContent, setTextContent] = useState<string | null>(null);
   const [info, setInfo] = useState<PublicShareInfo | null>(null);
@@ -103,6 +118,26 @@ const PublicSharePage = () => {
 
   const formatDate = (iso: string) =>
     new Intl.DateTimeFormat(language, { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(iso));
+
+  const exitSelection = () => {
+    setSelecting(false);
+    setSelected(new Set());
+  };
+
+  const zipSelection = async (paths: string[]) => {
+    setError('');
+    try {
+      await createShareArchive(segment, shareName, paths);
+      exitSelection();
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : t('files.actionFailed'));
+    }
+  };
+
+  // Navigating into a subfolder ends the selection, whose paths no longer show.
+  useEffect(() => {
+    exitSelection();
+  }, [innerPath]);
 
   // Same chrome as the signed-in app, so a link does not feel like a different site.
   const shell = (children: React.ReactNode) => (
@@ -219,9 +254,27 @@ const PublicSharePage = () => {
               </a>
             </>
           )}
+          {info.type === 'folder' && info.allowDownload && (
+            <>
+              <button
+                onClick={() => (selecting ? exitSelection() : setSelecting(true))}
+                className={
+                  selecting
+                    ? 'inline-flex items-center justify-center gap-2 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-indigo-700'
+                    : btn.secondary
+                }
+              >
+                <SquareCheck size={16} /> {t('files.select')}
+              </button>
+              <button onClick={() => void zipSelection([])} className={btn.primary}>
+                <FileArchive size={16} /> {t('share.downloadFolderZip')}
+              </button>
+            </>
+          )}
+
           {info.allowUpload && (
             <>
-              <button onClick={() => fileInput.current?.click()} className={btn.primary}>
+              <button onClick={() => fileInput.current?.click()} className={btn.secondary}>
                 <Upload size={16} /> {t('files.upload')}
               </button>
               <input
@@ -240,6 +293,35 @@ const PublicSharePage = () => {
       </div>
 
       {error && <div className={errorBox}>{error}</div>}
+
+      {selecting && entries && (
+        <div className="flex flex-wrap items-center gap-3 rounded-xl border border-indigo-200 bg-indigo-50 px-4 py-3 dark:border-indigo-500/30 dark:bg-indigo-500/10">
+          <label className="flex items-center gap-2 text-sm font-medium text-indigo-900 dark:text-indigo-200">
+            <input
+              type="checkbox"
+              checked={entries.length > 0 && selected.size === entries.length}
+              onChange={(e) =>
+                setSelected(e.target.checked ? new Set(entries.map((entry) => entry.path)) : new Set())
+              }
+              className="h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
+            />
+            {t('files.selectedCount', { count: selected.size })}
+          </label>
+
+          <div className="ml-auto flex items-center gap-2">
+            <button
+              onClick={() => void zipSelection([...selected])}
+              disabled={selected.size === 0}
+              className="inline-flex items-center justify-center gap-2 rounded-lg bg-amber-500 px-4 py-2 text-sm font-medium text-white transition hover:bg-amber-600 disabled:opacity-40"
+            >
+              <FileArchive size={16} /> {t('files.downloadZip')}
+            </button>
+            <button onClick={exitSelection} className={btn.iconGhost} title={t('common.cancel')}>
+              <X size={18} />
+            </button>
+          </div>
+        </div>
+      )}
 
       {progress !== null && (
         <div className={`${card} p-4`}>
@@ -318,6 +400,7 @@ const PublicSharePage = () => {
             <table className="w-full text-sm">
               <thead className="border-b border-slate-200 bg-slate-50 text-left text-slate-500 dark:border-slate-800 dark:bg-slate-800/50 dark:text-slate-400">
                 <tr>
+                  {selecting && <th className="w-10 pl-5" />}
                   <th className="px-5 py-3 font-medium">{t('files.name')}</th>
                   <th className="hidden w-32 px-5 py-3 font-medium sm:table-cell">{t('files.size')}</th>
                   <th className="hidden w-56 px-5 py-3 font-medium md:table-cell">{t('files.modified')}</th>
@@ -330,8 +413,29 @@ const PublicSharePage = () => {
                   return (
                     <tr
                       key={entry.path}
-                      className="border-b border-slate-100 last:border-0 hover:bg-slate-50 dark:border-slate-800 dark:hover:bg-slate-800/50"
+                      className={`border-b border-slate-100 last:border-0 dark:border-slate-800 ${
+                        selected.has(entry.path)
+                          ? 'bg-indigo-50 dark:bg-indigo-500/10'
+                          : 'hover:bg-slate-50 dark:hover:bg-slate-800/50'
+                      }`}
                     >
+                      {selecting && (
+                        <td className="pl-5">
+                          <input
+                            type="checkbox"
+                            checked={selected.has(entry.path)}
+                            onChange={() =>
+                              setSelected((current) => {
+                                const next = new Set(current);
+                                if (next.has(entry.path)) next.delete(entry.path);
+                                else next.add(entry.path);
+                                return next;
+                              })
+                            }
+                            className="h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
+                          />
+                        </td>
+                      )}
                       <td className="px-5 py-3">
                         {entry.type === 'folder' ? (
                           <button
@@ -355,7 +459,7 @@ const PublicSharePage = () => {
                         {formatDate(entry.modifiedAt)}
                       </td>
                       <td className="px-5 py-3 text-right">
-                        {entry.type === 'file' && (
+                        {entry.type === 'file' ? (
                           <a
                             href={publicShareApi.downloadUrl(segment, shareName, entry.path)}
                             className={btn.iconGhost}
@@ -363,6 +467,14 @@ const PublicSharePage = () => {
                           >
                             <Download size={16} />
                           </a>
+                        ) : (
+                          <button
+                            onClick={() => void zipSelection([entry.path])}
+                            className={btn.iconGhost}
+                            title={t('files.downloadFolderZip')}
+                          >
+                            <Download size={16} />
+                          </button>
                         )}
                       </td>
                     </tr>

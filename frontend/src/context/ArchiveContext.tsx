@@ -1,10 +1,19 @@
 import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from 'react';
 import { archivesApi, type ArchiveJob } from '../api/archives';
+import { publicShareApi } from '../api/shares';
 import { ApiError } from '../api/client';
 
+/** Where a job lives: the signed-in API, or a public share link. */
+export type ArchiveScope = { kind: 'user' } | { kind: 'share'; segment: string; name: string };
+
+export interface TrackedJob extends ArchiveJob {
+  scope: ArchiveScope;
+}
+
 interface ArchiveContextValue {
-  jobs: ArchiveJob[];
+  jobs: TrackedJob[];
   createArchive: (paths: string[]) => Promise<void>;
+  createShareArchive: (segment: string, name: string, paths: string[]) => Promise<void>;
   dismiss: (id: string) => void;
 }
 
@@ -12,29 +21,50 @@ const ArchiveContext = createContext<ArchiveContextValue | undefined>(undefined)
 
 const STORAGE_KEY = 'webincloud.archives';
 
+interface StoredJob {
+  id: string;
+  scope: ArchiveScope;
+}
+
 /** Job ids survive a reload here; the work itself lives on the server. */
-function readStoredIds(): string[] {
+function readStored(): StoredJob[] {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
     const parsed: unknown = raw ? JSON.parse(raw) : [];
-    return Array.isArray(parsed) ? parsed.filter((id): id is string => typeof id === 'string') : [];
+    if (!Array.isArray(parsed)) return [];
+    return parsed.filter(
+      (item): item is StoredJob =>
+        typeof item === 'object' && item !== null && typeof (item as StoredJob).id === 'string',
+    );
   } catch {
     return [];
   }
 }
 
-function storeIds(ids: string[]): void {
+function store(items: StoredJob[]): void {
   try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(ids));
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(items));
   } catch {
     // Private mode or blocked storage: the tray just won't survive a reload.
   }
 }
 
+function fetchJob(id: string, scope: ArchiveScope): Promise<ArchiveJob> {
+  return scope.kind === 'user'
+    ? archivesApi.get(id)
+    : publicShareApi.getArchive(scope.segment, scope.name, id);
+}
+
+export function downloadUrlFor(job: TrackedJob): string {
+  return job.scope.kind === 'user'
+    ? archivesApi.downloadUrl(job.id)
+    : publicShareApi.archiveDownloadUrl(job.scope.segment, job.scope.name, job.id);
+}
+
 /** Starts the download without navigating away from the app. */
-function triggerDownload(job: ArchiveJob): void {
+function triggerDownload(job: TrackedJob): void {
   const link = document.createElement('a');
-  link.href = archivesApi.downloadUrl(job.id);
+  link.href = downloadUrlFor(job);
   link.download = job.fileName;
   document.body.appendChild(link);
   link.click();
@@ -46,7 +76,7 @@ function triggerDownload(job: ArchiveJob): void {
  * the user navigates elsewhere.
  */
 export function ArchiveProvider({ children }: { children: ReactNode }) {
-  const [jobs, setJobs] = useState<ArchiveJob[]>([]);
+  const [jobs, setJobs] = useState<TrackedJob[]>([]);
   const timers = useRef(new Map<string, number>());
   // Archives whose download already fired, so a reload does not repeat it.
   const downloaded = useRef(new Set<string>());
@@ -60,17 +90,18 @@ export function ArchiveProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const poll = useCallback(
-    (id: string) => {
+    (id: string, scope: ArchiveScope) => {
       const timer = window.setInterval(async () => {
         try {
-          const job = await archivesApi.get(id);
-          setJobs((current) => current.map((item) => (item.id === id ? job : item)));
+          const fresh = await fetchJob(id, scope);
+          const tracked: TrackedJob = { ...fresh, scope };
+          setJobs((current) => current.map((item) => (item.id === id ? tracked : item)));
 
-          if (job.status === 'done' || job.status === 'error') {
+          if (fresh.status === 'done' || fresh.status === 'error') {
             stopPolling(id);
-            if (job.status === 'done' && !downloaded.current.has(id)) {
+            if (fresh.status === 'done' && !downloaded.current.has(id)) {
               downloaded.current.add(id);
-              triggerDownload(job);
+              triggerDownload(tracked);
             }
           }
         } catch (err) {
@@ -89,34 +120,47 @@ export function ArchiveProvider({ children }: { children: ReactNode }) {
     [stopPolling],
   );
 
-  const createArchive = useCallback(
-    async (paths: string[]) => {
-      const job = await archivesApi.start(paths);
-      setJobs((current) => [...current, job]);
-      storeIds([...readStoredIds(), job.id]);
-      poll(job.id);
+  const track = useCallback(
+    (job: ArchiveJob, scope: ArchiveScope) => {
+      setJobs((current) => [...current, { ...job, scope }]);
+      store([...readStored(), { id: job.id, scope }]);
+      poll(job.id, scope);
     },
     [poll],
   );
 
+  const createArchive = useCallback(
+    async (paths: string[]) => {
+      track(await archivesApi.start(paths), { kind: 'user' });
+    },
+    [track],
+  );
+
+  const createShareArchive = useCallback(
+    async (segment: string, name: string, paths: string[]) => {
+      track(await publicShareApi.startArchive(segment, name, paths), { kind: 'share', segment, name });
+    },
+    [track],
+  );
+
   // Reattaches to jobs still running on the server after a reload.
   useEffect(() => {
-    const ids = readStoredIds();
-    if (ids.length === 0) return;
+    const stored = readStored();
+    if (stored.length === 0) return;
 
     void Promise.all(
-      ids.map((id) =>
-        archivesApi
-          .get(id)
-          .then((job) => job)
+      stored.map((item) =>
+        fetchJob(item.id, item.scope)
+          .then((job): TrackedJob => ({ ...job, scope: item.scope }))
           .catch(() => null),
       ),
     ).then((recovered) => {
-      const alive = recovered.filter((job): job is ArchiveJob => job !== null);
+      const alive = recovered.filter((job): job is TrackedJob => job !== null);
       setJobs(alive);
-      storeIds(alive.map((job) => job.id));
+      store(alive.map((job) => ({ id: job.id, scope: job.scope })));
+
       for (const job of alive) {
-        if (job.status === 'preparing' || job.status === 'running') poll(job.id);
+        if (job.status === 'preparing' || job.status === 'running') poll(job.id, job.scope);
         // Already finished before this page loaded: leave it to the button
         // rather than starting a download the user did not just ask for.
         else if (job.status === 'done') downloaded.current.add(job.id);
@@ -127,13 +171,19 @@ export function ArchiveProvider({ children }: { children: ReactNode }) {
   const dismiss = useCallback(
     (id: string) => {
       stopPolling(id);
-      storeIds(readStoredIds().filter((stored) => stored !== id));
+      store(readStored().filter((item) => item.id !== id));
 
       setJobs((current) => {
         const job = current.find((item) => item.id === id);
         // Cancelling frees the work immediately, but a finished archive may
         // still be downloading, so leave it for the server's own cleanup.
-        if (job && job.status !== 'done') void archivesApi.remove(id).catch(() => undefined);
+        if (job && job.status !== 'done') {
+          const request =
+            job.scope.kind === 'user'
+              ? archivesApi.remove(id)
+              : publicShareApi.removeArchive(job.scope.segment, job.scope.name, id);
+          void request.catch(() => undefined);
+        }
         return current.filter((item) => item.id !== id);
       });
     },
@@ -160,7 +210,9 @@ export function ArchiveProvider({ children }: { children: ReactNode }) {
   }, []);
 
   return (
-    <ArchiveContext.Provider value={{ jobs, createArchive, dismiss }}>{children}</ArchiveContext.Provider>
+    <ArchiveContext.Provider value={{ jobs, createArchive, createShareArchive, dismiss }}>
+      {children}
+    </ArchiveContext.Provider>
   );
 }
 

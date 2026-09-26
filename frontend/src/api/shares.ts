@@ -1,5 +1,6 @@
 import { api } from './client';
 import type { PreviewKind } from './files';
+import type { ArchiveJob } from './archives';
 
 export interface PathName {
   id: string;
@@ -97,6 +98,19 @@ export const publicShareApi = {
 
   uploadUrl: (segment: string, name: string, path = '') =>
     `/backend/api${publicBase(segment, name)}/upload?path=${encodeURIComponent(path)}`,
+
+  /** Empty `paths` archives the whole shared folder. */
+  startArchive: (segment: string, name: string, paths: string[]) =>
+    api.post<ArchiveJob>(`${publicBase(segment, name)}/archive`, { paths }),
+
+  getArchive: (segment: string, name: string, id: string) =>
+    api.get<ArchiveJob>(`${publicBase(segment, name)}/archive/${id}`),
+
+  removeArchive: (segment: string, name: string, id: string) =>
+    api.del<void>(`${publicBase(segment, name)}/archive/${id}`),
+
+  archiveDownloadUrl: (segment: string, name: string, id: string) =>
+    `/backend/api${publicBase(segment, name)}/archive/${id}/download`,
 };
 
 /** Public uploads report progress, so they go through XHR like the private ones. */
