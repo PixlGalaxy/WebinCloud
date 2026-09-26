@@ -23,6 +23,10 @@ export interface EnvConfig {
   DB_PATH: string;
   AVATARS_DIR: string;
   LOCALES_DIR: string;
+  /** Administrator-replaceable logo and icons, inside the app data volume. */
+  BRANDING_DIR: string;
+  /** Packaged fallbacks shipped with the image. */
+  DEFAULT_BRANDING_DIR: string;
   ADMIN_EMAIL?: string;
   ADMIN_USERNAME?: string;
   ADMIN_PASSWORD?: string;
@@ -31,6 +35,11 @@ export interface EnvConfig {
   /** Seconds without a progress poll before a running archive is cancelled. */
   ARCHIVE_ABANDON_SECONDS: number;
   LANGUAGE: Language;
+  /** Shown in the browser tab.
+   */
+  APP_TITLE: string;
+  /** Product name used in UI copy and image alt text. */
+  APP_NAME: string;
 }
 
 export function loadEnv(): EnvConfig {
@@ -60,6 +69,8 @@ export function loadEnv(): EnvConfig {
     TEMP_ROOT,
     DB_PATH: env.DB_PATH || join(APPDATA_ROOT, 'webincloud.sqlite'),
     AVATARS_DIR: env.AVATARS_DIR || join(APPDATA_ROOT, 'avatars'),
+    BRANDING_DIR: env.BRANDING_DIR || join(APPDATA_ROOT, 'branding'),
+    DEFAULT_BRANDING_DIR: env.DEFAULT_BRANDING_DIR || join(repoRoot, 'branding'),
     // Shared with the frontend so both render the same strings.
     LOCALES_DIR: resolve(env.LOCALES_DIR || join(repoRoot, 'locales')),
     ADMIN_EMAIL: env.ADMIN_EMAIL || (isProd ? undefined : 'admin@localhost'),
@@ -70,5 +81,7 @@ export function loadEnv(): EnvConfig {
     // Off by default: behind plain-HTTP nginx a Secure cookie would never be sent back.
     COOKIE_SECURE: env.COOKIE_SECURE === 'true',
     LANGUAGE: isLanguage(env.LANGUAGE) ? env.LANGUAGE : 'en',
+    APP_TITLE: env.APP_TITLE || 'Webin Cloud Server',
+    APP_NAME: env.APP_NAME || 'Webin Cloud',
   };
 }

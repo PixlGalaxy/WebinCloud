@@ -14,6 +14,7 @@ import {
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
 import { useArchives } from '../context/ArchiveContext';
+import { useAppConfig } from '../context/AppConfigContext';
 import { useI18n } from '../i18n/I18nContext';
 import type { TranslationKey } from '../i18n/translations';
 import Modal from './ui/Modal';
@@ -43,6 +44,7 @@ const Navbar = () => {
   const { theme, toggleTheme } = useTheme();
   const { jobs, dismiss } = useArchives();
   const { t } = useI18n();
+  const { appName } = useAppConfig();
   const [confirmingLogout, setConfirmingLogout] = useState(false);
 
   const running = jobs.filter((job) => job.status === 'preparing' || job.status === 'running');
@@ -55,7 +57,7 @@ const Navbar = () => {
     await logout();
   };
 
-  const logo = <img src="/logo.png" alt={t('nav.logoAlt')} className="h-16 w-auto" />;
+  const logo = <img src="/backend/api/branding/logo.png" alt={appName} className="h-16 w-auto" />;
   const themeLabel = t(theme === 'dark' ? 'nav.themeLight' : 'nav.themeDark');
 
   return (

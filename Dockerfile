@@ -30,6 +30,8 @@ COPY --from=build-backend /app/backend/dist /app/backend/dist
 COPY --from=build-backend /app/backend/node_modules /app/backend/node_modules
 COPY --from=build-backend /app/backend/package.json /app/backend/package.json
 COPY locales /app/locales
+# Defaults copied into /appdata on first boot so they can be replaced there.
+COPY branding /app/branding
 
 COPY nginx.conf /etc/nginx/nginx.conf
 COPY entrypoint.sh /entrypoint.sh
@@ -41,6 +43,7 @@ ENV NODE_ENV=production \
     APPDATA_ROOT=/appdata \
     TEMP_ROOT=/temp \
     LOCALES_DIR=/app/locales \
+    DEFAULT_BRANDING_DIR=/app/branding \
     LANGUAGE=en \
     THEME=dark
 

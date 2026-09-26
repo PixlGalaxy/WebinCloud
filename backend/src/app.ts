@@ -13,6 +13,7 @@ import { createPermissionsRoutes } from './modules/permissions/permissions.route
 import { createFilesRoutes } from './modules/files/files.routes.js';
 import { ArchivesService } from './modules/archives/archives.service.js';
 import { createArchivesRoutes } from './modules/archives/archives.routes.js';
+import { createBrandingRoutes, seedBranding } from './modules/branding/branding.routes.js';
 import { SharesService } from './modules/shares/shares.service.js';
 import { createSharesRoutes } from './modules/shares/shares.routes.js';
 import { createPublicShareRoutes } from './modules/shares/public-shares.routes.js';
@@ -47,9 +48,19 @@ export function createApp(db: Db, config: EnvConfig): express.Application {
   app.use(cookieParser());
   app.use(createSessionMiddleware(db, config.SESSION_TTL_HOURS));
 
+  seedBranding(config);
+  app.use('/api/branding', createBrandingRoutes(config));
+
   app.get('/api/health', (_req, res) => res.json({ status: 'ok' }));
   // Lets the static frontend pick up runtime settings without a rebuild.
-  app.get('/api/config', (_req, res) => res.json({ language: config.LANGUAGE, theme: config.THEME }));
+  app.get('/api/config', (_req, res) =>
+    res.json({
+      language: config.LANGUAGE,
+      theme: config.THEME,
+      appName: config.APP_NAME,
+      appTitle: config.APP_TITLE,
+    }),
+  );
 
   // Anonymous: everything below is reachable with just the link.
   app.use('/api/public/:segment/:name', createPublicShareRoutes(config, shares, archives));

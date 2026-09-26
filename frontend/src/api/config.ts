@@ -3,6 +3,8 @@ import { api } from './client';
 export interface RuntimeConfig {
   language: string;
   theme: string;
+  appName: string;
+  appTitle: string;
 }
 
 let pending: Promise<RuntimeConfig> | null = null;
