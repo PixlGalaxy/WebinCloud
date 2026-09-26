@@ -17,6 +17,18 @@ export interface TextContent {
   canWrite: boolean;
 }
 
+export interface SearchResult {
+  parentPath: string;
+  entry: DirEntry;
+}
+
+export interface SearchResponse {
+  query: string;
+  path: string;
+  results: SearchResult[];
+  truncated: boolean;
+}
+
 export type ConflictMode = 'fail' | 'overwrite' | 'keepBoth';
 
 export interface ExistingFile {
@@ -51,6 +63,9 @@ export const filesApi = {
 
   writeText: (path: string, content: string) =>
     api.put<void>(`/files/content?path=${encode(path)}`, { content }),
+
+  search: (path: string, query: string) =>
+    api.get<SearchResponse>(`/files/search?path=${encode(path)}&q=${encode(query)}`),
 
   checkConflicts: (path: string, names: string[]) =>
     api.post<{ conflicts: ExistingFile[] }>('/files/check-conflicts', { path, names }),

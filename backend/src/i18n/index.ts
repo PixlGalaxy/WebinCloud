@@ -23,6 +23,7 @@ const BACKEND_KEYS = [
   'files.notPreviewable',
   'files.tooLargeToEdit',
   'files.invalidContent',
+  'files.searchQueryRequired',
   'users.invalidEmail',
   'users.invalidUsername',
   'users.emailTaken',

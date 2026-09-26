@@ -6,11 +6,13 @@ import {
   Loader2,
   Pencil,
   RefreshCw,
+  Search,
   Share2,
   Trash2,
   Upload,
   FolderOpen,
   Eye,
+  X,
 } from 'lucide-react';
 import {
   filesApi,
@@ -19,6 +21,7 @@ import {
   type DirEntry,
   type ExistingFile,
   type Listing,
+  type SearchResponse,
 } from '../../api/files';
 import { ApiError } from '../../api/client';
 import { useI18n } from '../../i18n/I18nContext';
@@ -47,6 +50,9 @@ const FileExplorerPage = () => {
   const [preview, setPreview] = useState<DirEntry | null>(null);
   const [sharing, setSharing] = useState<DirEntry | null>(null);
   const [refreshing, setRefreshing] = useState(false);
+  const [query, setQuery] = useState('');
+  const [search, setSearch] = useState<SearchResponse | null>(null);
+  const [searching, setSearching] = useState(false);
   const [pending, setPending] = useState<{ files: File[]; conflicts: ExistingFile[] } | null>(null);
   const fileInput = useRef<HTMLInputElement>(null);
 
@@ -69,6 +75,30 @@ const FileExplorerPage = () => {
 
   // Picks up changes made by anyone else while this folder is open.
   useFolderWatch(path, reload);
+
+  // Moving to another folder ends the current search.
+  useEffect(() => {
+    setQuery('');
+    setSearch(null);
+  }, [path]);
+
+  const runSearch = async () => {
+    if (!query.trim()) return;
+    setSearching(true);
+    setError('');
+    try {
+      setSearch(await filesApi.search(path, query.trim()));
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : t('files.actionFailed'));
+    } finally {
+      setSearching(false);
+    }
+  };
+
+  const clearSearch = () => {
+    setQuery('');
+    setSearch(null);
+  };
 
   const refreshNow = async () => {
     setRefreshing(true);
@@ -132,6 +162,12 @@ const FileExplorerPage = () => {
 
   const canWrite = listing?.canWrite ?? false;
 
+  // The table renders either the folder listing or the search hits.
+  const rows = search ? search.results.map((result) => result.entry) : (listing?.entries ?? []);
+  const parentByPath = new Map(
+    search ? search.results.map((result) => [result.entry.path, result.parentPath]) : [],
+  );
+
   return (
     <div
       onDragOver={(e) => {
@@ -145,7 +181,33 @@ const FileExplorerPage = () => {
       <div className="flex flex-wrap items-center justify-between gap-3">
         <Breadcrumbs path={path} rootLabel={t('files.root')} />
 
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              void runSearch();
+            }}
+            className="relative"
+          >
+            <Search className="absolute left-3 top-2.5 text-slate-400 dark:text-slate-500" size={16} />
+            <input
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder={t('files.searchPlaceholder')}
+              className={`${input} w-56 pl-9 ${search ? 'pr-9' : ''}`}
+            />
+            {search && (
+              <button
+                type="button"
+                onClick={clearSearch}
+                title={t('files.clearSearch')}
+                className="absolute right-2 top-2 rounded p-0.5 text-slate-400 hover:bg-slate-100 hover:text-slate-700 dark:hover:bg-slate-700"
+              >
+                <X size={15} />
+              </button>
+            )}
+          </form>
+
           {canWrite && (
             <>
               <button onClick={() => setNewFolder('')} className={btn.secondary}>
@@ -192,16 +254,34 @@ const FileExplorerPage = () => {
         </div>
       )}
 
+      {search && (
+        <div className="flex flex-wrap items-center gap-2 text-sm text-slate-600 dark:text-slate-300">
+          <Search size={15} className="text-indigo-500" />
+          <span>
+            {t('files.searchSummary', { count: search.results.length, query: search.query })}
+            {search.path ? ` ${t('files.searchIn', { folder: search.path })}` : ` ${t('files.searchInRoot')}`}
+          </span>
+          {search.truncated && (
+            <span className="rounded-full bg-amber-100 px-2 py-0.5 text-xs text-amber-800 dark:bg-amber-500/15 dark:text-amber-300">
+              {t('files.searchTruncated')}
+            </span>
+          )}
+          <button onClick={clearSearch} className="text-indigo-600 hover:underline dark:text-indigo-400">
+            {t('files.clearSearch')}
+          </button>
+        </div>
+      )}
+
       <div className={`${card} overflow-hidden ${dragging ? 'ring-2 ring-indigo-500' : ''}`}>
-        {loading ? (
+        {loading || searching ? (
           <div className="flex justify-center p-12">
             <Loader2 className="animate-spin text-indigo-500" size={28} />
           </div>
-        ) : !listing || listing.entries.length === 0 ? (
+        ) : rows.length === 0 ? (
           <div className="p-12 text-center">
             <FolderOpen className="mx-auto mb-3 text-slate-300 dark:text-slate-600" size={44} />
             <p className="text-slate-500 dark:text-slate-400">
-              {error ? t('files.unavailable') : t('files.empty')}
+              {search ? t('files.searchEmpty') : error ? t('files.unavailable') : t('files.empty')}
             </p>
           </div>
         ) : (
@@ -215,8 +295,9 @@ const FileExplorerPage = () => {
               </tr>
             </thead>
             <tbody>
-              {listing.entries.map((entry) => {
+              {rows.map((entry) => {
                 const Icon = iconFor(entry.type, entry.name);
+                const foundIn = parentByPath.get(entry.path);
                 return (
                   <tr
                     key={entry.path}
@@ -243,6 +324,16 @@ const FileExplorerPage = () => {
                         >
                           <Icon size={18} className="text-slate-400 dark:text-slate-500" />
                           {entry.name}
+                        </button>
+                      )}
+
+                      {foundIn !== undefined && (
+                        <button
+                          onClick={() => navigate(toFilesUrl(foundIn))}
+                          title={t('files.goToFolder')}
+                          className="mt-1 block max-w-full truncate pl-[27px] text-left font-mono text-xs text-slate-400 hover:text-indigo-600 hover:underline dark:text-slate-500 dark:hover:text-indigo-400"
+                        >
+                          {foundIn ? `${t('files.root')}/${foundIn}` : t('files.root')}
                         </button>
                       )}
                     </td>

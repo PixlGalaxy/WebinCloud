@@ -103,6 +103,15 @@ export function createFilesRoutes(db: Db, config: EnvConfig, t: Translate): Rout
     }),
   );
 
+  router.get(
+    '/search',
+    asyncHandler(async (req: AuthenticatedRequest, res) => {
+      const { q } = req.query;
+      if (typeof q !== 'string') throw badRequest('files.searchQueryRequired');
+      res.json(await files.search(req.user!, queryPath(req.query.path), q));
+    }),
+  );
+
   router.post(
     '/check-conflicts',
     asyncHandler(async (req: AuthenticatedRequest, res) => {

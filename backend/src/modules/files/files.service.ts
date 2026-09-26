@@ -3,12 +3,16 @@ import { basename, extname } from 'path';
 import type { Db } from '../../db/client.js';
 import type { User } from '../../types/index.js';
 import { badRequest, conflict, notFound } from '../../errors.js';
-import { getAccess, listGrants, requireRead, requireWrite } from '../permissions/access-check.js';
+import { accessFrom, getAccess, listGrants, requireRead, requireWrite } from '../permissions/access-check.js';
 import { assertValidName, joinRelPath, parentOf, resolveSafePath } from './path-safety.js';
 import { inlineMimeOf, isTextFile, previewKindOf, type PreviewKind } from './mime.js';
 
 /** Editing is meant for source and config files, not multi-megabyte logs. */
 const MAX_TEXT_BYTES = 2 * 1024 * 1024;
+
+/** Bounds on the recursive search, so one request cannot walk forever. */
+const MAX_SEARCH_RESULTS = 200;
+const MAX_SEARCH_DIRS = 5000;
 
 export interface DirEntry {
   name: string;
@@ -23,6 +27,20 @@ export interface Listing {
   path: string;
   canWrite: boolean;
   entries: DirEntry[];
+}
+
+export interface SearchResult {
+  /** Folder the match lives in, relative to the data root ("" = root). */
+  parentPath: string;
+  entry: DirEntry;
+}
+
+export interface SearchResponse {
+  query: string;
+  path: string;
+  results: SearchResult[];
+  /** True when a limit stopped the walk, so the list may be incomplete. */
+  truncated: boolean;
 }
 
 export type ConflictMode = 'fail' | 'overwrite' | 'keepBoth';
@@ -104,6 +122,85 @@ export class FilesService {
       canWrite: getAccess(this.db, user, relPath).write,
       entries: sortEntries(entries.filter((entry): entry is DirEntry => entry !== null)),
     };
+  }
+
+  /**
+   * Walks the tree under `relPath` looking for names containing `query`.
+   * Breadth-first and bounded, so a huge tree cannot stall the server, and
+   * every directory is permission-checked before being opened.
+   */
+  async search(user: User, relPath: string, query: string): Promise<SearchResponse> {
+    const needle = query.trim().toLowerCase();
+    if (needle === '') return { query, path: relPath, results: [], truncated: false };
+
+    const grants = user.role === 'admin' ? [] : listGrants(this.db, user.id);
+    const canRead = (dir: string) => accessFrom(grants, user, dir).read;
+
+    // A non-admin searching the root starts from each granted folder instead.
+    const queue: string[] =
+      relPath === '' && user.role !== 'admin'
+        ? grants.filter((g) => g.can_read === 1).map((g) => g.folder_path)
+        : [relPath];
+
+    if (relPath !== '' || user.role === 'admin') requireRead(this.db, user, relPath);
+
+    const results: SearchResult[] = [];
+    let visited = 0;
+    let truncated = false;
+
+    while (queue.length > 0) {
+      if (results.length >= MAX_SEARCH_RESULTS || visited >= MAX_SEARCH_DIRS) {
+        truncated = true;
+        break;
+      }
+
+      const dir = queue.shift()!;
+      if (!canRead(dir)) continue;
+      visited++;
+
+      let names: string[];
+      try {
+        names = await fs.readdir(this.absolute(dir));
+      } catch {
+        continue; // removed or unreadable while walking
+      }
+
+      for (const name of names) {
+        const childPath = joinRelPath(dir, name);
+        let stats;
+        try {
+          // lstat, not stat: a symlink must never be followed out of the tree.
+          stats = await fs.lstat(this.absolute(childPath));
+        } catch {
+          continue;
+        }
+        if (stats.isSymbolicLink()) continue;
+
+        const isDirectory = stats.isDirectory();
+        if (isDirectory) queue.push(childPath);
+
+        if (name.toLowerCase().includes(needle) && results.length < MAX_SEARCH_RESULTS) {
+          results.push({
+            parentPath: dir,
+            entry: {
+              name,
+              path: childPath,
+              type: isDirectory ? 'folder' : 'file',
+              size: isDirectory ? 0 : stats.size,
+              modifiedAt: stats.mtime.toISOString(),
+              previewKind: isDirectory ? 'none' : previewKindOf(name),
+            },
+          });
+        }
+      }
+    }
+
+    results.sort((a, b) => {
+      if (a.entry.type !== b.entry.type) return a.entry.type === 'folder' ? -1 : 1;
+      return a.entry.path.localeCompare(b.entry.path);
+    });
+
+    return { query, path: relPath, results, truncated };
   }
 
   async createFolder(user: User, parentPath: string, name: string): Promise<DirEntry> {

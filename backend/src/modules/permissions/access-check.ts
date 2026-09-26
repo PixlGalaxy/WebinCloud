@@ -22,17 +22,26 @@ export function listGrants(db: Db, userId: string): FolderGrant[] {
     .all(userId) as FolderGrant[];
 }
 
+/**
+ * Effective permissions from an already-loaded grant list, so a recursive walk
+ * can check every directory without hitting the database each time.
+ */
+export function accessFrom(grants: FolderGrant[], user: User, relPath: string): Access {
+  if (user.role === 'admin') return FULL;
+
+  const matching = grants.filter((grant) => covers(grant, relPath));
+  if (matching.length === 0) return NONE;
+
+  return {
+    read: matching.some((g) => g.can_read === 1),
+    write: matching.some((g) => g.can_write === 1),
+  };
+}
+
 /** Effective permissions for a path; the most permissive matching grant wins. */
 export function getAccess(db: Db, user: User, relPath: string): Access {
   if (user.role === 'admin') return FULL;
-
-  const grants = listGrants(db, user.id).filter((grant) => covers(grant, relPath));
-  if (grants.length === 0) return NONE;
-
-  return {
-    read: grants.some((g) => g.can_read === 1),
-    write: grants.some((g) => g.can_write === 1),
-  };
+  return accessFrom(listGrants(db, user.id), user, relPath);
 }
 
 export function requireRead(db: Db, user: User, relPath: string): void {
