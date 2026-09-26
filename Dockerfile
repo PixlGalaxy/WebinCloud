@@ -1,5 +1,5 @@
 # 1: Frontend build
-FROM node:26-slim AS build-frontend
+FROM node:26-alpine AS build-frontend
 WORKDIR /app/frontend
 COPY frontend/package.json frontend/package-lock.json ./
 RUN npm ci
@@ -8,10 +8,11 @@ COPY locales /app/locales
 RUN npm run build
 
 # 2: Backend build
-FROM node:26-slim AS build-backend
-RUN apt-get update \
-    && apt-get install -y --no-install-recommends python3 make g++ \
-    && rm -rf /var/lib/apt/lists/*
+# better-sqlite3 and argon2 are native modules: when no prebuilt binary matches
+# the running Node ABI they fall back to node-gyp, which needs this toolchain.
+# It never reaches the final image, which only receives the built output.
+FROM node:26-alpine AS build-backend
+RUN apk add --no-cache python3 make g++
 WORKDIR /app/backend
 COPY backend/package.json backend/package-lock.json ./
 RUN npm ci
@@ -19,12 +20,10 @@ COPY backend ./
 RUN npm run build && npm prune --omit=dev
 
 # 3: Final image, nginx + Node.js
-FROM node:26-slim
+FROM node:26-alpine
 WORKDIR /app
 
-RUN apt-get update \
-    && apt-get install -y --no-install-recommends nginx tini \
-    && rm -rf /var/lib/apt/lists/*
+RUN apk add --no-cache nginx tini
 
 COPY --from=build-frontend /app/frontend/dist /usr/share/nginx/html
 COPY --from=build-backend /app/backend/dist /app/backend/dist
