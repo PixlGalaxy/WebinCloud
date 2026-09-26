@@ -2,8 +2,9 @@
 set -eu
 
 # Both nginx streams get tagged here; the backend already tags its own lines.
+# awk with fflush works on busybox too, unlike `sed -u`.
 # The braces keep $! pointing at the subshell, which ends when nginx does.
-{ nginx -g 'daemon off;' 2>&1 | sed -u 's/^/[FRONTEND] /'; } &
+{ nginx -g 'daemon off;' 2>&1 | awk '{ print "[FRONTEND] " $0; fflush() }'; } &
 NGINX_PID=$!
 
 node /app/backend/dist/index.js &
