@@ -25,9 +25,17 @@ updates:
     open-pull-requests-limit: 5
     schedule:
       interval: "weekly"
+    groups:
+      docker-deps:
+        patterns:
+          - "*"
 
   - package-ecosystem: "github-actions"
     directory: "/"
     open-pull-requests-limit: 5
     schedule:
       interval: "weekly"
+    groups:
+      actions-deps:
+        patterns:
+          - "*"
