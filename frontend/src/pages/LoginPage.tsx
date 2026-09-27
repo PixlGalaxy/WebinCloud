@@ -5,6 +5,7 @@ import { useAuth } from '../context/AuthContext';
 import { useI18n } from '../i18n/I18nContext';
 import { ApiError } from '../api/client';
 import Navbar from '../components/Navbar';
+import Footer from '../components/Footer';
 
 const inputClass =
   'w-full pl-12 pr-4 py-3.5 rounded-xl border border-slate-300 bg-white text-base text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100';
@@ -107,6 +108,8 @@ const LoginPage = () => {
           </form>
         </div>
       </div>
+
+      <Footer />
     </div>
   );
 };

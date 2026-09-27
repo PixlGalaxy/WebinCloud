@@ -22,6 +22,7 @@ import { useI18n } from '../../i18n/I18nContext';
 import { useTheme } from '../../context/ThemeContext';
 import { useArchives } from '../../context/ArchiveContext';
 import Navbar from '../../components/Navbar';
+import Footer from '../../components/Footer';
 import { useUploads, useUploadsFinished } from '../../context/UploadContext';
 import { btn, card, errorBox, input } from '../../components/ui/styles';
 import { formatSize } from '../files/paths';
@@ -163,9 +164,10 @@ const PublicSharePage = () => {
 
   // Same chrome as the signed-in app, so a link does not feel like a different site.
   const shell = (children: React.ReactNode) => (
-    <div className="min-h-screen bg-slate-50 dark:bg-slate-950">
+    <div className="min-h-screen flex flex-col bg-slate-50 dark:bg-slate-950">
       <Navbar />
-      <main className="mx-auto max-w-7xl p-6">{children}</main>
+      <main className="mx-auto w-full max-w-7xl flex-1 p-6">{children}</main>
+      <Footer />
     </div>
   );
 
