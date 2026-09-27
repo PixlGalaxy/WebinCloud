@@ -2,6 +2,9 @@ import type { Request, Response, NextFunction } from 'express';
 import { logger } from '../logger.js';
 
 export function requestLogger(req: Request, res: Response, next: NextFunction) {
+  // The log viewer polls these; logging them would feed itself with its own requests.
+  if (req.originalUrl.startsWith('/api/logs')) return next();
+
   const startedAt = process.hrtime.bigint();
 
   res.on('finish', () => {
