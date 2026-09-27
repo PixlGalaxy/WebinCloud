@@ -7,6 +7,7 @@ import { badRequest, conflict, forbidden, notFound } from '../../errors.js';
 import { getAccess } from '../permissions/access-check.js';
 import { normalizeRelPath, resolveSafePath } from '../files/path-safety.js';
 import type { PathName } from '../path-names/path-names.service.js';
+import { logFileAction, userActor } from '../../activity.js';
 
 export interface ShareView extends Share {
   pathName: string | null;
@@ -127,6 +128,13 @@ export class SharesService {
         input.expiresAt ?? null,
       );
 
+    logFileAction(
+      userActor(user),
+      'shared',
+      stats.isDirectory() ? 'folder' : 'file',
+      name,
+      resolveSafePath(this.dataRoot, targetPath),
+    );
     return this.toView(this.db.prepare('SELECT * FROM shares WHERE id = ?').get(id) as Share);
   }
 
@@ -172,9 +180,16 @@ export class SharesService {
     return this.toView(this.db.prepare('SELECT * FROM shares WHERE id = ?').get(id) as Share);
   }
 
-  remove(id: string, userId: string): void {
-    this.owned(id, userId);
+  remove(id: string, user: User): void {
+    const share = this.owned(id, user.id);
     this.db.prepare('DELETE FROM shares WHERE id = ?').run(id);
+    logFileAction(
+      userActor(user),
+      'unshared',
+      share.target_type,
+      share.name,
+      resolveSafePath(this.dataRoot, share.target_path),
+    );
   }
 
   /** Resolves /public/<segment>/<name>, by token first and then by alias. */

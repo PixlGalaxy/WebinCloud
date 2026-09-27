@@ -66,7 +66,7 @@ export function createSharesRoutes(
   );
 
   router.delete('/:id', (req: AuthenticatedRequest, res) => {
-    shares.remove(routeParam(req.params.id), req.user!.id);
+    shares.remove(routeParam(req.params.id), req.user!);
     res.status(204).end();
   });
 

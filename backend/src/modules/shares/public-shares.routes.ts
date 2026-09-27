@@ -8,6 +8,7 @@ import type { Share } from '../../types/index.js';
 import { asyncHandler } from '../../middleware/async-handler.js';
 import { badRequest, forbidden, notFound } from '../../errors.js';
 import { logger } from '../../logger.js';
+import { logFileAction, PUBLIC_ACTOR } from '../../activity.js';
 import { assertValidName, normalizeRelPath, resolveSafePath } from '../files/path-safety.js';
 import { inlineMimeOf, previewKindOf } from '../files/mime.js';
 import { SHARE_COOKIE_PREFIX, type SharesService } from './shares.service.js';
@@ -167,6 +168,7 @@ export function createPublicShareRoutes(
         return res.sendFile(absolute, SERVE_OPTIONS);
       }
 
+      logFileAction(PUBLIC_ACTOR, 'downloaded', 'file', basename(absolute), absolute);
       return res.download(absolute, basename(absolute), SERVE_OPTIONS);
     }),
   );
@@ -265,6 +267,7 @@ export function createPublicShareRoutes(
           .then(() => fs.rename(partial, destination))
           .then(() => {
             saved.push(basename(destination));
+            logFileAction(PUBLIC_ACTOR, 'uploaded', 'file', basename(destination), destination);
           })
           .catch(fail),
       );

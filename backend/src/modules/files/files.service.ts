@@ -6,6 +6,7 @@ import { badRequest, conflict, notFound } from '../../errors.js';
 import { accessFrom, getAccess, listGrants, requireRead, requireWrite } from '../permissions/access-check.js';
 import { assertValidName, joinRelPath, parentOf, resolveSafePath } from './path-safety.js';
 import { inlineMimeOf, isTextFile, previewKindOf, type PreviewKind } from './mime.js';
+import { logFileAction, userActor } from '../../activity.js';
 
 /** Editing is meant for source and config files, not multi-megabyte logs. */
 const MAX_TEXT_BYTES = 2 * 1024 * 1024;
@@ -217,6 +218,7 @@ export class FilesService {
       throw err;
     }
 
+    logFileAction(userActor(user), 'created', 'folder', name, absolute);
     return (await statEntry(absolute, name, relPath))!;
   }
 
@@ -240,7 +242,9 @@ export class FilesService {
     }
 
     await fs.rename(from, to);
-    return (await statEntry(to, newName, target))!;
+    const renamed = (await statEntry(to, newName, target))!;
+    logFileAction(userActor(user), 'renamed', renamed.type, `${basename(relPath)} to ${newName}`, to);
+    return renamed;
   }
 
   async remove(user: User, relPath: string): Promise<void> {
@@ -248,12 +252,14 @@ export class FilesService {
     requireWrite(this.db, user, relPath);
 
     const absolute = this.absolute(relPath);
+    const kind = (await fs.stat(absolute).catch(() => null))?.isDirectory() ? 'folder' : 'file';
     try {
       await fs.rm(absolute, { recursive: true, force: false });
     } catch (err) {
       if ((err as NodeJS.ErrnoException).code === 'ENOENT') throw notFound();
       throw err;
     }
+    logFileAction(userActor(user), 'deleted', kind, basename(relPath), absolute);
   }
 
   /** Absolute path of a readable file, for streaming downloads. */
@@ -309,6 +315,7 @@ export class FilesService {
     const partial = `${absolute}.saving`;
     await fs.writeFile(partial, content, 'utf-8');
     await fs.rename(partial, absolute);
+    logFileAction(userActor(user), 'edited', 'file', basename(relPath), absolute);
   }
 
   /** Existing files among `names`, so the client can ask before replacing them. */

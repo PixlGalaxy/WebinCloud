@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { createWriteStream, promises as fs, watch } from 'fs';
+import { basename } from 'path';
 import { pipeline } from 'stream/promises';
 import busboy from 'busboy';
 import type { Db } from '../../db/client.js';
@@ -10,6 +11,7 @@ import { createAuthGuards } from '../auth/session.middleware.js';
 import { asyncHandler } from '../../middleware/async-handler.js';
 import { badRequest, notFound } from '../../errors.js';
 import { logger } from '../../logger.js';
+import { logFileAction, userActor } from '../../activity.js';
 import { FilesService, type ConflictMode } from './files.service.js';
 import { normalizeRelPath } from './path-safety.js';
 import { SERVE_OPTIONS } from '../../serve-options.js';
@@ -70,6 +72,7 @@ export function createFilesRoutes(db: Db, config: EnvConfig, t: Translate): Rout
     '/download',
     asyncHandler(async (req: AuthenticatedRequest, res) => {
       const { absolute, name } = await files.resolveFile(req.user!, queryPath(req.query.path));
+      logFileAction(userActor(req.user!), 'downloaded', 'file', name, absolute);
       // res.download streams and honours Range requests.
       res.download(absolute, name, SERVE_OPTIONS);
     }),
@@ -209,6 +212,7 @@ export function createFilesRoutes(db: Db, config: EnvConfig, t: Translate): Rout
           .then(() => fs.rename(partial, target.absolute))
           .then(() => {
             saved.push(target.relPath);
+            logFileAction(userActor(req.user!), 'uploaded', 'file', basename(target.absolute), target.absolute);
           })
           .catch(fail),
       );

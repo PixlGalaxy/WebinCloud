@@ -24,7 +24,13 @@ export function createAuthRoutes(db: Db, config: EnvConfig, t: Translate): Route
         ip: req.ip,
       });
       if (!result) {
+        logger.auth.warn(`Login as "${usernameOrEmail}" from ${req.ip} failed: invalid credentials`);
         return res.status(401).json({ error: t('auth.invalidCredentials') });
+      }
+
+      logger.auth.info(`Login as "${result.user.username}" from ${req.ip} succeeded`);
+      if (result.mustChangePassword) {
+        logger.auth.warn(`"${result.user.username}" is still using the default password and must change it`);
       }
 
       res.cookie('session', result.sessionToken, {
@@ -43,6 +49,7 @@ export function createAuthRoutes(db: Db, config: EnvConfig, t: Translate): Route
 
   router.post('/logout', requireAuth, (req: AuthenticatedRequest, res) => {
     authService.logout(req.session!.id);
+    logger.auth.info(`Logout as "${req.user!.username}" from ${req.ip}`);
     res.clearCookie('session', { path: '/' });
     return res.json({ success: true });
   });
@@ -62,7 +69,11 @@ export function createAuthRoutes(db: Db, config: EnvConfig, t: Translate): Route
 
     try {
       const ok = await authService.changePassword(req.user!.id, currentPassword, newPassword);
-      if (!ok) return res.status(401).json({ error: t('auth.currentPasswordIncorrect') });
+      if (!ok) {
+        logger.auth.warn(`Password change for "${req.user!.username}" from ${req.ip} failed: wrong current password`);
+        return res.status(401).json({ error: t('auth.currentPasswordIncorrect') });
+      }
+      logger.auth.info(`Password changed for "${req.user!.username}" from ${req.ip}`);
       res.clearCookie('session', { path: '/' });
       return res.json({ success: true });
     } catch (error) {
