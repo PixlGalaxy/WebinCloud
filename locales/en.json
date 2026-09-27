@@ -128,6 +128,8 @@
   "files.preview": "Preview",
   "files.unsavedChanges": "You have unsaved changes.",
   "files.discard": "Discard",
+  "files.htmlRendered": "Preview",
+  "files.htmlRaw": "Code",
   "files.rename": "Rename",
   "files.delete": "Delete",
   "files.confirmDelete": "Delete \"{name}\"? This cannot be undone.",

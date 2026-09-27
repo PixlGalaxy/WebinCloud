@@ -1,6 +1,6 @@
 import { api } from './client';
 
-export type PreviewKind = 'image' | 'video' | 'audio' | 'pdf' | 'text' | 'spreadsheet' | 'document' | 'none';
+export type PreviewKind = 'image' | 'video' | 'audio' | 'pdf' | 'text' | 'html' | 'spreadsheet' | 'document' | 'none';
 
 export interface DirEntry {
   name: string;

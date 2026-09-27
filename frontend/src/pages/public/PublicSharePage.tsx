@@ -2,6 +2,7 @@ import { Suspense, lazy, useCallback, useEffect, useState, type FormEvent } from
 import { useParams } from 'react-router-dom';
 import {
   ChevronRight,
+  Code2,
   Download,
   ExternalLink,
   Eye,
@@ -9,6 +10,7 @@ import {
   Folder,
   Loader2,
   Lock,
+  Play,
   SquareCheck,
   FolderUp,
   Upload,
@@ -28,6 +30,7 @@ import PreviewPanel from '../files/PreviewPanel';
 import DotfileNotice from '../../components/DotfileNotice';
 
 const CodeEditor = lazy(() => import('../files/CodeEditor'));
+const HtmlPreview = lazy(() => import('../files/HtmlPreview'));
 const SpreadsheetViewer = lazy(() => import('../files/office/SpreadsheetViewer'));
 const DocumentViewer = lazy(() => import('../files/office/DocumentViewer'));
 
@@ -50,6 +53,7 @@ const PublicSharePage = () => {
   const [dotfile, setDotfile] = useState<{ name: string; path: string } | null>(null);
 
   const [textContent, setTextContent] = useState<string | null>(null);
+  const [htmlView, setHtmlView] = useState<'rendered' | 'raw'>('rendered');
   const [info, setInfo] = useState<PublicShareInfo | null>(null);
   const [entries, setEntries] = useState<PublicEntry[] | null>(null);
   const [innerPath, setInnerPath] = useState('');
@@ -89,9 +93,10 @@ const PublicSharePage = () => {
     if (info?.type === 'folder' && info.unlocked && info.allowDownload) void loadEntries('');
   }, [info, loadEntries]);
 
-  // Text is fetched as plain text and shown with syntax highlighting.
+  // Text (and html, which is served as text too) is fetched as plain text and shown with syntax highlighting.
   useEffect(() => {
-    if (info?.type !== 'file' || info.previewKind !== 'text' || !info.unlocked || !info.allowDownload) return;
+    if (info?.type !== 'file' || !info.unlocked || !info.allowDownload) return;
+    if (info.previewKind !== 'text' && info.previewKind !== 'html') return;
 
     fetch(publicShareApi.rawUrl(segment, shareName), { credentials: 'include' })
       .then((res) => (res.ok ? res.text() : Promise.reject(new Error(String(res.status)))))
@@ -253,6 +258,31 @@ const PublicSharePage = () => {
         </div>
 
         <div className="flex items-center gap-2">
+          {info.type === 'file' && info.previewKind === 'html' && (
+            <div className="flex items-center rounded-lg border border-slate-300 p-0.5 dark:border-slate-600">
+              <button
+                onClick={() => setHtmlView('rendered')}
+                className={`flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium transition ${
+                  htmlView === 'rendered'
+                    ? 'bg-indigo-600 text-white'
+                    : 'text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800'
+                }`}
+              >
+                <Play size={14} /> {t('files.htmlRendered')}
+              </button>
+              <button
+                onClick={() => setHtmlView('raw')}
+                className={`flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium transition ${
+                  htmlView === 'raw'
+                    ? 'bg-indigo-600 text-white'
+                    : 'text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800'
+                }`}
+              >
+                <Code2 size={14} /> {t('files.htmlRaw')}
+              </button>
+            </div>
+          )}
+
           {info.type === 'file' && info.allowDownload && (
             <>
               {opensInBrowser(info.previewKind) && (
@@ -334,7 +364,7 @@ const PublicSharePage = () => {
       )}
 
       {info.type === 'file' ? (
-        <div className={`${card} ${info.previewKind === 'text' ? 'overflow-hidden' : 'p-6'}`}>
+        <div className={`${card} ${info.previewKind === 'text' || info.previewKind === 'html' ? 'overflow-hidden' : 'p-6'}`}>
           {!info.allowDownload ? (
             <p className="p-6 text-center text-slate-500 dark:text-slate-400">{t('share.uploadOnly')}</p>
           ) : info.previewKind === 'image' ? (
@@ -391,6 +421,36 @@ const PublicSharePage = () => {
                 <div className="h-[75vh]">
                   <DocumentViewer url={publicShareApi.rawUrl(segment, shareName)} />
                 </div>
+              </Suspense>
+            )
+          ) : info.previewKind === 'html' ? (
+            textContent === null ? (
+              <div className="flex justify-center p-12">
+                <Loader2 className="animate-spin text-indigo-500" size={28} />
+              </div>
+            ) : (
+              <Suspense
+                fallback={
+                  <div className="flex justify-center p-12">
+                    <Loader2 className="animate-spin text-indigo-500" size={28} />
+                  </div>
+                }
+              >
+                {htmlView === 'rendered' ? (
+                  <div className="h-[75vh]">
+                    <HtmlPreview html={textContent} title={info.name} />
+                  </div>
+                ) : (
+                  <div className="max-h-[75vh] overflow-auto">
+                    <CodeEditor
+                      name={info.name}
+                      value={textContent}
+                      readOnly
+                      isDark={theme === 'dark'}
+                      onChange={() => undefined}
+                    />
+                  </div>
+                )}
               </Suspense>
             )
           ) : info.previewKind === 'text' ? (

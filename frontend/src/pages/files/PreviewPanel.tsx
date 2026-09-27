@@ -1,5 +1,5 @@
 import { Suspense, lazy, useEffect, useState } from 'react';
-import { Download, Loader2, Save, X, FileQuestion } from 'lucide-react';
+import { Code2, Download, Loader2, Play, Save, X, FileQuestion } from 'lucide-react';
 import type { PreviewKind } from '../../api/files';
 import { ApiError } from '../../api/client';
 import { useI18n } from '../../i18n/I18nContext';
@@ -7,6 +7,7 @@ import { useTheme } from '../../context/ThemeContext';
 import { btn, errorBox } from '../../components/ui/styles';
 
 const CodeEditor = lazy(() => import('./CodeEditor'));
+const HtmlPreview = lazy(() => import('./HtmlPreview'));
 const SpreadsheetViewer = lazy(() => import('./office/SpreadsheetViewer'));
 const DocumentViewer = lazy(() => import('./office/DocumentViewer'));
 
@@ -41,15 +42,18 @@ const PreviewPanel = ({ name, previewKind, rawUrl, downloadUrl, sizeBytes, edito
   const [text, setText] = useState<string | null>(null);
   const [original, setOriginal] = useState('');
   const [canWrite, setCanWrite] = useState(false);
-  const [loading, setLoading] = useState(previewKind === 'text');
+  const [loading, setLoading] = useState(previewKind === 'text' || previewKind === 'html');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const [confirmClose, setConfirmClose] = useState(false);
+  // A page is more useful running than as code at a glance, so it opens rendered.
+  const [htmlView, setHtmlView] = useState<'rendered' | 'raw'>('rendered');
 
   const dirty = text !== null && text !== original;
+  const isTextLike = previewKind === 'text' || previewKind === 'html';
 
   useEffect(() => {
-    if (previewKind !== 'text') return;
+    if (!isTextLike) return;
 
     // Without an editor the text is read straight from the inline URL.
     const load = editor
@@ -129,7 +133,32 @@ const PreviewPanel = ({ name, previewKind, rawUrl, downloadUrl, sizeBytes, edito
         <header className="flex items-center gap-3 border-b border-slate-200 px-5 py-3 dark:border-slate-700">
           <h2 className="flex-1 truncate font-medium text-slate-900 dark:text-slate-100">{name}</h2>
 
-          {previewKind === 'text' && canWrite && editor && (
+          {previewKind === 'html' && (
+            <div className="flex items-center rounded-lg border border-slate-300 p-0.5 dark:border-slate-600">
+              <button
+                onClick={() => setHtmlView('rendered')}
+                className={`flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium transition ${
+                  htmlView === 'rendered'
+                    ? 'bg-indigo-600 text-white'
+                    : 'text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800'
+                }`}
+              >
+                <Play size={14} /> {t('files.htmlRendered')}
+              </button>
+              <button
+                onClick={() => setHtmlView('raw')}
+                className={`flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium transition ${
+                  htmlView === 'raw'
+                    ? 'bg-indigo-600 text-white'
+                    : 'text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800'
+                }`}
+              >
+                <Code2 size={14} /> {t('files.htmlRaw')}
+              </button>
+            </div>
+          )}
+
+          {isTextLike && canWrite && editor && (
             <button onClick={() => void save()} disabled={!dirty || saving} className={btn.primary}>
               {saving ? <Loader2 className="animate-spin" size={16} /> : <Save size={16} />}
               {t('common.save')}
@@ -210,6 +239,26 @@ const PreviewPanel = ({ name, previewKind, rawUrl, downloadUrl, sizeBytes, edito
               }
             >
               <DocumentViewer url={raw} />
+            </Suspense>
+          ) : previewKind === 'html' && text !== null ? (
+            <Suspense
+              fallback={
+                <div className="flex h-full items-center justify-center">
+                  <Loader2 className="animate-spin text-indigo-500" size={32} />
+                </div>
+              }
+            >
+              {htmlView === 'rendered' ? (
+                <HtmlPreview html={text} title={name} />
+              ) : (
+                <CodeEditor
+                  name={name}
+                  value={text}
+                  readOnly={!canWrite}
+                  isDark={theme === 'dark'}
+                  onChange={setText}
+                />
+              )}
             </Suspense>
           ) : previewKind === 'text' && text !== null ? (
             <Suspense

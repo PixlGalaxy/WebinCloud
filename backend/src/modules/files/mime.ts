@@ -1,6 +1,6 @@
 import { extname } from 'path';
 
-export type PreviewKind = 'image' | 'video' | 'audio' | 'pdf' | 'text' | 'spreadsheet' | 'document' | 'none';
+export type PreviewKind = 'image' | 'video' | 'audio' | 'pdf' | 'text' | 'html' | 'spreadsheet' | 'document' | 'none';
 
 /** Types safe to serve inline; anything else is downloaded as an attachment. */
 const INLINE_MIME: Record<string, string> = {
@@ -75,10 +75,14 @@ export function previewKindOf(name: string): PreviewKind {
   if (mime === 'application/pdf') return 'pdf';
   if (SPREADSHEET_EXTENSIONS.has(ext)) return 'spreadsheet';
   if (DOCUMENT_EXTENSIONS.has(ext)) return 'document';
+  if (ext === '.html' || ext === '.htm') return 'html';
   if (isTextExtension(ext)) return 'text';
   return 'none';
 }
 
+// html is still served and edited as plain text (see inlineMimeOf); it only
+// gets its own PreviewKind so the frontend can offer a live-rendered view too.
 export function isTextFile(name: string): boolean {
-  return previewKindOf(name) === 'text';
+  const kind = previewKindOf(name);
+  return kind === 'text' || kind === 'html';
 }

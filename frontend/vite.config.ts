@@ -15,7 +15,7 @@ export default defineConfig({
     fs: { allow: ['..'] },
     proxy: {
       '/backend': {
-        target: 'http://localhost:4000',
+        target: `http://localhost:${process.env.VITE_BACKEND_PORT || 4000}`,
         changeOrigin: true,
         rewrite: (path) => path.replace(/^\/backend/, ''),
       },
