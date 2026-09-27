@@ -175,9 +175,12 @@ export function createPublicShareRoutes(
       // safely, downloaded otherwise.
       const mime = req.query.inline === '1' ? inlineMimeOf(absolute) : null;
       if (mime) {
+        // inlineMimeOf() never hands back text/html or image/svg+xml (see mime.ts), so
+        // nosniff is enough to stop the browser from ever executing this as a script —
+        // a sandboxed CSP isn't needed, and it breaks Chrome's own video/PDF viewer
+        // when this URL is opened directly instead of embedded in the app.
         res.setHeader('Content-Type', mime);
         res.setHeader('X-Content-Type-Options', 'nosniff');
-        res.setHeader('Content-Security-Policy', "sandbox; default-src 'none'; object-src 'self'");
         return res.sendFile(absolute, SERVE_OPTIONS);
       }
 
