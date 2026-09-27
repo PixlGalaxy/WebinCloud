@@ -34,7 +34,7 @@ export function createAuthRoutes(db: Db, config: EnvConfig, t: Translate): Route
         path: '/',
         maxAge: config.SESSION_TTL_HOURS * 60 * 60 * 1000,
       });
-      return res.json({ user: toPublicUser(result.user) });
+      return res.json({ user: toPublicUser(result.user), mustChangePassword: result.mustChangePassword });
     } catch (error) {
       logger.error('Login failed', error);
       return res.status(500).json({ error: t('error.internal') });

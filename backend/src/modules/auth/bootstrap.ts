@@ -2,6 +2,7 @@ import { randomUUID } from 'crypto';
 import type { Db } from '../../db/client.js';
 import type { EnvConfig } from '../../config/env.js';
 import { hashPassword } from './password.js';
+import { DEFAULT_PASSWORD } from './auth.service.js';
 import { logger } from '../../logger.js';
 
 export async function bootstrapAdmin(db: Db, config: EnvConfig): Promise<void> {
@@ -18,5 +19,12 @@ export async function bootstrapAdmin(db: Db, config: EnvConfig): Promise<void> {
      VALUES (?, ?, ?, ?, 'admin', 1)`,
   ).run(randomUUID(), config.ADMIN_EMAIL, config.ADMIN_USERNAME, await hashPassword(config.ADMIN_PASSWORD));
 
-  logger.info(`Admin user created: ${config.ADMIN_USERNAME} (${config.ADMIN_EMAIL})`);
+  if (config.ADMIN_PASSWORD === DEFAULT_PASSWORD) {
+    logger.warn(
+      `Admin user created with the default password. Sign in as "${config.ADMIN_USERNAME}" with password ` +
+        `"${DEFAULT_PASSWORD}" — you will be asked to set a new one immediately.`,
+    );
+  } else {
+    logger.info(`Admin user created: ${config.ADMIN_USERNAME} (${config.ADMIN_EMAIL})`);
+  }
 }

@@ -144,6 +144,8 @@
   "account.noPathNames": "You have no path names yet",
   "account.changePassword": "Change password",
   "account.currentPassword": "Current password",
+  "account.mustChangePasswordTitle": "Set a new password",
+  "account.mustChangePasswordHint": "You signed in with the default password. Choose a new one to continue — this account cannot keep using \"changeme\".",
   "account.confirmNewPassword": "Confirm new password",
   "account.passwordsMismatch": "The new passwords do not match",
   "account.showPasswords": "Show passwords",

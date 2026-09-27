@@ -7,6 +7,8 @@ function hashToken(token: string): string {
   return createHash('sha256').update(token).digest('hex');
 }
 
+export const DEFAULT_PASSWORD = 'changeme';
+
 export function toPublicUser(user: User): PublicUser {
   const { password_hash: _omit, ...rest } = user;
   return rest;
@@ -19,7 +21,7 @@ export class AuthService {
     usernameOrEmail: string,
     password: string,
     meta: { userAgent?: string; ip?: string },
-  ): Promise<{ user: User; sessionToken: string } | null> {
+  ): Promise<{ user: User; sessionToken: string; mustChangePassword: boolean } | null> {
     const user = this.db
       .prepare('SELECT * FROM users WHERE (email = ? OR username = ?) AND is_active = 1')
       .get(usernameOrEmail, usernameOrEmail) as User | undefined;
@@ -35,7 +37,7 @@ export class AuthService {
       )
       .run(hashToken(sessionToken), user.id, meta.userAgent ?? null, meta.ip ?? null, `+${this.sessionTtlHours} hours`);
 
-    return { user, sessionToken };
+    return { user, sessionToken, mustChangePassword: password === DEFAULT_PASSWORD };
   }
 
   getSessionByToken(token: string): { user: User; session: Session } | null {

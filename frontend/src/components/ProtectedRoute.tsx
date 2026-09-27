@@ -2,6 +2,7 @@ import { Navigate, Outlet } from 'react-router-dom';
 import { Loader2 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import Navbar from './Navbar';
+import ForceChangePasswordModal from './ForceChangePasswordModal';
 
 function Spinner() {
   return (
@@ -12,7 +13,7 @@ function Spinner() {
 }
 
 export function ProtectedRoute() {
-  const { user, isLoading } = useAuth();
+  const { user, isLoading, mustChangePassword } = useAuth();
 
   if (isLoading) return <Spinner />;
   if (!user) return <Navigate to="/login" replace />;
@@ -23,6 +24,7 @@ export function ProtectedRoute() {
       <main className="w-full p-6">
         <Outlet />
       </main>
+      {mustChangePassword && <ForceChangePasswordModal />}
     </div>
   );
 }

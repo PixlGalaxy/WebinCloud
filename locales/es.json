@@ -144,6 +144,8 @@
   "account.noPathNames": "Todavía no tienes ningún path name",
   "account.changePassword": "Cambiar contraseña",
   "account.currentPassword": "Contraseña actual",
+  "account.mustChangePasswordTitle": "Configura una nueva contraseña",
+  "account.mustChangePasswordHint": "Iniciaste sesión con la contraseña por defecto. Elige una nueva para continuar — esta cuenta no puede seguir usando \"changeme\".",
   "account.confirmNewPassword": "Confirmar nueva contraseña",
   "account.passwordsMismatch": "Las nuevas contraseñas no coinciden",
   "account.showPasswords": "Mostrar contraseñas",
