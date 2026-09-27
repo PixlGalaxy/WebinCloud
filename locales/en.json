@@ -201,5 +201,6 @@
   "dotfile.title": "This file name starts with a dot",
   "dotfile.explanation": "Your browser will save \"{name}\" as \"{stripped}\", dropping the leading dot, and no server setting can prevent that. Download it as a ZIP to keep the exact name.",
   "dotfile.downloadAnyway": "Download anyway",
-  "dotfile.downloadZip": "Download as ZIP"
+  "dotfile.downloadZip": "Download as ZIP",
+  "share.copyFailed": "Could not copy automatically. The browser only allows it over HTTPS or on localhost. Copy it by hand: {url}"
 }

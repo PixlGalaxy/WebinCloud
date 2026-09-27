@@ -4,6 +4,7 @@ import { AlertCircle, Calendar, Check, Copy, Link2, Loader2 } from 'lucide-react
 import { sharesApi, type PathName, type Share } from '../../api/shares';
 import type { DirEntry } from '../../api/files';
 import { ApiError } from '../../api/client';
+import { copyText } from '../../clipboard';
 import { useI18n } from '../../i18n/I18nContext';
 import Modal from '../../components/ui/Modal';
 import { btn, errorBox, input } from '../../components/ui/styles';
@@ -84,10 +85,7 @@ const ShareCreateModal = ({ entry, onClose }: Props) => {
           <div className="flex gap-2">
             <input readOnly value={fullUrl} className={`${input} font-mono text-xs`} />
             <button
-              onClick={() => {
-                void navigator.clipboard.writeText(fullUrl);
-                setCopied(true);
-              }}
+              onClick={() => void copyText(fullUrl).then(setCopied)}
               className={btn.primary}
             >
               {copied ? <Check size={16} /> : <Copy size={16} />}

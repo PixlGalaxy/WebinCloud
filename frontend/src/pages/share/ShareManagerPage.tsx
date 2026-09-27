@@ -17,6 +17,7 @@ import {
 } from 'lucide-react';
 import { publicShareApi, sharesApi, type PathName, type Share } from '../../api/shares';
 import { ApiError } from '../../api/client';
+import { copyText } from '../../clipboard';
 import { useI18n } from '../../i18n/I18nContext';
 import Modal from '../../components/ui/Modal';
 import Toast from '../../components/ui/Toast';
@@ -71,8 +72,13 @@ const ShareManagerPage = () => {
     }
   }, [highlighted, groups]);
 
-  const copy = (key: string, path: string, kind: string) => {
-    void navigator.clipboard.writeText(`${window.location.origin}${path}`);
+  const copy = async (key: string, path: string, kind: string) => {
+    const url = `${window.location.origin}${path}`;
+    if (!(await copyText(url))) {
+      setError(t('share.copyFailed', { url }));
+      return;
+    }
+
     setCopied(key);
     setTimeout(() => setCopied((current) => (current === key ? null : current)), 1500);
 
@@ -188,7 +194,7 @@ const ShareManagerPage = () => {
                   </a>
 
                   <button
-                    onClick={() => copy(`${share.id}:front`, share.url, t('share.openFrontend'))}
+                    onClick={() => void copy(`${share.id}:front`, share.url, t('share.openFrontend'))}
                     title={t('share.copyFrontendHint')}
                     className="inline-flex items-center gap-1.5 rounded-lg bg-sky-500 px-3 py-2 text-sm font-medium text-white transition hover:bg-sky-600"
                   >
@@ -199,7 +205,7 @@ const ShareManagerPage = () => {
                   {share.target_type === 'file' && (
                     <button
                       onClick={() =>
-                        copy(
+                        void copy(
                           `${share.id}:back`,
                           publicShareApi.rawUrl(share.segment, share.name),
                           t('share.openBackend'),

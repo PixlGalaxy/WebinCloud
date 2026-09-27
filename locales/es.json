@@ -201,5 +201,6 @@
   "dotfile.title": "Este nombre empieza por punto",
   "dotfile.explanation": "Tu navegador guardará «{name}» como «{stripped}», quitándole el punto inicial, y no hay ajuste del servidor que lo evite. Descárgalo en ZIP para conservar el nombre exacto.",
   "dotfile.downloadAnyway": "Descargar igualmente",
-  "dotfile.downloadZip": "Descargar en ZIP"
+  "dotfile.downloadZip": "Descargar en ZIP",
+  "share.copyFailed": "No se pudo copiar automáticamente. El navegador solo lo permite por HTTPS o en localhost. Cópialo a mano: {url}"
 }
