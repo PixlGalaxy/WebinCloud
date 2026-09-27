@@ -23,6 +23,12 @@ RUN npm run build && npm prune --omit=dev
 FROM node:26-alpine
 WORKDIR /app
 
+# Links the package to its repository on GHCR and fills in its description.
+LABEL org.opencontainers.image.source="https://github.com/PixlGalaxy/WebinCloud" \
+      org.opencontainers.image.title="Webin Cloud Server" \
+      org.opencontainers.image.description="Self-hosted web server for your files: accounts, per-folder permissions, in-browser previews and public share links." \
+      org.opencontainers.image.licenses="MIT"
+
 RUN apk add --no-cache nginx tini
 
 COPY --from=build-frontend /app/frontend/dist /usr/share/nginx/html
