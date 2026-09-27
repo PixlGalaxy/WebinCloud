@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "type": "module",
   "scripts": {
-    "dev": "tsx watch --include ../locales/*.json src/index.ts",
+    "dev": "tsx watch --env-file-if-exists=../.env --include ../locales/*.json --include ../.env src/index.ts",
     "build": "tsc && node scripts/copy-assets.mjs",
     "start": "node dist/index.js",
     "migrate": "tsx src/db/migrate.ts"

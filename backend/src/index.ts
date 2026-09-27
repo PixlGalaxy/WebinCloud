@@ -20,7 +20,7 @@ async function main() {
   const db = initializeDb(config.DB_PATH);
   runMigrations(db);
   await bootstrapAdmin(db, config);
-  await seedDevUsers(db, config);
+  if (!process.env.ADMIN_PASSWORD) await seedDevUsers(db, config);
 
   // Covers accounts that existed before path names were introduced.
   const pathNames = new PathNamesService(db);
