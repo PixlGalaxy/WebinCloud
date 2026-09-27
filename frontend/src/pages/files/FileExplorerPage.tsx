@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState, type DragEvent } from 'react';
+import { useCallback, useEffect, useState, type DragEvent } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import {
   Download,
@@ -12,16 +12,14 @@ import {
   SquareCheck,
   Trash2,
   Upload,
+  FolderUp,
   FolderOpen,
   Eye,
   X,
 } from 'lucide-react';
 import {
   filesApi,
-  uploadFiles,
-  type ConflictMode,
   type DirEntry,
-  type ExistingFile,
   type Listing,
   type SearchResponse,
 } from '../../api/files';
@@ -29,10 +27,11 @@ import { ApiError } from '../../api/client';
 import { useI18n } from '../../i18n/I18nContext';
 import { useArchives } from '../../context/ArchiveContext';
 import Modal from '../../components/ui/Modal';
+import { pickedFromDrop } from '../../components/upload/useUploadQueue';
+import { useUploads, useUploadsFinished } from '../../context/UploadContext';
 import { btn, card, errorBox, input, label } from '../../components/ui/styles';
 import Breadcrumbs from './Breadcrumbs';
 import PreviewPanel from './PreviewPanel';
-import ConflictModal from './ConflictModal';
 import ShareCreateModal from './ShareCreateModal';
 import DotfileNotice from '../../components/DotfileNotice';
 import { useFolderWatch } from './useFolderWatch';
@@ -47,7 +46,6 @@ const FileExplorerPage = () => {
   const [listing, setListing] = useState<Listing | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [progress, setProgress] = useState<number | null>(null);
   const [dragging, setDragging] = useState(false);
   const [newFolder, setNewFolder] = useState<string | null>(null);
   const [renaming, setRenaming] = useState<{ entry: DirEntry; value: string } | null>(null);
@@ -61,8 +59,6 @@ const FileExplorerPage = () => {
   const [query, setQuery] = useState('');
   const [search, setSearch] = useState<SearchResponse | null>(null);
   const [searching, setSearching] = useState(false);
-  const [pending, setPending] = useState<{ files: File[]; conflicts: ExistingFile[] } | null>(null);
-  const fileInput = useRef<HTMLInputElement>(null);
 
   const reload = useCallback(async () => {
     setError('');
@@ -83,6 +79,9 @@ const FileExplorerPage = () => {
 
   // Picks up changes made by anyone else while this folder is open.
   useFolderWatch(path, reload);
+
+  const uploads = useUploads();
+  useUploadsFinished(() => void reload());
 
   // Moving to another folder ends the current search and selection.
   useEffect(() => {
@@ -174,43 +173,12 @@ const FileExplorerPage = () => {
     }
   };
 
-  const send = async (files: File[], mode: ConflictMode) => {
-    setError('');
-    setProgress(0);
-    try {
-      await uploadFiles(path, files, setProgress, mode);
-      await reload();
-    } catch (err) {
-      setError(err instanceof ApiError ? err.message : t('files.actionFailed'));
-    } finally {
-      setProgress(null);
-    }
-  };
-
-  /** Asks what to do before anything is overwritten. */
-  const upload = async (files: File[]) => {
-    if (files.length === 0) return;
-    setError('');
-    try {
-      const { conflicts } = await filesApi.checkConflicts(
-        path,
-        files.map((file) => file.name),
-      );
-      if (conflicts.length > 0) {
-        setPending({ files, conflicts });
-        return;
-      }
-    } catch (err) {
-      setError(err instanceof ApiError ? err.message : t('files.actionFailed'));
-      return;
-    }
-    await send(files, 'fail');
-  };
-
   const onDrop = (e: DragEvent) => {
     e.preventDefault();
     setDragging(false);
-    if (listing?.canWrite) void upload(Array.from(e.dataTransfer.files));
+    if (listing?.canWrite) {
+      void pickedFromDrop(e.dataTransfer).then((picked) => uploads.addPicked(picked, { kind: 'user' }, path));
+    }
   };
 
   const formatDate = (iso: string) =>
@@ -272,7 +240,7 @@ const FileExplorerPage = () => {
             className={
               selecting
                 ? 'inline-flex items-center justify-center gap-2 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-indigo-700'
-                : btn.secondary
+                : btn.info
             }
           >
             <SquareCheck size={16} /> {t('files.select')}
@@ -280,22 +248,15 @@ const FileExplorerPage = () => {
 
           {canWrite && (
             <>
-              <button onClick={() => setNewFolder('')} className={btn.secondary}>
+              <button onClick={() => setNewFolder('')} className={btn.warning}>
                 <FolderPlus size={16} /> {t('files.newFolder')}
               </button>
-              <button onClick={() => fileInput.current?.click()} className={btn.primary}>
-                <Upload size={16} /> {t('files.upload')}
+              <button onClick={() => uploads.pickFolder({ kind: 'user' }, path)} className={btn.success}>
+                <FolderUp size={16} /> {t('files.uploadFolder')}
               </button>
-              <input
-                ref={fileInput}
-                type="file"
-                multiple
-                hidden
-                onChange={(e) => {
-                  void upload(Array.from(e.target.files ?? []));
-                  e.target.value = '';
-                }}
-              />
+              <button onClick={() => uploads.pickFiles({ kind: 'user' }, path)} className={btn.primary}>
+                <Upload size={16} /> {t('files.uploadFiles')}
+              </button>
             </>
           )}
           <button
@@ -345,18 +306,6 @@ const FileExplorerPage = () => {
             <button onClick={exitSelection} className={btn.iconGhost} title={t('common.cancel')}>
               <X size={18} />
             </button>
-          </div>
-        </div>
-      )}
-
-      {progress !== null && (
-        <div className={`${card} p-4`}>
-          <div className="mb-2 flex justify-between text-sm text-slate-600 dark:text-slate-300">
-            <span>{t('files.uploading')}</span>
-            <span>{Math.round(progress * 100)}%</span>
-          </div>
-          <div className="h-2 overflow-hidden rounded-full bg-slate-200 dark:bg-slate-700">
-            <div className="h-full bg-indigo-600 transition-all" style={{ width: `${progress * 100}%` }} />
           </div>
         </div>
       )}
@@ -559,19 +508,6 @@ const FileExplorerPage = () => {
             setDotfile(null);
           }}
           onClose={() => setDotfile(null)}
-        />
-      )}
-
-      {pending && (
-        <ConflictModal
-          conflicts={pending.conflicts}
-          incoming={pending.files}
-          onCancel={() => setPending(null)}
-          onResolve={(mode) => {
-            const files = pending.files;
-            setPending(null);
-            void send(files, mode);
-          }}
         />
       )}
 

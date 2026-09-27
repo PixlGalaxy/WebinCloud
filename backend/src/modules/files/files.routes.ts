@@ -1,4 +1,4 @@
-import { Router } from 'express';
+import { Router, type NextFunction, type Response } from 'express';
 import { createWriteStream, promises as fs, watch } from 'fs';
 import { basename } from 'path';
 import { pipeline } from 'stream/promises';
@@ -178,6 +178,20 @@ export function createFilesRoutes(db: Db, config: EnvConfig, t: Translate): Rout
       return next(err);
     }
 
+    // Files arrive as soon as the body is piped, so the folder has to exist first.
+    files
+      .prepareUploadFolder(req.user!, folderPath)
+      .then(() => receiveUpload(req, res, next, folderPath, onConflict))
+      .catch(next);
+  });
+
+  function receiveUpload(
+    req: AuthenticatedRequest,
+    res: Response,
+    next: NextFunction,
+    folderPath: string,
+    onConflict: ConflictMode,
+  ): void {
     const parser = busboy({ headers: req.headers });
     const partials: string[] = [];
     const saved: string[] = [];
@@ -239,7 +253,7 @@ export function createFilesRoutes(db: Db, config: EnvConfig, t: Translate): Rout
     });
 
     req.pipe(parser);
-  });
+  }
 
   return router;
 }

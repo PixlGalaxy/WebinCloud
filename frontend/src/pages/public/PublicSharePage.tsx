@@ -1,4 +1,4 @@
-import { Suspense, lazy, useCallback, useEffect, useRef, useState, type FormEvent } from 'react';
+import { Suspense, lazy, useCallback, useEffect, useState, type FormEvent } from 'react';
 import { useParams } from 'react-router-dom';
 import {
   ChevronRight,
@@ -10,15 +10,17 @@ import {
   Loader2,
   Lock,
   SquareCheck,
+  FolderUp,
   Upload,
   X,
 } from 'lucide-react';
-import { publicShareApi, uploadToShare, type PublicEntry, type PublicShareInfo } from '../../api/shares';
+import { publicShareApi, type PublicEntry, type PublicShareInfo } from '../../api/shares';
 import { ApiError } from '../../api/client';
 import { useI18n } from '../../i18n/I18nContext';
 import { useTheme } from '../../context/ThemeContext';
 import { useArchives } from '../../context/ArchiveContext';
 import Navbar from '../../components/Navbar';
+import { useUploads, useUploadsFinished } from '../../context/UploadContext';
 import { btn, card, errorBox, input } from '../../components/ui/styles';
 import { formatSize, iconFor } from '../files/paths';
 import PreviewPanel from '../files/PreviewPanel';
@@ -45,8 +47,6 @@ const PublicSharePage = () => {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(true);
-  const [progress, setProgress] = useState<number | null>(null);
-  const fileInput = useRef<HTMLInputElement>(null);
 
   const loadInfo = useCallback(async () => {
     try {
@@ -102,19 +102,11 @@ const PublicSharePage = () => {
     }
   };
 
-  const upload = async (files: File[]) => {
-    if (files.length === 0) return;
-    setProgress(0);
-    setError('');
-    try {
-      await uploadToShare(publicShareApi.uploadUrl(segment, shareName, innerPath), files, setProgress);
-      if (info?.allowDownload) await loadEntries(innerPath);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : t('files.actionFailed'));
-    } finally {
-      setProgress(null);
-    }
-  };
+  const uploads = useUploads();
+  const shareScope = { kind: 'share', segment, name: shareName } as const;
+  useUploadsFinished(() => {
+    if (info?.allowDownload) void loadEntries(innerPath);
+  });
 
   const formatDate = (iso: string) =>
     new Intl.DateTimeFormat(language, {
@@ -290,19 +282,12 @@ const PublicSharePage = () => {
 
           {info.allowUpload && (
             <>
-              <button onClick={() => fileInput.current?.click()} className={btn.secondary}>
-                <Upload size={16} /> {t('files.upload')}
+              <button onClick={() => uploads.pickFolder(shareScope, innerPath)} className={btn.success}>
+                <FolderUp size={16} /> {t('files.uploadFolder')}
               </button>
-              <input
-                ref={fileInput}
-                type="file"
-                multiple
-                hidden
-                onChange={(e) => {
-                  void upload(Array.from(e.target.files ?? []));
-                  e.target.value = '';
-                }}
-              />
+              <button onClick={() => uploads.pickFiles(shareScope, innerPath)} className={btn.primary}>
+                <Upload size={16} /> {t('files.uploadFiles')}
+              </button>
             </>
           )}
         </div>
@@ -335,18 +320,6 @@ const PublicSharePage = () => {
             <button onClick={exitSelection} className={btn.iconGhost} title={t('common.cancel')}>
               <X size={18} />
             </button>
-          </div>
-        </div>
-      )}
-
-      {progress !== null && (
-        <div className={`${card} p-4`}>
-          <div className="mb-2 flex justify-between text-sm text-slate-600 dark:text-slate-300">
-            <span>{t('files.uploading')}</span>
-            <span>{Math.round(progress * 100)}%</span>
-          </div>
-          <div className="h-2 overflow-hidden rounded-full bg-slate-200 dark:bg-slate-700">
-            <div className="h-full bg-indigo-600 transition-all" style={{ width: `${progress * 100}%` }} />
           </div>
         </div>
       )}

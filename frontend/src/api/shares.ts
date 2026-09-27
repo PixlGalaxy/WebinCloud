@@ -112,34 +112,3 @@ export const publicShareApi = {
   archiveDownloadUrl: (segment: string, name: string, id: string) =>
     `/backend/api${publicBase(segment, name)}/archive/${id}/download`,
 };
-
-/** Public uploads report progress, so they go through XHR like the private ones. */
-export function uploadToShare(
-  url: string,
-  files: File[],
-  onProgress: (fraction: number) => void,
-): Promise<string[]> {
-  return new Promise((resolve, reject) => {
-    const form = new FormData();
-    for (const file of files) form.append('files', file);
-
-    const xhr = new XMLHttpRequest();
-    xhr.open('POST', url);
-    xhr.withCredentials = true;
-    xhr.upload.addEventListener('progress', (event) => {
-      if (event.lengthComputable) onProgress(event.loaded / event.total);
-    });
-    xhr.addEventListener('load', () => {
-      let body: { uploaded?: string[]; error?: string } = {};
-      try {
-        body = JSON.parse(xhr.responseText);
-      } catch {
-        // handled by the status check below
-      }
-      if (xhr.status >= 200 && xhr.status < 300) resolve(body.uploaded ?? []);
-      else reject(new Error(body.error ?? 'Upload failed'));
-    });
-    xhr.addEventListener('error', () => reject(new Error('Upload failed')));
-    xhr.send(form);
-  });
-}

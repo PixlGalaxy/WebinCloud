@@ -5,6 +5,13 @@ export const btn = {
     'inline-flex items-center justify-center gap-2 rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700',
   danger:
     'inline-flex items-center justify-center gap-2 rounded-lg bg-rose-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-rose-700',
+  success:
+    'inline-flex items-center justify-center gap-2 rounded-lg bg-emerald-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-emerald-700 disabled:bg-slate-300 dark:disabled:bg-slate-700 dark:disabled:text-slate-500',
+  warning:
+    'inline-flex items-center justify-center gap-2 rounded-lg bg-amber-500 px-4 py-2 text-sm font-medium text-white transition hover:bg-amber-600 disabled:bg-slate-300 dark:disabled:bg-slate-700 dark:disabled:text-slate-500',
+  accent:
+    'inline-flex items-center justify-center gap-2 rounded-lg bg-fuchsia-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-fuchsia-700 disabled:bg-slate-300 dark:disabled:bg-slate-700 dark:disabled:text-slate-500',
+  info: 'inline-flex items-center justify-center gap-2 rounded-lg bg-sky-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-sky-700 disabled:bg-slate-300 dark:disabled:bg-slate-700 dark:disabled:text-slate-500',
   // inline-flex so <a> and <button> render an identical box: a bare <a> is
   // inline and would sit differently from a button with the same padding.
   iconGhost:

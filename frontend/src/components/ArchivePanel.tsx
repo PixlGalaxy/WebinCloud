@@ -38,7 +38,7 @@ const ArchivePanel = () => {
   if (jobs.length === 0) return null;
 
   return (
-    <div className="fixed bottom-4 right-4 z-40 w-80 space-y-2">
+    <div className="space-y-2">
       {jobs.map((job) => {
         const percent = job.progress === null ? null : Math.round(job.progress * 100);
 

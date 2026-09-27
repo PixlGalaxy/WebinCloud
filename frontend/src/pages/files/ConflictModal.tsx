@@ -7,7 +7,8 @@ import { formatSize } from './paths';
 
 interface Props {
   conflicts: ExistingFile[];
-  incoming: File[];
+  /** Names here are paths relative to the open folder, matching the conflicts. */
+  incoming: { name: string; size: number; lastModified: number }[];
   onCancel: () => void;
   onResolve: (mode: ConflictMode) => void;
 }

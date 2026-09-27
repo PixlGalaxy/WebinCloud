@@ -233,63 +233,76 @@ export function createPublicShareRoutes(
       return next(err);
     }
 
-    const parser = busboy({ headers: req.headers });
-    const partials: string[] = [];
-    const saved: string[] = [];
-    const writes: Promise<void>[] = [];
-    let failure: unknown = null;
-    const fail = (err: unknown) => {
-      failure ??= err;
-    };
+    // Uploaded folders keep their structure, so the destination may not exist yet.
+    ensureFolder()
+      .then(receive)
+      .catch(next);
 
-    parser.on('file', (_field, stream, info) => {
-      if (failure) {
-        stream.resume();
-        return;
-      }
+    async function ensureFolder(): Promise<void> {
+      for (const segment of inner.split('/')) if (segment) assertValidName(segment);
+      const created = await fs.mkdir(folderAbsolute, { recursive: true });
+      if (created) logFileAction(PUBLIC_ACTOR, 'created', 'folder', basename(folderAbsolute), folderAbsolute);
+    }
 
-      let destination: string;
-      try {
-        assertValidName(info.filename);
-        // Public uploads never replace an existing file: a link holder must not
-        // be able to destroy content, only add to it.
-        destination = freeName(folderAbsolute, info.filename);
-      } catch (err) {
-        fail(err);
-        stream.resume();
-        return;
-      }
+    function receive(): void {
+      const parser = busboy({ headers: req.headers });
+      const partials: string[] = [];
+      const saved: string[] = [];
+      const writes: Promise<void>[] = [];
+      let failure: unknown = null;
+      const fail = (err: unknown) => {
+        failure ??= err;
+      };
 
-      const partial = `${destination}.part`;
-      partials.push(partial);
-      writes.push(
-        pipeline(stream, createWriteStream(partial))
-          .then(() => fs.rename(partial, destination))
-          .then(() => {
-            saved.push(basename(destination));
-            logFileAction(PUBLIC_ACTOR, 'uploaded', 'file', basename(destination), destination);
-          })
-          .catch(fail),
-      );
-    });
-
-    parser.on('error', fail);
-
-    parser.on('close', () => {
-      void (async () => {
-        await Promise.all(writes);
+      parser.on('file', (_field, stream, info) => {
         if (failure) {
-          await Promise.all(partials.map((p) => fs.rm(p, { force: true }).catch(() => undefined)));
-          return next(failure);
+          stream.resume();
+          return;
         }
-        if (saved.length === 0) return next(badRequest('files.noFilesUploaded'));
 
-        logger.info(`Public upload of ${saved.length} file(s) to share ${share.id}`);
-        res.status(201).json({ uploaded: saved });
-      })();
-    });
+        let destination: string;
+        try {
+          assertValidName(info.filename);
+          // Public uploads never replace an existing file: a link holder must not
+          // be able to destroy content, only add to it.
+          destination = freeName(folderAbsolute, info.filename);
+        } catch (err) {
+          fail(err);
+          stream.resume();
+          return;
+        }
 
-    req.pipe(parser);
+        const partial = `${destination}.part`;
+        partials.push(partial);
+        writes.push(
+          pipeline(stream, createWriteStream(partial))
+            .then(() => fs.rename(partial, destination))
+            .then(() => {
+              saved.push(basename(destination));
+              logFileAction(PUBLIC_ACTOR, 'uploaded', 'file', basename(destination), destination);
+            })
+            .catch(fail),
+        );
+      });
+
+      parser.on('error', fail);
+
+      parser.on('close', () => {
+        void (async () => {
+          await Promise.all(writes);
+          if (failure) {
+            await Promise.all(partials.map((p) => fs.rm(p, { force: true }).catch(() => undefined)));
+            return next(failure);
+          }
+          if (saved.length === 0) return next(badRequest('files.noFilesUploaded'));
+
+          logger.info(`Public upload of ${saved.length} file(s) to share ${share.id}`);
+          res.status(201).json({ uploaded: saved });
+        })();
+      });
+
+      req.pipe(parser);
+    }
   });
 
   return router;

@@ -334,6 +334,17 @@ export class FilesService {
     return conflicts;
   }
 
+  /** Creates the folder an upload lands in, so a dropped folder keeps its structure. */
+  async prepareUploadFolder(user: User, folderPath: string): Promise<void> {
+    requireWrite(this.db, user, folderPath);
+    for (const segment of folderPath.split('/')) if (segment) assertValidName(segment);
+
+    const absolute = this.absolute(folderPath);
+    const created = await fs.mkdir(absolute, { recursive: true });
+    // Only the caller that really created it logs it, even when uploads race.
+    if (created) logFileAction(userActor(user), 'created', 'folder', basename(absolute), absolute);
+  }
+
   /**
    * Destination for an upload. Kept synchronous so the incoming stream is never
    * left unattended while we decide where it goes.

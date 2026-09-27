@@ -1,4 +1,4 @@
-import { api, ApiError } from './client';
+import { api } from './client';
 
 export type PreviewKind = 'image' | 'video' | 'audio' | 'pdf' | 'text' | 'none';
 
@@ -70,40 +70,8 @@ export const filesApi = {
   checkConflicts: (path: string, names: string[]) =>
     api.post<{ conflicts: ExistingFile[] }>('/files/check-conflicts', { path, names }),
 
+  uploadUrl: (path: string, onConflict: ConflictMode) =>
+    `/backend/api/files/upload?path=${encode(path)}&onConflict=${onConflict}`,
+
   eventsUrl: (path: string) => `/backend/api/files/events?path=${encode(path)}`,
 };
-
-/** Uploads via XHR because only it reports progress events. */
-export function uploadFiles(
-  path: string,
-  files: File[],
-  onProgress: (fraction: number) => void,
-  onConflict: ConflictMode = 'fail',
-): Promise<string[]> {
-  return new Promise((resolve, reject) => {
-    const form = new FormData();
-    for (const file of files) form.append('files', file);
-
-    const xhr = new XMLHttpRequest();
-    xhr.open('POST', `/backend/api/files/upload?path=${encode(path)}&onConflict=${onConflict}`);
-    xhr.withCredentials = true;
-
-    xhr.upload.addEventListener('progress', (event) => {
-      if (event.lengthComputable) onProgress(event.loaded / event.total);
-    });
-
-    xhr.addEventListener('load', () => {
-      let body: { uploaded?: string[]; error?: string } = {};
-      try {
-        body = JSON.parse(xhr.responseText);
-      } catch {
-        // Fall through to the status-based error below.
-      }
-      if (xhr.status >= 200 && xhr.status < 300) resolve(body.uploaded ?? []);
-      else reject(new ApiError(xhr.status, body.error ?? 'Upload failed'));
-    });
-
-    xhr.addEventListener('error', () => reject(new ApiError(0, 'Upload failed')));
-    xhr.send(form);
-  });
-}
