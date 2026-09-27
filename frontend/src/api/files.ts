@@ -56,6 +56,9 @@ export const filesApi = {
 
   remove: (path: string) => api.del<void>(`/files?path=${encode(path)}`),
 
+  move: (paths: string[], destination: string, onConflict: ConflictMode) =>
+    api.patch<{ moved: string[] }>('/files/move', { paths, destination, onConflict }),
+
   downloadUrl: (path: string) => `/backend/api/files/download?path=${encode(path)}`,
 
   /** The modified time is part of the URL, so a cached thumbnail is never stale. */

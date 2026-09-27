@@ -5,6 +5,9 @@ import { I18nProvider } from './i18n/I18nContext';
 import { AuthProvider } from './context/AuthContext';
 import { ArchiveProvider } from './context/ArchiveContext';
 import ArchivePanel from './components/ArchivePanel';
+import { TransferProvider } from './context/TransferContext';
+import TransferPanel from './components/TransferPanel';
+import { ClipboardProvider } from './context/ClipboardContext';
 import UploadTray from './components/upload/UploadTray';
 import { UploadProvider } from './context/UploadContext';
 import { ProtectedRoute, AdminRoute } from './components/ProtectedRoute';
@@ -23,6 +26,8 @@ const App = () => (
         <I18nProvider>
           <AuthProvider>
             <ArchiveProvider>
+              <TransferProvider>
+                <ClipboardProvider>
                 <UploadProvider>
                 <Routes>
                   <Route path="/login" element={<LoginPage />} />
@@ -48,8 +53,11 @@ const App = () => (
                 <div className="fixed bottom-4 right-4 z-40 w-80 space-y-2">
                   <UploadTray />
                   <ArchivePanel />
+                  <TransferPanel />
                 </div>
                 </UploadProvider>
+                </ClipboardProvider>
+              </TransferProvider>
             </ArchiveProvider>
           </AuthProvider>
         </I18nProvider>

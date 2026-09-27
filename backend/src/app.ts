@@ -16,6 +16,8 @@ import { createFilesRoutes } from './modules/files/files.routes.js';
 import { ThumbnailService } from './modules/thumbnails/thumbnails.service.js';
 import { ArchivesService } from './modules/archives/archives.service.js';
 import { createArchivesRoutes } from './modules/archives/archives.routes.js';
+import { TransfersService } from './modules/transfers/transfers.service.js';
+import { createTransfersRoutes } from './modules/transfers/transfers.routes.js';
 import { createBrandingRoutes, seedBranding } from './modules/branding/branding.routes.js';
 import { SharesService } from './modules/shares/shares.service.js';
 import { createSharesRoutes } from './modules/shares/shares.routes.js';
@@ -48,6 +50,10 @@ export function createApp(db: Db, config: EnvConfig): express.Application {
   // several times per window, so abandonment is never missed between ticks.
   const abandonCheckMs = Math.max(1000, Math.min(10_000, (config.ARCHIVE_ABANDON_SECONDS * 1000) / 3));
   setInterval(() => void archives.dropAbandoned(), abandonCheckMs).unref();
+
+  const transfers = new TransfersService(db, config.DATA_ROOT, config.ARCHIVE_ABANDON_SECONDS * 1000);
+  setInterval(() => transfers.dropAbandoned(), abandonCheckMs).unref();
+  setInterval(() => transfers.sweep(), 15 * 60 * 1000).unref();
 
   app.set('trust proxy', 'loopback');
   app.disable('x-powered-by');
@@ -84,6 +90,7 @@ export function createApp(db: Db, config: EnvConfig): express.Application {
   // Keeps the temp volume from growing without bound on a long-lived server.
   setInterval(() => void archives.sweep(), 15 * 60 * 1000).unref();
   app.use('/api/archives', createArchivesRoutes(t, archives));
+  app.use('/api/transfers', createTransfersRoutes(t, transfers));
 
   app.use('/api/shares', createSharesRoutes(db, config, t, shares));
 

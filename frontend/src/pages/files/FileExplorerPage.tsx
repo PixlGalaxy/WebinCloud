@@ -1,12 +1,15 @@
 import { useCallback, useEffect, useState, type DragEvent } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import {
+  ClipboardPaste,
+  Copy,
   Download,
   FolderPlus,
   Loader2,
   Pencil,
   FileArchive,
   RefreshCw,
+  Scissors,
   Search,
   Share2,
   SquareCheck,
@@ -20,19 +23,25 @@ import {
 } from 'lucide-react';
 import {
   filesApi,
+  type ConflictMode,
   type DirEntry,
+  type ExistingFile,
   type Listing,
   type SearchResponse,
 } from '../../api/files';
 import { ApiError } from '../../api/client';
 import { useI18n } from '../../i18n/I18nContext';
 import { useArchives } from '../../context/ArchiveContext';
+import { useClipboard } from '../../context/ClipboardContext';
+import { useTransfers } from '../../context/TransferContext';
 import Modal from '../../components/ui/Modal';
 import { pickedFromDrop } from '../../components/upload/useUploadQueue';
 import { useUploads, useUploadsFinished } from '../../context/UploadContext';
 import { btn, card, errorBox, input, label } from '../../components/ui/styles';
 import Breadcrumbs from './Breadcrumbs';
+import ConflictModal from './ConflictModal';
 import EntryThumbnail from './EntryThumbnail';
+import FileContextMenu from './FileContextMenu';
 import FileIcon from './FileIcon';
 import PreviewPanel from './PreviewPanel';
 import ShareCreateModal from './ShareCreateModal';
@@ -47,6 +56,8 @@ const FileExplorerPage = () => {
   const navigate = useNavigate();
   const { t, language } = useI18n();
   const { createArchive } = useArchives();
+  const { clipboard: clip, setClipboard, clear: clearClipboard } = useClipboard();
+  const { startCopy } = useTransfers();
 
   const [listing, setListing] = useState<Listing | null>(null);
   const [loading, setLoading] = useState(true);
@@ -64,6 +75,8 @@ const FileExplorerPage = () => {
   const [query, setQuery] = useState('');
   const [search, setSearch] = useState<SearchResponse | null>(null);
   const [searching, setSearching] = useState(false);
+  const [menu, setMenu] = useState<{ x: number; y: number; entries: DirEntry[]; multi: boolean } | null>(null);
+  const [pasteConflicts, setPasteConflicts] = useState<ExistingFile[] | null>(null);
 
   const reload = useCallback(async () => {
     setError('');
@@ -120,6 +133,8 @@ const FileExplorerPage = () => {
     setSearch(null);
     setSelecting(false);
     setSelected(new Set());
+    setMenu(null);
+    setPasteConflicts(null);
   }, [path]);
 
   const runSearch = async () => {
@@ -186,6 +201,38 @@ const FileExplorerPage = () => {
     exitSelection();
   };
 
+  const pasteHereDisabled = clip !== null && clip.mode === 'cut' && clip.sourceFolder === path;
+
+  const handlePaste = async (mode?: ConflictMode) => {
+    if (!clip || pasteHereDisabled) return;
+    setError('');
+
+    try {
+      if (!mode) {
+        const { conflicts } = await filesApi.checkConflicts(path, clip.entries.map((e) => e.name));
+        if (conflicts.length > 0) {
+          setPasteConflicts(conflicts);
+          return;
+        }
+      }
+
+      const onConflict: ConflictMode = mode ?? 'fail';
+      const paths = clip.entries.map((e) => e.path);
+
+      if (clip.mode === 'cut') {
+        await filesApi.move(paths, path, onConflict);
+        await reload();
+      } else {
+        const label = clip.entries.length === 1 ? clip.entries[0].name : t('files.itemsCount', { count: clip.entries.length });
+        await startCopy(paths, path, onConflict, label);
+      }
+      clearClipboard();
+      setPasteConflicts(null);
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : t('files.actionFailed'));
+    }
+  };
+
   const refreshNow = async () => {
     setRefreshing(true);
     await reload();
@@ -225,6 +272,7 @@ const FileExplorerPage = () => {
   const hasSelectedFolder = rows.some(
     (entry) => selected.has(entry.path) && entry.type === 'folder',
   );
+  const cutPaths = clip?.mode === 'cut' ? new Set(clip.entries.map((e) => e.path)) : null;
 
   return (
     <div
@@ -288,6 +336,16 @@ const FileExplorerPage = () => {
 
           {canWrite && (
             <>
+              {clip && (
+                <button
+                  onClick={() => void handlePaste()}
+                  disabled={pasteHereDisabled}
+                  title={pasteHereDisabled ? t('files.pasteDisabledSameFolder') : t('files.clipboardReady', { count: clip.entries.length })}
+                  className={`${btn.success} disabled:opacity-40`}
+                >
+                  <ClipboardPaste size={16} /> {t('files.paste')}
+                </button>
+              )}
               <button onClick={() => setNewFolder('')} className={btn.warning}>
                 <FolderPlus size={16} /> {t('files.newFolder')}
               </button>
@@ -343,6 +401,28 @@ const FileExplorerPage = () => {
             >
               <FileArchive size={16} /> {t('files.downloadZip')}
             </button>
+            <button
+              onClick={() => {
+                setClipboard('copy', path, rows.filter((entry) => selected.has(entry.path)));
+                exitSelection();
+              }}
+              disabled={selected.size === 0}
+              className={`${btn.secondary} disabled:opacity-40`}
+            >
+              <Copy size={16} /> {t('files.copy')}
+            </button>
+            {canWrite && (
+              <button
+                onClick={() => {
+                  setClipboard('cut', path, rows.filter((entry) => selected.has(entry.path)));
+                  exitSelection();
+                }}
+                disabled={selected.size === 0}
+                className={`${btn.secondary} disabled:opacity-40`}
+              >
+                <Scissors size={16} /> {t('files.cut')}
+              </button>
+            )}
             <button onClick={exitSelection} className={btn.iconGhost} title={t('common.cancel')}>
               <X size={18} />
             </button>
@@ -394,10 +474,23 @@ const FileExplorerPage = () => {
             <tbody>
               {rows.map((entry) => {
                 const foundIn = parentByPath.get(entry.path);
+                const isCutMarked = cutPaths?.has(entry.path) ?? false;
                 return (
                   <tr
                     key={entry.path}
+                    onContextMenu={(e) => {
+                      e.preventDefault();
+                      const multiTarget = selecting && selected.has(entry.path) && selected.size > 1;
+                      setMenu({
+                        x: e.clientX,
+                        y: e.clientY,
+                        entries: multiTarget ? rows.filter((r) => selected.has(r.path)) : [entry],
+                        multi: multiTarget,
+                      });
+                    }}
                     className={`border-b border-slate-100 last:border-0 dark:border-slate-800 ${
+                      isCutMarked ? 'opacity-40' : ''
+                    } ${
                       selected.has(entry.path)
                         ? 'bg-indigo-50 dark:bg-indigo-500/10'
                         : 'hover:bg-slate-50 dark:hover:bg-slate-800/50'
@@ -484,6 +577,22 @@ const FileExplorerPage = () => {
                           </button>
                         )}
                         <button
+                          onClick={() => setClipboard('copy', path, [entry])}
+                          className={btn.iconGhost}
+                          title={t('files.copy')}
+                        >
+                          <Copy size={16} />
+                        </button>
+                        {canWrite && (
+                          <button
+                            onClick={() => setClipboard('cut', path, [entry])}
+                            className={btn.iconGhost}
+                            title={t('files.cut')}
+                          >
+                            <Scissors size={16} />
+                          </button>
+                        )}
+                        <button
                           onClick={() => setSharing(entry)}
                           className={btn.iconGhost}
                           title={t('share.action')}
@@ -535,6 +644,72 @@ const FileExplorerPage = () => {
       )}
 
       {sharing && <ShareCreateModal entry={sharing} onClose={() => setSharing(null)} />}
+
+      {menu && (() => {
+        const single = menu.multi ? null : menu.entries[0];
+        const hasFolder = menu.entries.some((e) => e.type === 'folder');
+        return (
+          <FileContextMenu
+            x={menu.x}
+            y={menu.y}
+            onClose={() => setMenu(null)}
+            multi={menu.multi}
+            canWrite={canWrite}
+            previewable={single?.type === 'file' && single.previewKind !== 'none'}
+            isFolder={single?.type === 'folder'}
+            onPreview={single ? () => setPreview(single) : undefined}
+            onDownload={
+              single
+                ? () => {
+                    if (single.type === 'file') {
+                      if (single.name.startsWith('.')) setDotfile(single);
+                      else startDownload(single.path);
+                    } else {
+                      void createArchive([single.path]);
+                    }
+                  }
+                : undefined
+            }
+            onShare={single ? () => setSharing(single) : undefined}
+            onRename={single ? () => setRenaming({ entry: single, value: single.name }) : undefined}
+            onDelete={single ? () => setDeleting(single) : undefined}
+            onCopy={() => {
+              setClipboard('copy', path, menu.entries);
+              if (menu.multi) exitSelection();
+            }}
+            onCut={() => {
+              setClipboard('cut', path, menu.entries);
+              if (menu.multi) exitSelection();
+            }}
+            onDownloadEach={
+              menu.multi && !hasFolder
+                ? () => {
+                    for (const e of menu.entries) {
+                      const link = document.createElement('a');
+                      link.href = filesApi.downloadUrl(e.path);
+                      link.download = '';
+                      document.body.appendChild(link);
+                      link.click();
+                      link.remove();
+                    }
+                  }
+                : undefined
+            }
+            onDownloadZip={menu.multi ? () => void createArchive(menu.entries.map((e) => e.path)) : undefined}
+            canPaste={clip !== null && !pasteHereDisabled}
+            onPaste={clip && !pasteHereDisabled ? () => void handlePaste() : undefined}
+          />
+        );
+      })()}
+
+      {pasteConflicts && clip && (
+        <ConflictModal
+          conflicts={pasteConflicts}
+          incoming={clip.entries.map((e) => ({ name: e.name, size: e.size, lastModified: new Date(e.modifiedAt).getTime() }))}
+          onCancel={() => setPasteConflicts(null)}
+          onResolve={(mode) => void handlePaste(mode)}
+        />
+      )}
 
       {dotfile && (
         <DotfileNotice

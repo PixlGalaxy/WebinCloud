@@ -265,6 +265,70 @@ export class FilesService {
     return renamed;
   }
 
+  async move(
+    user: User,
+    sourcePaths: string[],
+    destinationFolder: string,
+    onConflict: ConflictMode,
+  ): Promise<{ moved: string[] }> {
+    if (sourcePaths.length === 0) throw badRequest('archives.nothingSelected');
+    requireWrite(this.db, user, destinationFolder);
+
+    const destAbsolute = this.absolute(destinationFolder);
+    const destStats = await fs.stat(destAbsolute).catch(() => null);
+    if (!destStats || !destStats.isDirectory()) throw notFound();
+
+    const moved: string[] = [];
+    for (const relPath of sourcePaths) {
+      if (relPath === '') throw notFound();
+      if (destinationFolder === relPath || destinationFolder.startsWith(`${relPath}/`)) {
+        throw badRequest('files.cannotMoveIntoOwnSubfolder');
+      }
+
+      const parent = parentOf(relPath);
+      requireWrite(this.db, user, relPath);
+      requireWrite(this.db, user, parent);
+
+      const from = this.absolute(relPath);
+      const stats = await fs.stat(from).catch(() => {
+        throw notFound();
+      });
+
+      let finalName = basename(relPath);
+      let to = this.absolute(joinRelPath(destinationFolder, finalName));
+
+      const existing = await fs.access(to).then(
+        () => true,
+        () => false,
+      );
+      if (existing) {
+        if (onConflict === 'fail') throw conflict('files.alreadyExists');
+        if (onConflict === 'keepBoth') {
+          finalName = this.freeName(destinationFolder, finalName);
+          to = this.absolute(joinRelPath(destinationFolder, finalName));
+        } else {
+          // 'overwrite' replaces the destination outright; this app has no folder-merge semantics.
+          await fs.rm(to, { recursive: true, force: true });
+        }
+      }
+
+      await fs.rename(from, to);
+      if (!stats.isDirectory()) void this.thumbnails.evict(from, stats);
+
+      const target = joinRelPath(destinationFolder, finalName);
+      moved.push(target);
+      logFileAction(
+        userActor(user),
+        'moved',
+        stats.isDirectory() ? 'folder' : 'file',
+        `${basename(relPath)} to ${target}`,
+        to,
+      );
+    }
+
+    return { moved };
+  }
+
   async remove(user: User, relPath: string): Promise<void> {
     if (relPath === '') throw notFound();
     requireWrite(this.db, user, relPath);

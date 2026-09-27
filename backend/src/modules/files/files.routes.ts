@@ -79,6 +79,23 @@ export function createFilesRoutes(
     }),
   );
 
+  router.patch(
+    '/move',
+    asyncHandler(async (req: AuthenticatedRequest, res) => {
+      const { paths, destination, onConflict } = req.body as {
+        paths?: unknown;
+        destination?: string;
+        onConflict?: unknown;
+      };
+      if (!Array.isArray(paths) || paths.length === 0 || paths.some((p) => typeof p !== 'string')) {
+        throw badRequest('archives.nothingSelected');
+      }
+      const normalizedPaths = (paths as string[]).map((p) => normalizeRelPath(p));
+      const dest = normalizeRelPath(destination);
+      res.json(await files.move(req.user!, normalizedPaths, dest, conflictMode(onConflict)));
+    }),
+  );
+
   router.get(
     '/download',
     asyncHandler(async (req: AuthenticatedRequest, res) => {

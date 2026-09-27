@@ -19,6 +19,7 @@ const BACKEND_KEYS = [
   'files.invalidPath',
   'files.invalidName',
   'files.alreadyExists',
+  'files.cannotMoveIntoOwnSubfolder',
   'files.noFilesUploaded',
   'files.notPreviewable',
   'files.tooLargeToEdit',
