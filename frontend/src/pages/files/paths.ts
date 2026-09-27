@@ -11,17 +11,35 @@ export function toFilesUrl(path: string): string {
   return `/files/${path.split('/').map(encodeURIComponent).join('/')}`;
 }
 
-const ICONS: Array<[RegExp, LucideIcon]> = [
-  [/\.(png|jpe?g|gif|webp|svg|bmp|avif)$/i, Image],
-  [/\.(mp4|webm|mkv|mov|avi)$/i, Video],
-  [/\.(mp3|wav|ogg|flac|m4a)$/i, Music],
-  [/\.(zip|tar|gz|rar|7z)$/i, FileArchive],
-  [/\.(txt|md|json|ya?ml|log|csv|pdf|[jt]sx?|css|html?|xml|sh|py|rb|go|rs|java|sql)$/i, FileText],
+// One muted, non-office color per category, chosen so none of them repeats a
+// bright/neon hue: everything sits in the 500-600 Tailwind range.
+const ICONS: Array<[RegExp, LucideIcon, string]> = [
+  [/\.(png|jpe?g|gif|webp|svg|bmp|avif)$/i, Image, 'text-violet-500 dark:text-violet-400'],
+  [/\.(mp4|webm|mkv|mov|avi)$/i, Video, 'text-orange-500 dark:text-orange-400'],
+  [/\.(mp3|wav|ogg|flac|m4a)$/i, Music, 'text-pink-500 dark:text-pink-400'],
+  [/\.(zip|tar|gz|rar|7z)$/i, FileArchive, 'text-amber-600 dark:text-amber-500'],
+  [/\.pdf$/i, FileText, 'text-rose-600 dark:text-rose-500'],
+  [/\.html?$/i, FileText, 'text-cyan-600 dark:text-cyan-500'],
+  [
+    /\.(txt|md|json|ya?ml|log|csv|[jt]sx?|css|xml|sh|py|rb|go|rs|java|sql)$/i,
+    FileText,
+    'text-slate-400 dark:text-slate-500',
+  ],
 ];
 
 export function iconFor(type: 'file' | 'folder', name: string): LucideIcon {
   if (type === 'folder') return Folder;
   return ICONS.find(([pattern]) => pattern.test(name))?.[1] ?? File;
+}
+
+// A file whose extension matches nothing above still gets a fixed color, not
+// the caller's — same treatment as every recognized category.
+const DEFAULT_FILE_COLOR = 'text-slate-600 dark:text-white';
+
+/** Fixed color for a file, whatever its extension; null for folders, which keep the caller's own color. */
+export function iconColorFor(type: 'file' | 'folder', name: string): string | null {
+  if (type === 'folder') return null;
+  return ICONS.find(([pattern]) => pattern.test(name))?.[2] ?? DEFAULT_FILE_COLOR;
 }
 
 export type OfficeFamily = 'word' | 'excel' | 'powerpoint' | 'access' | 'project' | 'visio';

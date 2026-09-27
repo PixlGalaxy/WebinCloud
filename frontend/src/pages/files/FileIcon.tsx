@@ -1,5 +1,5 @@
 import { File } from 'lucide-react';
-import { iconFor, officeFamilyOf, officeLogoFor, type OfficeFamily } from './paths';
+import { iconColorFor, iconFor, officeFamilyOf, officeLogoFor, type OfficeFamily } from './paths';
 
 interface Props {
   type: 'file' | 'folder';
@@ -14,7 +14,7 @@ const OFFICE_COLOR: Record<OfficeFamily, string> = {
   word: 'text-sky-600 dark:text-sky-500',
   excel: 'text-green-600 dark:text-green-500',
   powerpoint: 'text-orange-600 dark:text-orange-500',
-  access: 'text-rose-600 dark:text-rose-500',
+  access: 'text-red-400 dark:text-red-300',
   project: 'text-teal-600 dark:text-teal-500',
   visio: 'text-blue-600 dark:text-blue-500',
 };
@@ -41,7 +41,8 @@ const FileIcon = ({ type, name, size = 18, className, showLogo = false }: Props)
   }
 
   const Icon = iconFor(type, name);
-  return <Icon size={size} className={className} />;
+  const color = iconColorFor(type, name);
+  return <Icon size={size} className={color ?? className} />;
 };
 
 export default FileIcon;
