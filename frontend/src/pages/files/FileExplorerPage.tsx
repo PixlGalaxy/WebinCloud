@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState, type DragEvent } from 'react';
+import type { LucideIcon } from 'lucide-react';
 import { useNavigate, useParams } from 'react-router-dom';
 import {
   Download,
@@ -14,6 +15,7 @@ import {
   Upload,
   FolderUp,
   FolderOpen,
+  Image as ImageIcon,
   Eye,
   X,
 } from 'lucide-react';
@@ -31,11 +33,14 @@ import { pickedFromDrop } from '../../components/upload/useUploadQueue';
 import { useUploads, useUploadsFinished } from '../../context/UploadContext';
 import { btn, card, errorBox, input, label } from '../../components/ui/styles';
 import Breadcrumbs from './Breadcrumbs';
+import EntryThumbnail from './EntryThumbnail';
 import PreviewPanel from './PreviewPanel';
 import ShareCreateModal from './ShareCreateModal';
 import DotfileNotice from '../../components/DotfileNotice';
 import { useFolderWatch } from './useFolderWatch';
 import { formatSize, iconFor, toFilesUrl } from './paths';
+
+const THUMBNAILS_KEY = 'webincloud.thumbnails';
 
 const FileExplorerPage = () => {
   const path = useParams()['*'] ?? '';
@@ -79,6 +84,32 @@ const FileExplorerPage = () => {
 
   // Picks up changes made by anyone else while this folder is open.
   useFolderWatch(path, reload);
+
+  const [thumbnails, setThumbnails] = useState(() => {
+    try {
+      return localStorage.getItem(THUMBNAILS_KEY) === '1';
+    } catch {
+      return false;
+    }
+  });
+
+  const toggleThumbnails = () => {
+    const next = !thumbnails;
+    setThumbnails(next);
+    try {
+      localStorage.setItem(THUMBNAILS_KEY, next ? '1' : '0');
+    } catch {
+      // Blocked storage: the choice just won't survive a reload.
+    }
+  };
+
+  /** Small icon normally; a larger tile (thumbnail or icon) when previews are on. */
+  const entryIcon = (entry: DirEntry, Icon: LucideIcon, iconClass: string) =>
+    thumbnails ? (
+      <EntryThumbnail entry={entry} Icon={Icon} iconClass={iconClass} />
+    ) : (
+      <Icon size={18} className={iconClass} />
+    );
 
   const uploads = useUploads();
   useUploadsFinished(() => void reload());
@@ -209,6 +240,15 @@ const FileExplorerPage = () => {
         <Breadcrumbs path={path} rootLabel={t('files.root')} />
 
         <div className="flex flex-wrap items-center gap-2">
+          <button
+            onClick={toggleThumbnails}
+            title={t(thumbnails ? 'files.thumbnailsHide' : 'files.thumbnailsShow')}
+            aria-pressed={thumbnails}
+            className={thumbnails ? btn.primary : btn.secondary}
+          >
+            <ImageIcon size={16} />
+          </button>
+
           <form
             onSubmit={(e) => {
               e.preventDefault();
@@ -380,12 +420,12 @@ const FileExplorerPage = () => {
                           onClick={() => navigate(toFilesUrl(entry.path))}
                           className="flex items-center gap-2.5 font-medium text-slate-900 hover:text-indigo-600 dark:text-slate-100 dark:hover:text-indigo-400"
                         >
-                          <Icon size={18} className="text-indigo-500" />
+                          {entryIcon(entry, Icon, "text-indigo-500")}
                           {entry.name}
                         </button>
                       ) : entry.previewKind === 'none' ? (
                         <span className="flex items-center gap-2.5 text-slate-800 dark:text-slate-200">
-                          <Icon size={18} className="text-slate-400 dark:text-slate-500" />
+                          {entryIcon(entry, Icon, "text-slate-400 dark:text-slate-500")}
                           {entry.name}
                         </span>
                       ) : (
@@ -393,7 +433,7 @@ const FileExplorerPage = () => {
                           onClick={() => setPreview(entry)}
                           className="flex items-center gap-2.5 text-slate-800 hover:text-indigo-600 dark:text-slate-200 dark:hover:text-indigo-400"
                         >
-                          <Icon size={18} className="text-slate-400 dark:text-slate-500" />
+                          {entryIcon(entry, Icon, "text-slate-400 dark:text-slate-500")}
                           {entry.name}
                         </button>
                       )}
@@ -402,7 +442,7 @@ const FileExplorerPage = () => {
                         <button
                           onClick={() => navigate(toFilesUrl(foundIn))}
                           title={t('files.goToFolder')}
-                          className="mt-1 block max-w-full truncate pl-[27px] text-left font-mono text-xs text-slate-400 hover:text-indigo-600 hover:underline dark:text-slate-500 dark:hover:text-indigo-400"
+                          className={`mt-1 block max-w-full truncate ${thumbnails ? 'pl-[74px]' : 'pl-[27px]'} text-left font-mono text-xs text-slate-400 hover:text-indigo-600 hover:underline dark:text-slate-500 dark:hover:text-indigo-400`}
                         >
                           {foundIn ? `${t('files.root')}/${foundIn}` : t('files.root')}
                         </button>

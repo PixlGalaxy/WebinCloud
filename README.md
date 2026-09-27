@@ -17,6 +17,7 @@ Everything runs in a single container: an nginx front end and a Node.js backend,
 - File manager: upload by drag and drop with progress, download, create folders, rename, delete.
 - Recursive search from any folder, showing the full path of each match.
 - In-browser preview for images, PDF, video, audio and text, with syntax highlighting and an editor for text files.
+- Optional thumbnails of images and videos in the file list, loaded as you scroll, with a larger preview on hover.
 - Share links for a file or a folder, with optional password, optional expiry (never by default), and download and upload permissions handled separately.
 - ZIP downloads: pick several items, or a whole folder, and the archive is built in the background while you keep browsing.
 - English and Spanish, light and dark theme, and a replaceable logo and favicon.

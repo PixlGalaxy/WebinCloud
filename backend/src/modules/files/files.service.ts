@@ -7,6 +7,7 @@ import { accessFrom, getAccess, listGrants, requireRead, requireWrite } from '..
 import { assertValidName, joinRelPath, parentOf, resolveSafePath } from './path-safety.js';
 import { inlineMimeOf, isTextFile, previewKindOf, type PreviewKind } from './mime.js';
 import { logFileAction, userActor } from '../../activity.js';
+import type { ThumbnailService } from '../thumbnails/thumbnails.service.js';
 
 /** Editing is meant for source and config files, not multi-megabyte logs. */
 const MAX_TEXT_BYTES = 2 * 1024 * 1024;
@@ -22,6 +23,8 @@ export interface DirEntry {
   size: number;
   modifiedAt: string;
   previewKind: PreviewKind;
+  /** True when GET /files/thumbnail can produce a small preview image for it. */
+  thumbnail: boolean;
 }
 
 export interface Listing {
@@ -52,7 +55,12 @@ export interface ExistingFile {
   modifiedAt: string;
 }
 
-async function statEntry(absolute: string, name: string, relPath: string): Promise<DirEntry | null> {
+async function statEntry(
+  absolute: string,
+  name: string,
+  relPath: string,
+  canThumbnail: (name: string) => boolean,
+): Promise<DirEntry | null> {
   try {
     const stats = await fs.stat(absolute);
     const isDirectory = stats.isDirectory();
@@ -63,6 +71,7 @@ async function statEntry(absolute: string, name: string, relPath: string): Promi
       size: isDirectory ? 0 : stats.size,
       modifiedAt: stats.mtime.toISOString(),
       previewKind: isDirectory ? 'none' : previewKindOf(name),
+      thumbnail: !isDirectory && canThumbnail(name),
     };
   } catch {
     // Vanished between readdir and stat, or a broken link: leave it out.
@@ -81,7 +90,10 @@ export class FilesService {
   constructor(
     private db: Db,
     private dataRoot: string,
+    private thumbnails: ThumbnailService,
   ) {}
+
+  private canThumbnail = (name: string) => this.thumbnails.supports(name);
 
   private absolute(relPath: string): string {
     return resolveSafePath(this.dataRoot, relPath);
@@ -93,7 +105,7 @@ export class FilesService {
       listGrants(this.db, user.id)
         .filter((grant) => grant.can_read === 1)
         .map((grant) =>
-          statEntry(this.absolute(grant.folder_path), basename(grant.folder_path), grant.folder_path),
+          statEntry(this.absolute(grant.folder_path), basename(grant.folder_path), grant.folder_path, this.canThumbnail),
         ),
     );
     return sortEntries(entries.filter((entry): entry is DirEntry => entry !== null));
@@ -115,7 +127,7 @@ export class FilesService {
     }
 
     const entries = await Promise.all(
-      names.map((name) => statEntry(resolveSafePath(absolute, name), name, joinRelPath(relPath, name))),
+      names.map((name) => statEntry(resolveSafePath(absolute, name), name, joinRelPath(relPath, name), this.canThumbnail)),
     );
 
     return {
@@ -190,6 +202,7 @@ export class FilesService {
               size: isDirectory ? 0 : stats.size,
               modifiedAt: stats.mtime.toISOString(),
               previewKind: isDirectory ? 'none' : previewKindOf(name),
+              thumbnail: !isDirectory && this.canThumbnail(name),
             },
           });
         }
@@ -219,7 +232,7 @@ export class FilesService {
     }
 
     logFileAction(userActor(user), 'created', 'folder', name, absolute);
-    return (await statEntry(absolute, name, relPath))!;
+    return (await statEntry(absolute, name, relPath, this.canThumbnail))!;
   }
 
   async rename(user: User, relPath: string, newName: string): Promise<DirEntry> {
@@ -241,8 +254,13 @@ export class FilesService {
       if (err instanceof Error && 'status' in err) throw err;
     }
 
+    // A thumbnail is keyed by its absolute path, so the old one is orphaned the moment the file moves.
+    const previousStats = await fs.stat(from).catch(() => null);
+
     await fs.rename(from, to);
-    const renamed = (await statEntry(to, newName, target))!;
+    if (previousStats && !previousStats.isDirectory()) void this.thumbnails.evict(from, previousStats);
+
+    const renamed = (await statEntry(to, newName, target, this.canThumbnail))!;
     logFileAction(userActor(user), 'renamed', renamed.type, `${basename(relPath)} to ${newName}`, to);
     return renamed;
   }
@@ -252,18 +270,24 @@ export class FilesService {
     requireWrite(this.db, user, relPath);
 
     const absolute = this.absolute(relPath);
-    const kind = (await fs.stat(absolute).catch(() => null))?.isDirectory() ? 'folder' : 'file';
+    const stats = await fs.stat(absolute).catch(() => null);
+    const kind = stats?.isDirectory() ? 'folder' : 'file';
     try {
       await fs.rm(absolute, { recursive: true, force: false });
     } catch (err) {
       if ((err as NodeJS.ErrnoException).code === 'ENOENT') throw notFound();
       throw err;
     }
+    if (stats && !stats.isDirectory()) void this.thumbnails.evict(absolute, stats);
+
     logFileAction(userActor(user), 'deleted', kind, basename(relPath), absolute);
   }
 
   /** Absolute path of a readable file, for streaming downloads. */
-  async resolveFile(user: User, relPath: string): Promise<{ absolute: string; name: string; size: number }> {
+  async resolveFile(
+    user: User,
+    relPath: string,
+  ): Promise<{ absolute: string; name: string; size: number; mtimeMs: number }> {
     if (relPath === '') throw notFound();
     requireRead(this.db, user, relPath);
 
@@ -273,7 +297,7 @@ export class FilesService {
     });
     if (stats.isDirectory()) throw notFound();
 
-    return { absolute, name: basename(relPath), size: stats.size };
+    return { absolute, name: basename(relPath), size: stats.size, mtimeMs: stats.mtimeMs };
   }
 
   /** Absolute path of a file that is safe to serve inline for preview. */

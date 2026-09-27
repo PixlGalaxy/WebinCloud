@@ -13,6 +13,7 @@ import { createLogsRoutes } from './modules/logs/logs.routes.js';
 import { createAvatarsRoutes, ensureAvatarsDir } from './modules/avatars/avatars.routes.js';
 import { createPermissionsRoutes } from './modules/permissions/permissions.routes.js';
 import { createFilesRoutes } from './modules/files/files.routes.js';
+import { ThumbnailService } from './modules/thumbnails/thumbnails.service.js';
 import { ArchivesService } from './modules/archives/archives.service.js';
 import { createArchivesRoutes } from './modules/archives/archives.routes.js';
 import { createBrandingRoutes, seedBranding } from './modules/branding/branding.routes.js';
@@ -38,6 +39,11 @@ export function createApp(db: Db, config: EnvConfig): express.Application {
     config.ARCHIVE_ABANDON_SECONDS * 1000,
   );
   void archives.sweep();
+
+  const thumbnails = ThumbnailService.fromConfig(config);
+  void thumbnails.detect();
+  void thumbnails.sweep();
+  setInterval(() => void thumbnails.sweep(), 24 * 60 * 60 * 1000).unref();
   // Frees compressions whose client closed the tab or lost connection. Checked
   // several times per window, so abandonment is never missed between ticks.
   const abandonCheckMs = Math.max(1000, Math.min(10_000, (config.ARCHIVE_ABANDON_SECONDS * 1000) / 3));
@@ -73,7 +79,7 @@ export function createApp(db: Db, config: EnvConfig): express.Application {
   ensureAvatarsDir(config);
   app.use('/api/avatars', createAvatarsRoutes(db, config, t));
   app.use('/api/permissions', createPermissionsRoutes(db, config, t));
-  app.use('/api/files', createFilesRoutes(db, config, t));
+  app.use('/api/files', createFilesRoutes(db, config, t, thumbnails));
 
   // Keeps the temp volume from growing without bound on a long-lived server.
   setInterval(() => void archives.sweep(), 15 * 60 * 1000).unref();

@@ -22,6 +22,10 @@ export interface EnvConfig {
   TEMP_ROOT: string;
   DB_PATH: string;
   AVATARS_DIR: string;
+  /** Cached thumbnails: disposable, they are regenerated on demand. */
+  THUMBNAILS_DIR: string;
+  /** ffmpeg executable used to make thumbnails. */
+  FFMPEG_PATH: string;
   LOCALES_DIR: string;
   /** Administrator-replaceable logo and icons, inside the app data volume. */
   BRANDING_DIR: string;
@@ -69,6 +73,8 @@ export function loadEnv(): EnvConfig {
     TEMP_ROOT,
     DB_PATH: env.DB_PATH || join(APPDATA_ROOT, 'webincloud.sqlite'),
     AVATARS_DIR: env.AVATARS_DIR || join(APPDATA_ROOT, 'avatars'),
+    THUMBNAILS_DIR: env.THUMBNAILS_DIR || join(TEMP_ROOT, 'thumbnails'),
+    FFMPEG_PATH: env.FFMPEG_PATH || 'ffmpeg',
     BRANDING_DIR: env.BRANDING_DIR || join(APPDATA_ROOT, 'branding'),
     DEFAULT_BRANDING_DIR: env.DEFAULT_BRANDING_DIR || join(repoRoot, 'branding'),
     // Shared with the frontend so both render the same strings.

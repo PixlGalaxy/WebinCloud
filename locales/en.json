@@ -69,6 +69,8 @@
   "files.name": "Name",
   "files.size": "Size",
   "files.modified": "Modified",
+  "files.thumbnailsShow": "Show thumbnails",
+  "files.thumbnailsHide": "Hide thumbnails",
   "files.uploadFiles": "Upload files",
   "files.uploadFolder": "Upload folder",
   "upload.addFiles": "Add files…",

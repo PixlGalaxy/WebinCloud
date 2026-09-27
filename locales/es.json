@@ -69,6 +69,8 @@
   "files.name": "Nombre",
   "files.size": "Tamaño",
   "files.modified": "Modificado",
+  "files.thumbnailsShow": "Mostrar miniaturas",
+  "files.thumbnailsHide": "Ocultar miniaturas",
   "files.uploadFiles": "Subir archivos",
   "files.uploadFolder": "Subir carpeta",
   "upload.addFiles": "Agregar archivos…",

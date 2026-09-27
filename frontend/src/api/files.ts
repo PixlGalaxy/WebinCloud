@@ -9,6 +9,8 @@ export interface DirEntry {
   size: number;
   modifiedAt: string;
   previewKind: PreviewKind;
+  /** The server can make a small preview image of it, whatever its format. */
+  thumbnail: boolean;
 }
 
 export interface TextContent {
@@ -55,6 +57,10 @@ export const filesApi = {
   remove: (path: string) => api.del<void>(`/files?path=${encode(path)}`),
 
   downloadUrl: (path: string) => `/backend/api/files/download?path=${encode(path)}`,
+
+  /** The modified time is part of the URL, so a cached thumbnail is never stale. */
+  thumbnailUrl: (path: string, modifiedAt: string, size: 'sm' | 'lg') =>
+    `/backend/api/files/thumbnail?path=${encode(path)}&size=${size}&v=${encodeURIComponent(modifiedAt)}`,
 
   /** Same-origin URL that renders inline (images, video, audio, PDF). */
   rawUrl: (path: string) => `/backend/api/files/raw?path=${encode(path)}`,

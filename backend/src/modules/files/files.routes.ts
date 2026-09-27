@@ -15,11 +15,17 @@ import { logFileAction, userActor } from '../../activity.js';
 import { FilesService, type ConflictMode } from './files.service.js';
 import { normalizeRelPath } from './path-safety.js';
 import { SERVE_OPTIONS } from '../../serve-options.js';
+import type { ThumbnailService } from '../thumbnails/thumbnails.service.js';
+import type { ThumbnailSize } from '../thumbnails/providers.js';
 
 const CONFLICT_MODES: ConflictMode[] = ['fail', 'overwrite', 'keepBoth'];
 
 function conflictMode(value: unknown): ConflictMode {
   return CONFLICT_MODES.includes(value as ConflictMode) ? (value as ConflictMode) : 'fail';
+}
+
+function thumbnailSize(value: unknown): ThumbnailSize {
+  return value === 'lg' ? 'lg' : 'sm';
 }
 
 function queryPath(value: unknown): string {
@@ -28,9 +34,14 @@ function queryPath(value: unknown): string {
   return normalizeRelPath(value);
 }
 
-export function createFilesRoutes(db: Db, config: EnvConfig, t: Translate): Router {
+export function createFilesRoutes(
+  db: Db,
+  config: EnvConfig,
+  t: Translate,
+  thumbnails: ThumbnailService,
+): Router {
   const router = Router();
-  const files = new FilesService(db, config.DATA_ROOT);
+  const files = new FilesService(db, config.DATA_ROOT, thumbnails);
   const { requireAuth } = createAuthGuards(t);
 
   router.use(requireAuth);
@@ -87,6 +98,24 @@ export function createFilesRoutes(db: Db, config: EnvConfig, t: Translate): Rout
       res.setHeader('X-Content-Type-Options', 'nosniff');
       res.setHeader('Content-Security-Policy', "sandbox; default-src 'none'; object-src 'self'");
       res.sendFile(absolute, SERVE_OPTIONS);
+    }),
+  );
+
+  router.get(
+    '/thumbnail',
+    asyncHandler(async (req: AuthenticatedRequest, res) => {
+      const { absolute, name, size: fileSize, mtimeMs } = await files.resolveFile(
+        req.user!,
+        queryPath(req.query.path),
+      );
+      const thumbnail = await thumbnails.get(absolute, name, { mtimeMs, size: fileSize }, thumbnailSize(req.query.size));
+      if (!thumbnail) throw notFound();
+
+      res.setHeader('Content-Type', 'image/webp');
+      res.setHeader('X-Content-Type-Options', 'nosniff');
+      // The URL carries the file's modified time, so a cached copy can never be stale.
+      res.setHeader('Cache-Control', 'private, max-age=31536000, immutable');
+      res.sendFile(thumbnail, SERVE_OPTIONS);
     }),
   );
 
