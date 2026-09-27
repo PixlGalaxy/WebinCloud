@@ -199,7 +199,7 @@ const PreviewPanel = ({ name, previewKind, rawUrl, downloadUrl, sizeBytes, edito
             </div>
           ) : previewKind === 'video' ? (
             <div className="flex h-full items-center justify-center p-6">
-              <video src={raw} controls className="max-h-full max-w-full" />
+              <video src={raw} controls autoPlay className="max-h-full max-w-full" />
             </div>
           ) : previewKind === 'audio' ? (
             <div className="flex h-full items-center justify-center p-6">
