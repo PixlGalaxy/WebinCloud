@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import type { LucideIcon } from 'lucide-react';
 import { filesApi, type DirEntry } from '../../api/files';
+import FileIcon from './FileIcon';
 
 /** Rows this far below the fold start loading, so scrolling rarely shows an empty tile. */
 const LOAD_MARGIN = '300px';
@@ -62,13 +62,12 @@ function HoverPreview({ entry, anchor }: { entry: DirEntry; anchor: DOMRect }) {
 
 interface Props {
   entry: DirEntry;
-  Icon: LucideIcon;
   /** Classes for the icon shown when there is no thumbnail. */
   iconClass: string;
 }
 
 /** A square tile: the file's own thumbnail when it has one, its icon otherwise. */
-const EntryThumbnail = ({ entry, Icon, iconClass }: Props) => {
+const EntryThumbnail = ({ entry, iconClass }: Props) => {
   const tile = useRef<HTMLSpanElement>(null);
   const near = useNearViewport(tile);
   const [ready, setReady] = useState(false);
@@ -95,7 +94,7 @@ const EntryThumbnail = ({ entry, Icon, iconClass }: Props) => {
       }}
       className="relative flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-slate-100 dark:bg-slate-800"
     >
-      <Icon size={26} className={iconClass} />
+      <FileIcon type={entry.type} name={entry.name} size={34} className={iconClass} showLogo />
 
       {showImage && near && (
         <img

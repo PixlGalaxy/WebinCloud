@@ -7,6 +7,15 @@ import { useTheme } from '../../context/ThemeContext';
 import { btn, errorBox } from '../../components/ui/styles';
 
 const CodeEditor = lazy(() => import('./CodeEditor'));
+const SpreadsheetViewer = lazy(() => import('./office/SpreadsheetViewer'));
+const DocumentViewer = lazy(() => import('./office/DocumentViewer'));
+
+/**
+ * Office formats are parsed in the browser, unlike images or video which the
+ * browser streams and decodes natively, so a huge file is worth stopping
+ * before it locks up the tab. Unknown size (sizeBytes undefined) is let through.
+ */
+const MAX_OFFICE_PREVIEW_BYTES = 20 * 1024 * 1024;
 
 interface Props {
   name: string;
@@ -14,6 +23,8 @@ interface Props {
   /** Same-origin URL that renders inline. */
   rawUrl: string;
   downloadUrl: string;
+  /** Used only to gate the office viewers against very large files. */
+  sizeBytes?: number;
   /** Omitted for read-only viewers such as public share links. */
   editor?: {
     load: () => Promise<{ content: string; canWrite: boolean }>;
@@ -23,7 +34,7 @@ interface Props {
   onSaved?: () => void;
 }
 
-const PreviewPanel = ({ name, previewKind, rawUrl, downloadUrl, editor, onClose, onSaved }: Props) => {
+const PreviewPanel = ({ name, previewKind, rawUrl, downloadUrl, sizeBytes, editor, onClose, onSaved }: Props) => {
   const { t } = useI18n();
   const { theme } = useTheme();
 
@@ -102,6 +113,12 @@ const PreviewPanel = ({ name, previewKind, rawUrl, downloadUrl, editor, onClose,
   });
 
   const raw = rawUrl;
+  const isOffice = previewKind === 'spreadsheet' || previewKind === 'document';
+  // A 0-byte file isn't a valid package of either kind: xlsx silently shows an
+  // empty sheet, but docx-preview's zip reader throws on it. Catch it up front,
+  // the same way, before either viewer ever fetches it.
+  const emptyOffice = isOffice && sizeBytes === 0;
+  const tooLargeForOffice = isOffice && sizeBytes !== undefined && sizeBytes > MAX_OFFICE_PREVIEW_BYTES;
 
   return (
     <div className="fixed inset-0 z-50 flex flex-col bg-slate-900/60 p-4 sm:p-8" onClick={requestClose}>
@@ -161,6 +178,39 @@ const PreviewPanel = ({ name, previewKind, rawUrl, downloadUrl, editor, onClose,
             </div>
           ) : previewKind === 'pdf' ? (
             <iframe src={raw} title={name} className="h-full w-full border-0" />
+          ) : emptyOffice ? (
+            <div className="flex h-full flex-col items-center justify-center gap-3 text-slate-500 dark:text-slate-400">
+              <FileQuestion size={48} className="text-slate-300 dark:text-slate-600" />
+              <p>{t('files.previewEmpty')}</p>
+            </div>
+          ) : tooLargeForOffice ? (
+            <div className="flex h-full flex-col items-center justify-center gap-3 text-slate-500 dark:text-slate-400">
+              <FileQuestion size={48} className="text-slate-300 dark:text-slate-600" />
+              <p>{t('files.tooLargeToPreview')}</p>
+              <a href={downloadUrl} className={btn.primary}>
+                <Download size={16} /> {t('files.download')}
+              </a>
+            </div>
+          ) : previewKind === 'spreadsheet' ? (
+            <Suspense
+              fallback={
+                <div className="flex h-full items-center justify-center">
+                  <Loader2 className="animate-spin text-indigo-500" size={32} />
+                </div>
+              }
+            >
+              <SpreadsheetViewer url={raw} />
+            </Suspense>
+          ) : previewKind === 'document' ? (
+            <Suspense
+              fallback={
+                <div className="flex h-full items-center justify-center">
+                  <Loader2 className="animate-spin text-indigo-500" size={32} />
+                </div>
+              }
+            >
+              <DocumentViewer url={raw} />
+            </Suspense>
           ) : previewKind === 'text' && text !== null ? (
             <Suspense
               fallback={

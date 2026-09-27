@@ -71,18 +71,31 @@ export function createPublicShareRoutes(
     return share.target_type === 'file' ? join(root, share.name) : resolveSafePath(root, inner);
   };
 
-  router.get('/', load, (req: any, res) => {
-    const share = (req as PublicRequest).share!;
-    res.json({
-      name: share.name,
-      type: share.target_type,
-      allowDownload: share.allow_download === 1,
-      allowUpload: share.allow_upload === 1,
-      requiresPassword: share.password_hash !== null,
-      unlocked: shares.isUnlocked(share, req.cookies?.[SHARE_COOKIE_PREFIX + share.id]),
-      previewKind: share.target_type === 'file' ? previewKindOf(share.name) : 'none',
-    });
-  });
+  router.get(
+    '/',
+    load,
+    asyncHandler(async (req: any, res) => {
+      const share = (req as PublicRequest).share!;
+      const size =
+        share.target_type === 'file'
+          ? await fs
+              .stat(absoluteInside(share, ''))
+              .then((stats) => stats.size)
+              .catch(() => undefined)
+          : undefined;
+
+      res.json({
+        name: share.name,
+        type: share.target_type,
+        allowDownload: share.allow_download === 1,
+        allowUpload: share.allow_upload === 1,
+        requiresPassword: share.password_hash !== null,
+        unlocked: shares.isUnlocked(share, req.cookies?.[SHARE_COOKIE_PREFIX + share.id]),
+        previewKind: share.target_type === 'file' ? previewKindOf(share.name) : 'none',
+        size,
+      });
+    }),
+  );
 
   router.post(
     '/unlock',

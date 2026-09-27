@@ -1,5 +1,4 @@
 import { useCallback, useEffect, useState, type DragEvent } from 'react';
-import type { LucideIcon } from 'lucide-react';
 import { useNavigate, useParams } from 'react-router-dom';
 import {
   Download,
@@ -34,11 +33,12 @@ import { useUploads, useUploadsFinished } from '../../context/UploadContext';
 import { btn, card, errorBox, input, label } from '../../components/ui/styles';
 import Breadcrumbs from './Breadcrumbs';
 import EntryThumbnail from './EntryThumbnail';
+import FileIcon from './FileIcon';
 import PreviewPanel from './PreviewPanel';
 import ShareCreateModal from './ShareCreateModal';
 import DotfileNotice from '../../components/DotfileNotice';
 import { useFolderWatch } from './useFolderWatch';
-import { formatSize, iconFor, toFilesUrl } from './paths';
+import { formatSize, toFilesUrl } from './paths';
 
 const THUMBNAILS_KEY = 'webincloud.thumbnails';
 
@@ -104,11 +104,11 @@ const FileExplorerPage = () => {
   };
 
   /** Small icon normally; a larger tile (thumbnail or icon) when previews are on. */
-  const entryIcon = (entry: DirEntry, Icon: LucideIcon, iconClass: string) =>
+  const entryIcon = (entry: DirEntry, iconClass: string) =>
     thumbnails ? (
-      <EntryThumbnail entry={entry} Icon={Icon} iconClass={iconClass} />
+      <EntryThumbnail entry={entry} iconClass={iconClass} />
     ) : (
-      <Icon size={18} className={iconClass} />
+      <FileIcon type={entry.type} name={entry.name} size={18} className={iconClass} />
     );
 
   const uploads = useUploads();
@@ -393,7 +393,6 @@ const FileExplorerPage = () => {
             </thead>
             <tbody>
               {rows.map((entry) => {
-                const Icon = iconFor(entry.type, entry.name);
                 const foundIn = parentByPath.get(entry.path);
                 return (
                   <tr
@@ -420,12 +419,12 @@ const FileExplorerPage = () => {
                           onClick={() => navigate(toFilesUrl(entry.path))}
                           className="flex items-center gap-2.5 font-medium text-slate-900 hover:text-indigo-600 dark:text-slate-100 dark:hover:text-indigo-400"
                         >
-                          {entryIcon(entry, Icon, "text-indigo-500")}
+                          {entryIcon(entry, "text-indigo-500")}
                           {entry.name}
                         </button>
                       ) : entry.previewKind === 'none' ? (
                         <span className="flex items-center gap-2.5 text-slate-800 dark:text-slate-200">
-                          {entryIcon(entry, Icon, "text-slate-400 dark:text-slate-500")}
+                          {entryIcon(entry, "text-slate-400 dark:text-slate-500")}
                           {entry.name}
                         </span>
                       ) : (
@@ -433,7 +432,7 @@ const FileExplorerPage = () => {
                           onClick={() => setPreview(entry)}
                           className="flex items-center gap-2.5 text-slate-800 hover:text-indigo-600 dark:text-slate-200 dark:hover:text-indigo-400"
                         >
-                          {entryIcon(entry, Icon, "text-slate-400 dark:text-slate-500")}
+                          {entryIcon(entry, "text-slate-400 dark:text-slate-500")}
                           {entry.name}
                         </button>
                       )}
@@ -525,6 +524,7 @@ const FileExplorerPage = () => {
           previewKind={preview.previewKind}
           rawUrl={filesApi.rawUrl(preview.path)}
           downloadUrl={filesApi.downloadUrl(preview.path)}
+          sizeBytes={preview.size}
           editor={{
             load: () => filesApi.readText(preview.path),
             save: (content) => filesApi.writeText(preview.path, content),

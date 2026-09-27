@@ -65,6 +65,8 @@ export interface PublicShareInfo {
   requiresPassword: boolean;
   unlocked: boolean;
   previewKind: PreviewKind;
+  /** Only set for a file share; used to gate the office viewers on very large files. */
+  size?: number;
 }
 
 export interface PublicEntry {

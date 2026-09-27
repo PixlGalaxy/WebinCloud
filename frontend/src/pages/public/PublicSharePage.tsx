@@ -22,11 +22,20 @@ import { useArchives } from '../../context/ArchiveContext';
 import Navbar from '../../components/Navbar';
 import { useUploads, useUploadsFinished } from '../../context/UploadContext';
 import { btn, card, errorBox, input } from '../../components/ui/styles';
-import { formatSize, iconFor } from '../files/paths';
+import { formatSize } from '../files/paths';
+import FileIcon from '../files/FileIcon';
 import PreviewPanel from '../files/PreviewPanel';
 import DotfileNotice from '../../components/DotfileNotice';
 
 const CodeEditor = lazy(() => import('../files/CodeEditor'));
+const SpreadsheetViewer = lazy(() => import('../files/office/SpreadsheetViewer'));
+const DocumentViewer = lazy(() => import('../files/office/DocumentViewer'));
+
+/** Office formats are parsed in the browser, so a huge file is worth stopping before it locks up the tab. */
+const MAX_OFFICE_PREVIEW_BYTES = 20 * 1024 * 1024;
+
+/** Whether navigating straight to the raw URL would show something, instead of downloading it. */
+const opensInBrowser = (kind: string) => !['none', 'spreadsheet', 'document'].includes(kind);
 
 const PublicSharePage = () => {
   const params = useParams();
@@ -208,7 +217,7 @@ const PublicSharePage = () => {
         <div className="min-w-0">
           <h1 className="text-xl font-semibold text-slate-900 dark:text-slate-100">{info.name}</h1>
 
-          {info.type === 'file' && info.allowDownload && info.previewKind !== 'none' && (
+          {info.type === 'file' && info.allowDownload && opensInBrowser(info.previewKind) && (
             <a
               href={publicShareApi.rawUrl(segment, shareName)}
               target="_blank"
@@ -246,7 +255,7 @@ const PublicSharePage = () => {
         <div className="flex items-center gap-2">
           {info.type === 'file' && info.allowDownload && (
             <>
-              {info.previewKind !== 'none' && (
+              {opensInBrowser(info.previewKind) && (
                 <a
                   href={publicShareApi.rawUrl(segment, shareName)}
                   target="_blank"
@@ -348,6 +357,42 @@ const PublicSharePage = () => {
             />
           ) : info.previewKind === 'audio' ? (
             <audio src={publicShareApi.rawUrl(segment, shareName)} controls className="w-full" />
+          ) : info.previewKind === 'spreadsheet' ? (
+            info.size === 0 ? (
+              <p className="text-center text-slate-500 dark:text-slate-400">{t('files.previewEmpty')}</p>
+            ) : info.size !== undefined && info.size > MAX_OFFICE_PREVIEW_BYTES ? (
+              <p className="text-center text-slate-500 dark:text-slate-400">{t('files.tooLargeToPreview')}</p>
+            ) : (
+              <Suspense
+                fallback={
+                  <div className="flex justify-center p-12">
+                    <Loader2 className="animate-spin text-indigo-500" size={28} />
+                  </div>
+                }
+              >
+                <div className="h-[75vh]">
+                  <SpreadsheetViewer url={publicShareApi.rawUrl(segment, shareName)} />
+                </div>
+              </Suspense>
+            )
+          ) : info.previewKind === 'document' ? (
+            info.size === 0 ? (
+              <p className="text-center text-slate-500 dark:text-slate-400">{t('files.previewEmpty')}</p>
+            ) : info.size !== undefined && info.size > MAX_OFFICE_PREVIEW_BYTES ? (
+              <p className="text-center text-slate-500 dark:text-slate-400">{t('files.tooLargeToPreview')}</p>
+            ) : (
+              <Suspense
+                fallback={
+                  <div className="flex justify-center p-12">
+                    <Loader2 className="animate-spin text-indigo-500" size={28} />
+                  </div>
+                }
+              >
+                <div className="h-[75vh]">
+                  <DocumentViewer url={publicShareApi.rawUrl(segment, shareName)} />
+                </div>
+              </Suspense>
+            )
           ) : info.previewKind === 'text' ? (
             textContent === null ? (
               <div className="flex justify-center p-12">
@@ -402,7 +447,6 @@ const PublicSharePage = () => {
               </thead>
               <tbody>
                 {entries.map((entry) => {
-                  const Icon = iconFor(entry.type, entry.name);
                   return (
                     <tr
                       key={entry.path}
@@ -440,7 +484,7 @@ const PublicSharePage = () => {
                           </button>
                         ) : entry.previewKind === 'none' ? (
                           <span className="flex items-center gap-2.5 text-slate-800 dark:text-slate-200">
-                            <Icon size={18} className="text-slate-400 dark:text-slate-500" />
+                            <FileIcon type={entry.type} name={entry.name} size={18} className="text-slate-400 dark:text-slate-500" />
                             {entry.name}
                           </span>
                         ) : (
@@ -448,7 +492,7 @@ const PublicSharePage = () => {
                             onClick={() => setPreview(entry)}
                             className="flex items-center gap-2.5 text-slate-800 hover:text-indigo-600 dark:text-slate-200 dark:hover:text-indigo-400"
                           >
-                            <Icon size={18} className="text-slate-400 dark:text-slate-500" />
+                            <FileIcon type={entry.type} name={entry.name} size={18} className="text-slate-400 dark:text-slate-500" />
                             {entry.name}
                           </button>
                         )}
@@ -519,6 +563,7 @@ const PublicSharePage = () => {
           previewKind={preview.previewKind}
           rawUrl={publicShareApi.rawUrl(segment, shareName, preview.path)}
           downloadUrl={publicShareApi.downloadUrl(segment, shareName, preview.path)}
+          sizeBytes={preview.size}
           onClose={() => setPreview(null)}
         />
       )}

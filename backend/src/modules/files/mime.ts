@@ -1,6 +1,6 @@
 import { extname } from 'path';
 
-export type PreviewKind = 'image' | 'video' | 'audio' | 'pdf' | 'text' | 'none';
+export type PreviewKind = 'image' | 'video' | 'audio' | 'pdf' | 'text' | 'spreadsheet' | 'document' | 'none';
 
 /** Types safe to serve inline; anything else is downloaded as an attachment. */
 const INLINE_MIME: Record<string, string> = {
@@ -21,7 +21,22 @@ const INLINE_MIME: Record<string, string> = {
   '.flac': 'audio/flac',
   '.m4a': 'audio/mp4',
   '.pdf': 'application/pdf',
+  '.xlsx': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+  '.xlsm': 'application/vnd.ms-excel.sheet.macroEnabled.12',
+  '.xltx': 'application/vnd.openxmlformats-officedocument.spreadsheetml.template',
+  '.xlsb': 'application/vnd.ms-excel.sheet.binary.macroEnabled.12',
+  '.xls': 'application/vnd.ms-excel',
+  '.ods': 'application/vnd.oasis.opendocument.spreadsheet',
+  '.docx': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  '.docm': 'application/vnd.ms-word.document.macroEnabled.12',
+  '.dotx': 'application/vnd.openxmlformats-officedocument.wordprocessingml.template',
 };
+
+// Legacy .doc (binary Word), .ppt/.pptx and Access databases have no solid
+// pure-JS renderer yet, so they stay downloadable only. Add an entry here
+// once one covers them — everything else already routes through this map.
+const SPREADSHEET_EXTENSIONS = new Set(['.xlsx', '.xlsm', '.xltx', '.xlsb', '.xls', '.ods']);
+const DOCUMENT_EXTENSIONS = new Set(['.docx', '.docm', '.dotx']);
 
 const TEXT_EXTENSIONS = new Set([
   '.txt', '.md', '.markdown', '.log', '.csv', '.tsv', '.json', '.yaml', '.yml', '.toml', '.ini',
@@ -58,6 +73,8 @@ export function previewKindOf(name: string): PreviewKind {
   if (mime?.startsWith('video/')) return 'video';
   if (mime?.startsWith('audio/')) return 'audio';
   if (mime === 'application/pdf') return 'pdf';
+  if (SPREADSHEET_EXTENSIONS.has(ext)) return 'spreadsheet';
+  if (DOCUMENT_EXTENSIONS.has(ext)) return 'document';
   if (isTextExtension(ext)) return 'text';
   return 'none';
 }
