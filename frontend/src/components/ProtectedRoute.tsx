@@ -20,7 +20,7 @@ export function ProtectedRoute() {
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-950">
       <Navbar />
-      <main className="max-w-7xl mx-auto p-6">
+      <main className="w-full p-6">
         <Outlet />
       </main>
     </div>

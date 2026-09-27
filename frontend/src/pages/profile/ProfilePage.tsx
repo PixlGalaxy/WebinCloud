@@ -1,19 +1,49 @@
-import { useEffect, useState, type FormEvent } from 'react';
-import { Check, Link2, Loader2, Pencil, Plus, Trash2, X } from 'lucide-react';
+import { useEffect, useRef, useState, type FormEvent } from 'react';
+import { Check, Link2, Loader2, Pencil, Plus, Trash2, Upload, X } from 'lucide-react';
 import { sharesApi, type PathName } from '../../api/shares';
+import { avatarsApi } from '../../api/users';
 import { api, ApiError } from '../../api/client';
 import { useAuth } from '../../context/AuthContext';
 import { useI18n } from '../../i18n/I18nContext';
 import { btn, card, errorBox, input, label } from '../../components/ui/styles';
+import Avatar from '../../components/ui/Avatar';
 
 const ProfilePage = () => {
   const { t } = useI18n();
-  const { user, logout } = useAuth();
+  const { user, logout, updateUser } = useAuth();
 
   const [pathNames, setPathNames] = useState<PathName[] | null>(null);
   const [newName, setNewName] = useState('');
   const [editing, setEditing] = useState<{ id: string; value: string } | null>(null);
   const [pathError, setPathError] = useState('');
+
+  const [avatarError, setAvatarError] = useState('');
+  const [savingAvatar, setSavingAvatar] = useState(false);
+  const avatarInput = useRef<HTMLInputElement>(null);
+
+  const changeAvatar = async (file: File) => {
+    setAvatarError('');
+    setSavingAvatar(true);
+    try {
+      updateUser(await avatarsApi.upload(file));
+    } catch (err) {
+      setAvatarError(err instanceof ApiError ? err.message : t('files.actionFailed'));
+    } finally {
+      setSavingAvatar(false);
+    }
+  };
+
+  const removeAvatar = async () => {
+    setAvatarError('');
+    setSavingAvatar(true);
+    try {
+      updateUser(await avatarsApi.remove());
+    } catch (err) {
+      setAvatarError(err instanceof ApiError ? err.message : t('files.actionFailed'));
+    } finally {
+      setSavingAvatar(false);
+    }
+  };
 
   const [current, setCurrent] = useState('');
   const [next, setNext] = useState('');
@@ -59,7 +89,50 @@ const ProfilePage = () => {
 
       <section className={`${card} p-6`}>
         <h2 className="mb-1 font-semibold text-slate-900 dark:text-slate-100">{t('account.details')}</h2>
-        <dl className="mt-4 grid grid-cols-1 gap-3 text-sm sm:grid-cols-2">
+
+        {avatarError && <div className={`${errorBox} mt-4`}>{avatarError}</div>}
+
+        <div className="mt-4 flex items-center gap-4">
+          <Avatar user={user} size={64} />
+          <div>
+            <p className="text-xs text-slate-500 dark:text-slate-400">{t('account.avatarHint')}</p>
+            <div className="mt-2 flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => avatarInput.current?.click()}
+                disabled={savingAvatar}
+                className={btn.secondary}
+              >
+                {savingAvatar ? <Loader2 className="animate-spin" size={16} /> : <Upload size={16} />}
+                {t('account.changeAvatar')}
+              </button>
+              {user?.avatar_path && (
+                <button
+                  type="button"
+                  onClick={() => void removeAvatar()}
+                  disabled={savingAvatar}
+                  className={btn.iconDanger}
+                  title={t('account.removeAvatar')}
+                >
+                  <Trash2 size={16} />
+                </button>
+              )}
+              <input
+                ref={avatarInput}
+                type="file"
+                accept="image/png,image/jpeg,image/webp,image/gif"
+                hidden
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (file) void changeAvatar(file);
+                  e.target.value = '';
+                }}
+              />
+            </div>
+          </div>
+        </div>
+
+        <dl className="mt-6 grid grid-cols-1 gap-3 text-sm sm:grid-cols-2">
           <div>
             <dt className="text-slate-500 dark:text-slate-400">{t('users.username')}</dt>
             <dd className="font-medium text-slate-900 dark:text-slate-100">{user?.username}</dd>

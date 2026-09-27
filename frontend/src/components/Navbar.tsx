@@ -18,6 +18,7 @@ import { useAppConfig } from '../context/AppConfigContext';
 import { useI18n } from '../i18n/I18nContext';
 import type { TranslationKey } from '../i18n/translations';
 import Modal from './ui/Modal';
+import Avatar from './ui/Avatar';
 import { btn } from './ui/styles';
 
 const navLinkClass = ({ isActive }: { isActive: boolean }) =>
@@ -62,7 +63,7 @@ const Navbar = () => {
 
   return (
     <nav className="bg-white border-b border-slate-200 dark:bg-slate-900 dark:border-slate-800">
-      <div className="max-w-7xl mx-auto px-6 h-24 flex items-center justify-between gap-4">
+      <div className="w-full px-6 h-24 flex items-center justify-between gap-4">
         {user ? (
           <Link
             to="/files"
@@ -115,6 +116,16 @@ const Navbar = () => {
               <Moon size={21} className="text-indigo-500" />
             )}
           </button>
+
+          {user && (
+            <Link
+              to="/profile"
+              title={t('nav.account')}
+              className="ml-1 shrink-0 rounded-full focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 dark:focus:ring-offset-slate-900"
+            >
+              <Avatar user={user} size={36} />
+            </Link>
+          )}
         </div>
       </div>
 

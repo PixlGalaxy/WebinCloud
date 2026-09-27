@@ -9,6 +9,7 @@ import { createSessionMiddleware } from './modules/auth/session.middleware.js';
 import { createAuthRoutes } from './modules/auth/auth.routes.js';
 import { hashPassword, verifyPassword } from './modules/auth/password.js';
 import { createUsersRoutes } from './modules/users/users.routes.js';
+import { createAvatarsRoutes, ensureAvatarsDir } from './modules/avatars/avatars.routes.js';
 import { createPermissionsRoutes } from './modules/permissions/permissions.routes.js';
 import { createFilesRoutes } from './modules/files/files.routes.js';
 import { ArchivesService } from './modules/archives/archives.service.js';
@@ -67,6 +68,8 @@ export function createApp(db: Db, config: EnvConfig): express.Application {
 
   app.use('/api/auth', createAuthRoutes(db, config, t));
   app.use('/api/users', createUsersRoutes(db, t));
+  ensureAvatarsDir(config);
+  app.use('/api/avatars', createAvatarsRoutes(db, config, t));
   app.use('/api/permissions', createPermissionsRoutes(db, config, t));
   app.use('/api/files', createFilesRoutes(db, config, t));
 

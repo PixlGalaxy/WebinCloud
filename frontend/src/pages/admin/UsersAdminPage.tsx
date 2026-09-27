@@ -6,6 +6,7 @@ import { ApiError } from '../../api/client';
 import { useAuth } from '../../context/AuthContext';
 import { useI18n } from '../../i18n/I18nContext';
 import Modal from '../../components/ui/Modal';
+import Avatar from '../../components/ui/Avatar';
 import { btn, card, errorBox } from '../../components/ui/styles';
 import UserFormModal from './UserFormModal';
 
@@ -74,17 +75,22 @@ const UsersAdminPage = () => {
                   className="border-b border-slate-100 last:border-0 hover:bg-slate-50 dark:border-slate-800 dark:hover:bg-slate-800/50"
                 >
                   <td className="px-5 py-3">
-                    <div className="font-medium text-slate-900 dark:text-slate-100">
-                      {user.display_name ?? user.username}
+                    <div className="flex items-center gap-3">
+                      <Avatar user={user} size={36} />
+                      <div>
+                        <div className="font-medium text-slate-900 dark:text-slate-100">
+                          {user.display_name ?? user.username}
+                        </div>
+                        {user.display_name && (
+                          <div className="text-xs text-slate-500 dark:text-slate-400">{user.username}</div>
+                        )}
+                        {user.is_active === 0 && (
+                          <span className="mt-1 inline-block rounded bg-slate-200 px-1.5 py-0.5 text-xs text-slate-600 dark:bg-slate-700 dark:text-slate-300">
+                            {t('users.inactive')}
+                          </span>
+                        )}
+                      </div>
                     </div>
-                    {user.display_name && (
-                      <div className="text-xs text-slate-500 dark:text-slate-400">{user.username}</div>
-                    )}
-                    {user.is_active === 0 && (
-                      <span className="mt-1 inline-block rounded bg-slate-200 px-1.5 py-0.5 text-xs text-slate-600 dark:bg-slate-700 dark:text-slate-300">
-                        {t('users.inactive')}
-                      </span>
-                    )}
                   </td>
                   <td className="hidden px-5 py-3 text-slate-600 dark:text-slate-300 sm:table-cell">{user.email}</td>
                   <td className="px-5 py-3">
