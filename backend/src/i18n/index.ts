@@ -16,6 +16,7 @@ const BACKEND_KEYS = [
   'auth.currentPasswordIncorrect',
   'error.internal',
   'error.notFound',
+  'error.tooManyRequests',
   'files.invalidPath',
   'files.invalidName',
   'files.alreadyExists',

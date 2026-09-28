@@ -6,13 +6,33 @@ import type { AuthenticatedRequest } from './session.middleware.js';
 import { createAuthGuards } from './session.middleware.js';
 import { AuthService, toPublicUser } from './auth.service.js';
 import { logger } from '../../logger.js';
+import { createRateLimiter } from '../../middleware/rate-limit.js';
 
 export function createAuthRoutes(db: Db, config: EnvConfig, t: Translate): Router {
   const router = Router();
   const authService = new AuthService(db, config.SESSION_TTL_HOURS);
   const { requireAuth } = createAuthGuards(t);
 
-  router.post('/login', async (req: AuthenticatedRequest, res) => {
+  const loginWindowMs = config.LOGIN_RATE_LIMIT_WINDOW_MINUTES * 60 * 1000;
+  // Both must pass: caps one IP hammering many accounts, and a distributed
+  // attack (many IPs) hammering a single account.
+  const loginIpLimiter = createRateLimiter({
+    windowMs: loginWindowMs,
+    max: config.LOGIN_RATE_LIMIT_MAX,
+    keyFn: (req) => `ip:${req.ip}`,
+    describe: (req) => `login attempts from ${req.ip}`,
+  });
+  const loginAccountLimiter = createRateLimiter({
+    windowMs: loginWindowMs,
+    max: config.LOGIN_RATE_LIMIT_MAX,
+    keyFn: (req) => {
+      const value = (req.body as { usernameOrEmail?: unknown })?.usernameOrEmail;
+      return typeof value === 'string' && value.trim() ? `account:${value.trim().toLowerCase()}` : null;
+    },
+    describe: (req) => `login attempts against "${(req.body as { usernameOrEmail?: string }).usernameOrEmail}"`,
+  });
+
+  router.post('/login', loginIpLimiter, loginAccountLimiter, async (req: AuthenticatedRequest, res) => {
     const { usernameOrEmail, password } = req.body as { usernameOrEmail?: string; password?: string };
     if (!usernameOrEmail || !password) {
       return res.status(400).json({ error: t('auth.credentialsRequired') });

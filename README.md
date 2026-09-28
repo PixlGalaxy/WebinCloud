@@ -119,6 +119,10 @@ docker cp my-logo.png webincloud:/appdata/branding/logo.png
 | `ADMIN_PASSWORD` | — | Administrator created on first run only |
 | `SESSION_TTL_HOURS` | `24` | Session lifetime |
 | `COOKIE_SECURE` | `false` | Set to `true` only when serving over HTTPS, otherwise the session cookie is never returned |
+| `LOGIN_RATE_LIMIT_MAX` | `10` | Max login attempts per IP and per account within the window below, before a 429 |
+| `LOGIN_RATE_LIMIT_WINDOW_MINUTES` | `15` | Window for the login rate limit |
+| `SHARE_UNLOCK_RATE_LIMIT_MAX` | `10` | Max password attempts per IP and per share link within the window below, before a 429 |
+| `SHARE_UNLOCK_RATE_LIMIT_WINDOW_MINUTES` | `15` | Window for the share-unlock rate limit |
 
 ### Storage
 

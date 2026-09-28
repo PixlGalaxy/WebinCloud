@@ -6,6 +6,7 @@ import busboy from 'busboy';
 import type { EnvConfig } from '../../config/env.js';
 import type { Share } from '../../types/index.js';
 import { asyncHandler } from '../../middleware/async-handler.js';
+import { createRateLimiter } from '../../middleware/rate-limit.js';
 import { badRequest, forbidden, notFound } from '../../errors.js';
 import { logger } from '../../logger.js';
 import { logFileAction, PUBLIC_ACTOR } from '../../activity.js';
@@ -26,6 +27,22 @@ export function createPublicShareRoutes(
   archives: ArchivesService,
 ): Router {
   const router = Router({ mergeParams: true });
+
+  const unlockWindowMs = config.SHARE_UNLOCK_RATE_LIMIT_WINDOW_MINUTES * 60 * 1000;
+  // Both must pass: caps one IP scanning many shares, and a distributed attack
+  // (many IPs) guessing a single share's password.
+  const unlockIpLimiter = createRateLimiter({
+    windowMs: unlockWindowMs,
+    max: config.SHARE_UNLOCK_RATE_LIMIT_MAX,
+    keyFn: (req) => `ip:${req.ip}`,
+    describe: (req) => `share unlock attempts from ${req.ip}`,
+  });
+  const unlockShareLimiter = createRateLimiter({
+    windowMs: unlockWindowMs,
+    max: config.SHARE_UNLOCK_RATE_LIMIT_MAX,
+    keyFn: (req) => `share:${req.params.segment}/${req.params.name}`,
+    describe: (req) => `share unlock attempts against ${req.params.segment}/${req.params.name}`,
+  });
 
   /** Root of the shared subtree; nothing outside it is reachable. */
   const shareRoot = (share: Share) =>
@@ -99,6 +116,8 @@ export function createPublicShareRoutes(
 
   router.post(
     '/unlock',
+    unlockIpLimiter,
+    unlockShareLimiter,
     load,
     asyncHandler(async (req: any, res) => {
       const share = (req as PublicRequest).share!;

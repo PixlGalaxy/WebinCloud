@@ -8,6 +8,7 @@
   "auth.currentPasswordIncorrect": "Current password is incorrect",
   "error.internal": "Internal server error",
   "error.notFound": "Not found",
+  "error.tooManyRequests": "Too many attempts. Please wait a moment and try again",
   "files.invalidPath": "Invalid path",
   "files.invalidName": "Invalid name",
   "files.alreadyExists": "An item with that name already exists",

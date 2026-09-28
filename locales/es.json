@@ -8,6 +8,7 @@
   "auth.currentPasswordIncorrect": "La contraseña actual es incorrecta",
   "error.internal": "Error interno del servidor",
   "error.notFound": "No encontrado",
+  "error.tooManyRequests": "Demasiados intentos. Espera un momento y vuelve a intentarlo",
   "files.invalidPath": "Ruta inválida",
   "files.invalidName": "Nombre inválido",
   "files.alreadyExists": "Ya existe un elemento con ese nombre",

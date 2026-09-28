@@ -6,6 +6,9 @@ import { logger } from '../logger.js';
 export function createErrorHandler(t: Translate) {
   return (err: Error, _req: Request, res: Response, _next: NextFunction) => {
     if (err instanceof AppError) {
+      if (err.headers) {
+        for (const [name, value] of Object.entries(err.headers)) res.setHeader(name, value);
+      }
       return res.status(err.status).json({ error: t(err.key) });
     }
 

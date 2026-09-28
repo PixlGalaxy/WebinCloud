@@ -38,6 +38,12 @@ export interface EnvConfig {
   COOKIE_SECURE: boolean;
   /** Seconds without a progress poll before a running archive is cancelled. */
   ARCHIVE_ABANDON_SECONDS: number;
+  /** Max login attempts allowed per IP and per account within the window below. */
+  LOGIN_RATE_LIMIT_MAX: number;
+  LOGIN_RATE_LIMIT_WINDOW_MINUTES: number;
+  /** Max share-unlock (password) attempts allowed per IP and per share within the window below. */
+  SHARE_UNLOCK_RATE_LIMIT_MAX: number;
+  SHARE_UNLOCK_RATE_LIMIT_WINDOW_MINUTES: number;
   LANGUAGE: Language;
   /** Shown in the browser tab.
    */
@@ -84,6 +90,10 @@ export function loadEnv(): EnvConfig {
     ADMIN_PASSWORD: env.ADMIN_PASSWORD || (isProd ? undefined : 'admin1234'),
     SESSION_TTL_HOURS: parseInt(env.SESSION_TTL_HOURS || '24', 10),
     ARCHIVE_ABANDON_SECONDS: parseInt(env.ARCHIVE_ABANDON_SECONDS || '30', 10),
+    LOGIN_RATE_LIMIT_MAX: parseInt(env.LOGIN_RATE_LIMIT_MAX || '10', 10),
+    LOGIN_RATE_LIMIT_WINDOW_MINUTES: parseInt(env.LOGIN_RATE_LIMIT_WINDOW_MINUTES || '15', 10),
+    SHARE_UNLOCK_RATE_LIMIT_MAX: parseInt(env.SHARE_UNLOCK_RATE_LIMIT_MAX || '10', 10),
+    SHARE_UNLOCK_RATE_LIMIT_WINDOW_MINUTES: parseInt(env.SHARE_UNLOCK_RATE_LIMIT_WINDOW_MINUTES || '15', 10),
     // Off by default: behind plain-HTTP nginx a Secure cookie would never be sent back.
     COOKIE_SECURE: env.COOKIE_SECURE === 'true',
     LANGUAGE: isLanguage(env.LANGUAGE) ? env.LANGUAGE : 'en',
