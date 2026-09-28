@@ -100,7 +100,7 @@ Everything below is optional except the administrator account.
 | Variable | Default | Description |
 | --- | --- | --- |
 | `LANGUAGE` | `en` | Interface and API message language: `en` or `es` |
-| `THEME` | `dark` | Default appearance: `dark` or `light`. A visitor's own toggle is remembered in a cookie and wins |
+| `THEME` | `dark` | Default appearance for signed-out screens: `dark` or `light`. Signed-in users pick their own theme in Settings, saved to their account |
 | `APP_TITLE` | `Webin Cloud Server` | Browser tab title |
 | `APP_NAME` | `Webin Cloud` | Product name used in the interface |
 
@@ -117,7 +117,7 @@ docker cp my-logo.png webincloud:/appdata/branding/logo.png
 | `ADMIN_EMAIL` | — | Administrator created on first run only |
 | `ADMIN_USERNAME` | — | Administrator created on first run only |
 | `ADMIN_PASSWORD` | — | Administrator created on first run only |
-| `SESSION_TTL_HOURS` | `24` | Session lifetime |
+| `SESSION_TTL_HOURS` | `24` | Session lifetime. Also caps the inactivity "auto sign-out" timer users can set in Settings |
 | `COOKIE_SECURE` | `false` | Set to `true` only when serving over HTTPS, otherwise the session cookie is never returned |
 | `LOGIN_RATE_LIMIT_MAX` | `10` | Max login attempts per IP and per account within the window below, before a 429 |
 | `LOGIN_RATE_LIMIT_WINDOW_MINUTES` | `15` | Window for the login rate limit |
