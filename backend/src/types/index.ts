@@ -42,6 +42,8 @@ export interface User {
   is_active: number;
   theme_mode: ThemeMode;
   theme_skin: ThemeSkin;
+  /** UI language, e.g. 'en' or 'es' — see SUPPORTED_LANGUAGES in i18n/index.ts. */
+  language: string;
   created_at: string;
   updated_at: string;
 }

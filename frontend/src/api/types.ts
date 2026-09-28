@@ -8,6 +8,7 @@ export interface User {
   is_active: number;
   theme_mode: string;
   theme_skin: string;
+  language: string;
   created_at: string;
   updated_at: string;
 }

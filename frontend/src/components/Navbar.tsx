@@ -45,9 +45,9 @@ interface AccountMenuItem extends NavItem {
 }
 
 const ACCOUNT_MENU: AccountMenuItem[] = [
-  { to: '/profile', labelKey: 'nav.account', icon: UserRound, color: 'text-sky-500' },
-  { to: '/share-settings', labelKey: 'nav.shareSettings', icon: Link2, color: 'text-violet-500' },
-  { to: '/settings', labelKey: 'nav.settings', icon: SlidersHorizontal, color: 'text-amber-500' },
+  { to: '/settings?section=account', labelKey: 'nav.account', icon: UserRound, color: 'text-sky-500' },
+  { to: '/settings?section=sharing', labelKey: 'nav.shareSettings', icon: Link2, color: 'text-violet-500' },
+  { to: '/settings?section=preferences', labelKey: 'nav.settings', icon: SlidersHorizontal, color: 'text-amber-500' },
 ];
 
 const Navbar = () => {

@@ -2,6 +2,7 @@ import { Router } from 'express';
 import type { Db } from '../../db/client.js';
 import type { EnvConfig } from '../../config/env.js';
 import type { Translate } from '../../i18n/index.js';
+import { isLanguage } from '../../i18n/index.js';
 import type { AuthenticatedRequest } from './session.middleware.js';
 import { createAuthGuards } from './session.middleware.js';
 import { AuthService, isThemeMode, isThemeSkin, toPublicUser } from './auth.service.js';
@@ -80,12 +81,15 @@ export function createAuthRoutes(db: Db, config: EnvConfig, t: Translate): Route
   });
 
   router.post('/appearance', requireAuth, (req: AuthenticatedRequest, res) => {
-    const { mode, skin } = req.body as { mode?: unknown; skin?: unknown };
-    if (mode === undefined && skin === undefined) throw badRequest('auth.invalidTheme');
+    const { mode, skin, language } = req.body as { mode?: unknown; skin?: unknown; language?: unknown };
+    if (mode === undefined && skin === undefined && language === undefined) throw badRequest('auth.invalidTheme');
     if (mode !== undefined && !isThemeMode(mode)) throw badRequest('auth.invalidTheme');
     if (skin !== undefined && !isThemeSkin(skin)) throw badRequest('auth.invalidTheme');
+    if (language !== undefined && (typeof language !== 'string' || !isLanguage(language))) {
+      throw badRequest('auth.invalidLanguage');
+    }
 
-    const updated = authService.setAppearance(req.user!.id, { mode, skin });
+    const updated = authService.setAppearance(req.user!.id, { mode, skin, language });
     return res.json(toPublicUser(updated));
   });
 

@@ -15,6 +15,7 @@ const BACKEND_KEYS = [
   'auth.passwordTooShort',
   'auth.currentPasswordIncorrect',
   'auth.invalidTheme',
+  'auth.invalidLanguage',
   'error.internal',
   'error.notFound',
   'error.tooManyRequests',

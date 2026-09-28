@@ -17,17 +17,15 @@ import FileExplorerPage from './pages/files/FileExplorerPage';
 import ShareManagerPage from './pages/share/ShareManagerPage';
 import UsersAdminPage from './pages/admin/UsersAdminPage';
 import LogsPage from './pages/admin/LogsPage';
-import ProfilePage from './pages/profile/ProfilePage';
-import ShareSettingsPage from './pages/settings/ShareSettingsPage';
 import SettingsPage from './pages/settings/SettingsPage';
 import PublicSharePage from './pages/public/PublicSharePage';
 
 const App = () => (
   <BrowserRouter>
     <AppConfigProvider>
-      <I18nProvider>
-        {/* Auth wraps Theme: appearance is account data, so it needs the signed-in user. */}
-        <AuthProvider>
+      {/* Auth wraps I18n/Theme: language and appearance are account data, so they need the signed-in user. */}
+      <AuthProvider>
+        <I18nProvider>
           <ThemeProvider>
           <AutoSignOutProvider>
             <ArchiveProvider>
@@ -43,9 +41,10 @@ const App = () => (
                     <Route path="/" element={<Navigate to="/files" replace />} />
                     <Route path="/files/*" element={<FileExplorerPage />} />
                     <Route path="/share" element={<ShareManagerPage />} />
-                    <Route path="/profile" element={<ProfilePage />} />
-                    <Route path="/share-settings" element={<ShareSettingsPage />} />
                     <Route path="/settings" element={<SettingsPage />} />
+                    {/* My Account and Share Settings live inside Settings now; old links still land there. */}
+                    <Route path="/profile" element={<Navigate to="/settings?section=account" replace />} />
+                    <Route path="/share-settings" element={<Navigate to="/settings?section=sharing" replace />} />
 
                     <Route element={<AdminRoute />}>
                       <Route path="/admin/users" element={<UsersAdminPage />} />
@@ -68,8 +67,8 @@ const App = () => (
             </ArchiveProvider>
           </AutoSignOutProvider>
           </ThemeProvider>
-        </AuthProvider>
-      </I18nProvider>
+        </I18nProvider>
+      </AuthProvider>
     </AppConfigProvider>
   </BrowserRouter>
 );

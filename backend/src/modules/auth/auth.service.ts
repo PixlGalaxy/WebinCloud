@@ -80,12 +80,15 @@ export class AuthService {
     return true;
   }
 
-  setAppearance(userId: string, appearance: { mode?: ThemeMode; skin?: ThemeSkin }): User {
+  setAppearance(userId: string, appearance: { mode?: ThemeMode; skin?: ThemeSkin; language?: string }): User {
     if (appearance.mode !== undefined) {
       this.db.prepare("UPDATE users SET theme_mode = ?, updated_at = datetime('now') WHERE id = ?").run(appearance.mode, userId);
     }
     if (appearance.skin !== undefined) {
       this.db.prepare("UPDATE users SET theme_skin = ?, updated_at = datetime('now') WHERE id = ?").run(appearance.skin, userId);
+    }
+    if (appearance.language !== undefined) {
+      this.db.prepare("UPDATE users SET language = ?, updated_at = datetime('now') WHERE id = ?").run(appearance.language, userId);
     }
     return this.db.prepare('SELECT * FROM users WHERE id = ?').get(userId) as User;
   }
