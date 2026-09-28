@@ -2,7 +2,7 @@ import { FaGithub } from 'react-icons/fa';
 import { useI18n } from '../i18n/I18nContext';
 
 const linkClass =
-  'inline-flex items-center gap-1.5 text-indigo-600 hover:text-indigo-700 hover:underline dark:text-indigo-400 dark:hover:text-indigo-300 transition-colors';
+  'inline-flex items-center gap-1.5 text-[var(--accent-600)] hover:text-[var(--accent-700)] hover:underline dark:text-[var(--accent-400)] dark:hover:text-[var(--accent-300)] transition-colors';
 
 const Footer = () => {
   const { t } = useI18n();

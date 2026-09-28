@@ -53,7 +53,7 @@ const TransferPanel = () => {
               ) : job.status === 'error' ? (
                 <AlertCircle size={20} className="mt-0.5 shrink-0 text-rose-500" />
               ) : (
-                <Copy size={20} className="mt-0.5 shrink-0 text-indigo-500" />
+                <Copy size={20} className="mt-0.5 shrink-0 text-[var(--accent-500)]" />
               )}
 
               <div className="min-w-0 flex-1">
@@ -76,7 +76,7 @@ const TransferPanel = () => {
                   <>
                     <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-slate-200 dark:bg-slate-700">
                       <div
-                        className={`h-full bg-indigo-500 transition-all ${percent === null ? 'w-1/3 animate-pulse' : ''}`}
+                        className={`h-full bg-[var(--accent-500)] transition-all ${percent === null ? 'w-1/3 animate-pulse' : ''}`}
                         style={percent === null ? undefined : { width: `${percent}%` }}
                       />
                     </div>

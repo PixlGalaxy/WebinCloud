@@ -94,7 +94,7 @@ const ArchivePanel = () => {
                   <a
                     href={downloadUrlFor(job)}
                     download={job.fileName}
-                    className="mt-2 inline-flex items-center gap-1.5 rounded-lg bg-indigo-600 px-3 py-1.5 text-xs font-medium text-white transition hover:bg-indigo-700"
+                    className="mt-2 inline-flex items-center gap-1.5 rounded-lg bg-[var(--accent-600)] px-3 py-1.5 text-xs font-medium text-white transition hover:bg-[var(--accent-700)]"
                   >
                     <Download size={14} /> {t('archive.downloadAgain')}
                   </a>

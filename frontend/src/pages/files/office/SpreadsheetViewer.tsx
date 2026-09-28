@@ -41,7 +41,7 @@ const SpreadsheetViewer = ({ url }: Props) => {
   if (!workbook) {
     return (
       <div className="flex h-full items-center justify-center">
-        <Loader2 className="animate-spin text-indigo-500" size={32} />
+        <Loader2 className="animate-spin text-[var(--accent-500)]" size={32} />
       </div>
     );
   }
@@ -96,7 +96,7 @@ const SpreadsheetViewer = ({ url }: Props) => {
               onClick={() => setSheetIndex(index)}
               className={`shrink-0 rounded-md px-3 py-1.5 text-xs font-medium transition ${
                 index === sheetIndex
-                  ? 'bg-indigo-50 text-indigo-700 dark:bg-indigo-500/15 dark:text-indigo-300'
+                  ? 'bg-[var(--accent-50)] text-[var(--accent-700)] dark:bg-[var(--accent-500)]/15 dark:text-[var(--accent-300)]'
                   : 'text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800'
               }`}
             >

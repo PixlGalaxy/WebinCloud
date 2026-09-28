@@ -4,8 +4,9 @@ import type { EnvConfig } from '../../config/env.js';
 import type { Translate } from '../../i18n/index.js';
 import type { AuthenticatedRequest } from './session.middleware.js';
 import { createAuthGuards } from './session.middleware.js';
-import { AuthService, toPublicUser } from './auth.service.js';
+import { AuthService, isThemeMode, isThemeSkin, toPublicUser } from './auth.service.js';
 import { logger } from '../../logger.js';
+import { badRequest } from '../../errors.js';
 import { createRateLimiter } from '../../middleware/rate-limit.js';
 
 export function createAuthRoutes(db: Db, config: EnvConfig, t: Translate): Router {
@@ -76,6 +77,16 @@ export function createAuthRoutes(db: Db, config: EnvConfig, t: Translate): Route
 
   router.get('/me', requireAuth, (req: AuthenticatedRequest, res) => {
     return res.json(toPublicUser(req.user!));
+  });
+
+  router.post('/appearance', requireAuth, (req: AuthenticatedRequest, res) => {
+    const { mode, skin } = req.body as { mode?: unknown; skin?: unknown };
+    if (mode === undefined && skin === undefined) throw badRequest('auth.invalidTheme');
+    if (mode !== undefined && !isThemeMode(mode)) throw badRequest('auth.invalidTheme');
+    if (skin !== undefined && !isThemeSkin(skin)) throw badRequest('auth.invalidTheme');
+
+    const updated = authService.setAppearance(req.user!.id, { mode, skin });
+    return res.json(toPublicUser(updated));
   });
 
   router.post('/change-password', requireAuth, async (req: AuthenticatedRequest, res) => {

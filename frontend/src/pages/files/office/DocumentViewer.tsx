@@ -57,7 +57,7 @@ const DocumentViewer = ({ url }: Props) => {
     <div className="h-full overflow-auto bg-slate-200 p-6 dark:bg-slate-950">
       {loading && (
         <div className="flex h-full items-center justify-center">
-          <Loader2 className="animate-spin text-indigo-500" size={32} />
+          <Loader2 className="animate-spin text-[var(--accent-500)]" size={32} />
         </div>
       )}
       {error && <div className={`${errorBox} mx-auto max-w-2xl`}>{error}</div>}

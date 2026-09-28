@@ -8,7 +8,7 @@ import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
 
 const inputClass =
-  'w-full pl-12 pr-4 py-3.5 rounded-xl border border-slate-300 bg-white text-base text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100';
+  'w-full pl-12 pr-4 py-3.5 rounded-xl border border-slate-300 bg-white text-base text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-[var(--accent-500)] focus:border-transparent dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100';
 
 const iconClass = 'absolute left-4 top-4 text-slate-400 dark:text-slate-500';
 
@@ -42,7 +42,7 @@ const LoginPage = () => {
       <div className="flex-1 flex items-center justify-center p-4">
         <div className="w-full max-w-xl rounded-2xl border border-slate-200 bg-white p-10 shadow-sm dark:border-slate-800 dark:bg-slate-900 sm:p-12">
           <div className="flex items-center gap-4 mb-9">
-            <div className="bg-indigo-600 text-white rounded-xl p-3.5">
+            <div className="bg-[var(--accent-600)] text-white rounded-xl p-3.5">
               <Lock size={28} />
             </div>
             <h1 className="text-2xl font-semibold text-slate-900 dark:text-slate-100">{t('login.title')}</h1>
@@ -100,7 +100,7 @@ const LoginPage = () => {
             <button
               type="submit"
               disabled={submitting || !usernameOrEmail || !password}
-              className="mt-8 flex w-full items-center justify-center gap-2 rounded-xl bg-indigo-600 py-3.5 text-base font-medium text-white transition hover:bg-indigo-700 disabled:bg-slate-300 dark:disabled:bg-slate-700 dark:disabled:text-slate-500"
+              className="mt-8 flex w-full items-center justify-center gap-2 rounded-xl bg-[var(--accent-600)] py-3.5 text-base font-medium text-white transition hover:bg-[var(--accent-700)] disabled:bg-slate-300 dark:disabled:bg-slate-700 dark:disabled:text-slate-500"
             >
               {submitting && <Loader2 className="animate-spin" size={20} />}
               {submitting ? t('login.submitting') : t('login.submit')}

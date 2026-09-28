@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { NavLink, Link } from 'react-router-dom';
 import {
   AlertTriangle,
@@ -7,12 +7,12 @@ import {
   Users,
   ScrollText,
   LogOut,
-  Sun,
-  Moon,
+  UserRound,
+  Link2,
+  SlidersHorizontal,
   type LucideIcon,
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
-import { useTheme } from '../context/ThemeContext';
 import { useArchives } from '../context/ArchiveContext';
 import { useAppConfig } from '../context/AppConfigContext';
 import { useI18n } from '../i18n/I18nContext';
@@ -24,7 +24,7 @@ import { btn } from './ui/styles';
 const navLinkClass = ({ isActive }: { isActive: boolean }) =>
   `flex items-center gap-2.5 px-4 py-2.5 rounded-lg text-base font-medium transition ${
     isActive
-      ? 'bg-indigo-50 text-indigo-700 dark:bg-indigo-500/15 dark:text-indigo-300'
+      ? 'bg-[var(--accent-50)] text-[var(--accent-700)] dark:bg-[var(--accent-500)]/15 dark:text-[var(--accent-300)]'
       : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-white'
   }`;
 
@@ -39,13 +39,41 @@ const NAV_ITEMS: NavItem[] = [
   { to: '/share', labelKey: 'nav.share', icon: Share2 },
 ];
 
+interface AccountMenuItem extends NavItem {
+  /** Each entry gets its own accent so the dropdown reads at a glance. */
+  color: string;
+}
+
+const ACCOUNT_MENU: AccountMenuItem[] = [
+  { to: '/profile', labelKey: 'nav.account', icon: UserRound, color: 'text-sky-500' },
+  { to: '/share-settings', labelKey: 'nav.shareSettings', icon: Link2, color: 'text-violet-500' },
+  { to: '/settings', labelKey: 'nav.settings', icon: SlidersHorizontal, color: 'text-amber-500' },
+];
+
 const Navbar = () => {
   const { user, logout } = useAuth();
-  const { theme, toggleTheme } = useTheme();
   const { jobs, dismiss } = useArchives();
   const { t } = useI18n();
   const { appName } = useAppConfig();
   const [confirmingLogout, setConfirmingLogout] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!menuOpen) return;
+    const onPointer = (e: MouseEvent) => {
+      if (!menuRef.current?.contains(e.target as Node)) setMenuOpen(false);
+    };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setMenuOpen(false);
+    };
+    document.addEventListener('mousedown', onPointer);
+    document.addEventListener('keydown', onKey);
+    return () => {
+      document.removeEventListener('mousedown', onPointer);
+      document.removeEventListener('keydown', onKey);
+    };
+  }, [menuOpen]);
 
   const running = jobs.filter((job) => job.status === 'preparing' || job.status === 'running');
 
@@ -58,7 +86,6 @@ const Navbar = () => {
   };
 
   const logo = <img src="/backend/api/branding/logo.png" alt={appName} className="h-16 w-auto" />;
-  const themeLabel = t(theme === 'dark' ? 'nav.themeLight' : 'nav.themeDark');
 
   return (
     <nav className="bg-white border-b border-slate-200 dark:bg-slate-900 dark:border-slate-800">
@@ -66,7 +93,7 @@ const Navbar = () => {
         {user ? (
           <Link
             to="/files"
-            className="shrink-0 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 dark:focus:ring-offset-slate-900"
+            className="shrink-0 rounded-lg focus:outline-none focus:ring-2 focus:ring-[var(--accent-500)] focus:ring-offset-2 dark:focus:ring-offset-slate-900"
           >
             {logo}
           </Link>
@@ -98,39 +125,52 @@ const Navbar = () => {
                 </NavLink>
               )}
 
-              <button
-                onClick={() => (running.length > 0 ? setConfirmingLogout(true) : void logout())}
-                className="flex items-center gap-2.5 px-4 py-2.5 rounded-lg text-base font-medium text-slate-600 hover:bg-rose-50 hover:text-rose-700 dark:text-slate-300 dark:hover:bg-rose-500/15 dark:hover:text-rose-300 transition"
-              >
-                <LogOut size={21} />
-                <span className="hidden sm:inline">{t('nav.logout')}</span>
-              </button>
+              <div className="relative ml-1" ref={menuRef}>
+                <button
+                  onClick={() => setMenuOpen((open) => !open)}
+                  aria-haspopup="menu"
+                  aria-expanded={menuOpen}
+                  className="shrink-0 rounded-full focus:outline-none focus:ring-2 focus:ring-[var(--accent-500)] focus:ring-offset-2 dark:focus:ring-offset-slate-900"
+                >
+                  <Avatar user={user} size={36} />
+                </button>
 
-              <span className="w-px h-7 bg-slate-200 dark:bg-slate-700 mx-2" />
+                {menuOpen && (
+                  <div
+                    role="menu"
+                    className="absolute right-0 z-30 mt-2 w-60 overflow-hidden rounded-xl border border-slate-200 bg-white py-1.5 shadow-lg dark:border-slate-700 dark:bg-slate-900"
+                  >
+                    {ACCOUNT_MENU.map(({ to, labelKey, icon: Icon, color }) => (
+                      <Link
+                        key={to}
+                        to={to}
+                        role="menuitem"
+                        onClick={() => setMenuOpen(false)}
+                        className="flex items-center gap-3 px-4 py-2.5 text-sm font-medium text-slate-700 transition hover:bg-slate-100 dark:text-slate-200 dark:hover:bg-slate-800"
+                      >
+                        <Icon size={18} className={color} />
+                        {t(labelKey)}
+                      </Link>
+                    ))}
+
+                    <span className="my-1.5 block h-px bg-slate-200 dark:bg-slate-700" />
+
+                    <button
+                      role="menuitem"
+                      onClick={() => {
+                        setMenuOpen(false);
+                        if (running.length > 0) setConfirmingLogout(true);
+                        else void logout();
+                      }}
+                      className="flex w-full items-center gap-3 px-4 py-2.5 text-sm font-medium text-slate-700 transition hover:bg-rose-50 hover:text-rose-700 dark:text-slate-200 dark:hover:bg-rose-500/15 dark:hover:text-rose-300"
+                    >
+                      <LogOut size={18} className="text-rose-500" />
+                      {t('nav.logout')}
+                    </button>
+                  </div>
+                )}
+              </div>
             </>
-          )}
-
-          <button
-            onClick={toggleTheme}
-            title={themeLabel}
-            aria-label={themeLabel}
-            className="p-3 rounded-lg text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800 transition"
-          >
-            {theme === 'dark' ? (
-              <Sun size={21} className="text-amber-400" />
-            ) : (
-              <Moon size={21} className="text-indigo-500" />
-            )}
-          </button>
-
-          {user && (
-            <Link
-              to="/profile"
-              title={t('nav.account')}
-              className="ml-1 shrink-0 rounded-full focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 dark:focus:ring-offset-slate-900"
-            >
-              <Avatar user={user} size={36} />
-            </Link>
           )}
         </div>
       </div>

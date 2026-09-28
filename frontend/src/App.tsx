@@ -17,14 +17,17 @@ import ShareManagerPage from './pages/share/ShareManagerPage';
 import UsersAdminPage from './pages/admin/UsersAdminPage';
 import LogsPage from './pages/admin/LogsPage';
 import ProfilePage from './pages/profile/ProfilePage';
+import ShareSettingsPage from './pages/settings/ShareSettingsPage';
+import SettingsPage from './pages/settings/SettingsPage';
 import PublicSharePage from './pages/public/PublicSharePage';
 
 const App = () => (
   <BrowserRouter>
-    <ThemeProvider>
-      <AppConfigProvider>
-        <I18nProvider>
-          <AuthProvider>
+    <AppConfigProvider>
+      <I18nProvider>
+        {/* Auth wraps Theme: appearance is account data, so it needs the signed-in user. */}
+        <AuthProvider>
+          <ThemeProvider>
             <ArchiveProvider>
               <TransferProvider>
                 <ClipboardProvider>
@@ -39,6 +42,8 @@ const App = () => (
                     <Route path="/files/*" element={<FileExplorerPage />} />
                     <Route path="/share" element={<ShareManagerPage />} />
                     <Route path="/profile" element={<ProfilePage />} />
+                    <Route path="/share-settings" element={<ShareSettingsPage />} />
+                    <Route path="/settings" element={<SettingsPage />} />
 
                     <Route element={<AdminRoute />}>
                       <Route path="/admin/users" element={<UsersAdminPage />} />
@@ -59,10 +64,10 @@ const App = () => (
                 </ClipboardProvider>
               </TransferProvider>
             </ArchiveProvider>
-          </AuthProvider>
-        </I18nProvider>
-      </AppConfigProvider>
-    </ThemeProvider>
+          </ThemeProvider>
+        </AuthProvider>
+      </I18nProvider>
+    </AppConfigProvider>
   </BrowserRouter>
 );
 

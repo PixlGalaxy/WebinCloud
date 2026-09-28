@@ -46,7 +46,7 @@ const PublicSharePage = () => {
   const segment = params.segment ?? '';
   const shareName = params.name ?? '';
   const { t, language } = useI18n();
-  const { theme } = useTheme();
+  const { mode } = useTheme();
   const { createShareArchive } = useArchives();
   const [selecting, setSelecting] = useState(false);
   const [selected, setSelected] = useState<Set<string>>(new Set());
@@ -174,7 +174,7 @@ const PublicSharePage = () => {
   if (loading) {
     return shell(
       <div className="flex justify-center py-20">
-        <Loader2 className="animate-spin text-indigo-500" size={32} />
+        <Loader2 className="animate-spin text-[var(--accent-500)]" size={32} />
       </div>,
     );
   }
@@ -229,7 +229,7 @@ const PublicSharePage = () => {
               href={publicShareApi.rawUrl(segment, shareName)}
               target="_blank"
               rel="noreferrer"
-              className="mt-1 block truncate font-mono text-xs text-indigo-600 hover:underline dark:text-indigo-400"
+              className="mt-1 block truncate font-mono text-xs text-[var(--accent-600)] hover:underline dark:text-[var(--accent-400)]"
             >
               {window.location.origin}
               {publicShareApi.rawUrl(segment, shareName)}
@@ -266,7 +266,7 @@ const PublicSharePage = () => {
                 onClick={() => setHtmlView('rendered')}
                 className={`flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium transition ${
                   htmlView === 'rendered'
-                    ? 'bg-indigo-600 text-white'
+                    ? 'bg-[var(--accent-600)] text-white'
                     : 'text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800'
                 }`}
               >
@@ -276,7 +276,7 @@ const PublicSharePage = () => {
                 onClick={() => setHtmlView('raw')}
                 className={`flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium transition ${
                   htmlView === 'raw'
-                    ? 'bg-indigo-600 text-white'
+                    ? 'bg-[var(--accent-600)] text-white'
                     : 'text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800'
                 }`}
               >
@@ -309,7 +309,7 @@ const PublicSharePage = () => {
                 onClick={() => (selecting ? exitSelection() : setSelecting(true))}
                 className={
                   selecting
-                    ? 'inline-flex items-center justify-center gap-2 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-indigo-700'
+                    ? 'inline-flex items-center justify-center gap-2 rounded-lg bg-[var(--accent-600)] px-4 py-2 text-sm font-medium text-white transition hover:bg-[var(--accent-700)]'
                     : btn.secondary
                 }
               >
@@ -337,15 +337,15 @@ const PublicSharePage = () => {
       {error && <div className={errorBox}>{error}</div>}
 
       {selecting && entries && (
-        <div className="flex flex-wrap items-center gap-3 rounded-xl border border-indigo-200 bg-indigo-50 px-4 py-3 dark:border-indigo-500/30 dark:bg-indigo-500/10">
-          <label className="flex items-center gap-2 text-sm font-medium text-indigo-900 dark:text-indigo-200">
+        <div className="flex flex-wrap items-center gap-3 rounded-xl border border-[var(--accent-200)] bg-[var(--accent-50)] px-4 py-3 dark:border-[var(--accent-500)]/30 dark:bg-[var(--accent-500)]/10">
+          <label className="flex items-center gap-2 text-sm font-medium text-[var(--accent-900)] dark:text-[var(--accent-200)]">
             <input
               type="checkbox"
               checked={entries.length > 0 && selected.size === entries.length}
               onChange={(e) =>
                 setSelected(e.target.checked ? new Set(entries.map((entry) => entry.path)) : new Set())
               }
-              className="h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
+              className="h-4 w-4 rounded border-slate-300 text-[var(--accent-600)] focus:ring-[var(--accent-500)]"
             />
             {t('files.selectedCount', { count: selected.size })}
           </label>
@@ -398,7 +398,7 @@ const PublicSharePage = () => {
               <Suspense
                 fallback={
                   <div className="flex justify-center p-12">
-                    <Loader2 className="animate-spin text-indigo-500" size={28} />
+                    <Loader2 className="animate-spin text-[var(--accent-500)]" size={28} />
                   </div>
                 }
               >
@@ -416,7 +416,7 @@ const PublicSharePage = () => {
               <Suspense
                 fallback={
                   <div className="flex justify-center p-12">
-                    <Loader2 className="animate-spin text-indigo-500" size={28} />
+                    <Loader2 className="animate-spin text-[var(--accent-500)]" size={28} />
                   </div>
                 }
               >
@@ -428,13 +428,13 @@ const PublicSharePage = () => {
           ) : info.previewKind === 'html' ? (
             textContent === null ? (
               <div className="flex justify-center p-12">
-                <Loader2 className="animate-spin text-indigo-500" size={28} />
+                <Loader2 className="animate-spin text-[var(--accent-500)]" size={28} />
               </div>
             ) : (
               <Suspense
                 fallback={
                   <div className="flex justify-center p-12">
-                    <Loader2 className="animate-spin text-indigo-500" size={28} />
+                    <Loader2 className="animate-spin text-[var(--accent-500)]" size={28} />
                   </div>
                 }
               >
@@ -448,7 +448,7 @@ const PublicSharePage = () => {
                       name={info.name}
                       value={textContent}
                       readOnly
-                      isDark={theme === 'dark'}
+                      isDark={mode === 'dark'}
                       onChange={() => undefined}
                     />
                   </div>
@@ -458,13 +458,13 @@ const PublicSharePage = () => {
           ) : info.previewKind === 'text' ? (
             textContent === null ? (
               <div className="flex justify-center p-12">
-                <Loader2 className="animate-spin text-indigo-500" size={28} />
+                <Loader2 className="animate-spin text-[var(--accent-500)]" size={28} />
               </div>
             ) : (
               <Suspense
                 fallback={
                   <div className="flex justify-center p-12">
-                    <Loader2 className="animate-spin text-indigo-500" size={28} />
+                    <Loader2 className="animate-spin text-[var(--accent-500)]" size={28} />
                   </div>
                 }
               >
@@ -473,7 +473,7 @@ const PublicSharePage = () => {
                     name={info.name}
                     value={textContent}
                     readOnly
-                    isDark={theme === 'dark'}
+                    isDark={mode === 'dark'}
                     onChange={() => undefined}
                   />
                 </div>
@@ -490,7 +490,7 @@ const PublicSharePage = () => {
         </div>
       ) : entries === null ? (
         <div className={`${card} flex justify-center p-12`}>
-          <Loader2 className="animate-spin text-indigo-500" size={28} />
+          <Loader2 className="animate-spin text-[var(--accent-500)]" size={28} />
         </div>
       ) : (
         <div className={`${card} overflow-hidden`}>
@@ -514,7 +514,7 @@ const PublicSharePage = () => {
                       key={entry.path}
                       className={`border-b border-slate-100 last:border-0 dark:border-slate-800 ${
                         selected.has(entry.path)
-                          ? 'bg-indigo-50 dark:bg-indigo-500/10'
+                          ? 'bg-[var(--accent-50)] dark:bg-[var(--accent-500)]/10'
                           : 'hover:bg-slate-50 dark:hover:bg-slate-800/50'
                       }`}
                     >
@@ -531,7 +531,7 @@ const PublicSharePage = () => {
                                 return next;
                               })
                             }
-                            className="h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
+                            className="h-4 w-4 rounded border-slate-300 text-[var(--accent-600)] focus:ring-[var(--accent-500)]"
                           />
                         </td>
                       )}
@@ -539,9 +539,9 @@ const PublicSharePage = () => {
                         {entry.type === 'folder' ? (
                           <button
                             onClick={() => void loadEntries(entry.path)}
-                            className="flex items-center gap-2.5 font-medium text-slate-900 hover:text-indigo-600 dark:text-slate-100 dark:hover:text-indigo-400"
+                            className="flex items-center gap-2.5 font-medium text-slate-900 hover:text-[var(--accent-600)] dark:text-slate-100 dark:hover:text-[var(--accent-400)]"
                           >
-                            <Folder size={18} className="text-indigo-500" />
+                            <Folder size={18} className="text-[var(--accent-500)]" />
                             {entry.name}
                           </button>
                         ) : entry.previewKind === 'none' ? (
@@ -552,7 +552,7 @@ const PublicSharePage = () => {
                         ) : (
                           <button
                             onClick={() => setPreview(entry)}
-                            className="flex items-center gap-2.5 text-slate-800 hover:text-indigo-600 dark:text-slate-200 dark:hover:text-indigo-400"
+                            className="flex items-center gap-2.5 text-slate-800 hover:text-[var(--accent-600)] dark:text-slate-200 dark:hover:text-[var(--accent-400)]"
                           >
                             <FileIcon type={entry.type} name={entry.name} size={18} className="text-slate-400 dark:text-slate-500" />
                             {entry.name}

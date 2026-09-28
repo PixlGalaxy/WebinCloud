@@ -327,7 +327,7 @@ const FileExplorerPage = () => {
             onClick={() => (selecting ? exitSelection() : setSelecting(true))}
             className={
               selecting
-                ? 'inline-flex items-center justify-center gap-2 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-indigo-700'
+                ? 'inline-flex items-center justify-center gap-2 rounded-lg bg-[var(--accent-600)] px-4 py-2 text-sm font-medium text-white transition hover:bg-[var(--accent-700)]'
                 : btn.info
             }
           >
@@ -372,15 +372,15 @@ const FileExplorerPage = () => {
       {error && <div className={errorBox}>{error}</div>}
 
       {selecting && (
-        <div className="flex flex-wrap items-center gap-3 rounded-xl border border-indigo-200 bg-indigo-50 px-4 py-3 dark:border-indigo-500/30 dark:bg-indigo-500/10">
-          <label className="flex items-center gap-2 text-sm font-medium text-indigo-900 dark:text-indigo-200">
+        <div className="flex flex-wrap items-center gap-3 rounded-xl border border-[var(--accent-200)] bg-[var(--accent-50)] px-4 py-3 dark:border-[var(--accent-500)]/30 dark:bg-[var(--accent-500)]/10">
+          <label className="flex items-center gap-2 text-sm font-medium text-[var(--accent-900)] dark:text-[var(--accent-200)]">
             <input
               type="checkbox"
               checked={rows.length > 0 && selected.size === rows.length}
               onChange={(e) =>
                 setSelected(e.target.checked ? new Set(rows.map((entry) => entry.path)) : new Set())
               }
-              className="h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
+              className="h-4 w-4 rounded border-slate-300 text-[var(--accent-600)] focus:ring-[var(--accent-500)]"
             />
             {t('files.selectedCount', { count: selected.size })}
           </label>
@@ -432,7 +432,7 @@ const FileExplorerPage = () => {
 
       {search && (
         <div className="flex flex-wrap items-center gap-2 text-sm text-slate-600 dark:text-slate-300">
-          <Search size={15} className="text-indigo-500" />
+          <Search size={15} className="text-[var(--accent-500)]" />
           <span>
             {t('files.searchSummary', { count: search.results.length, query: search.query })}
             {search.path ? ` ${t('files.searchIn', { folder: search.path })}` : ` ${t('files.searchInRoot')}`}
@@ -442,16 +442,16 @@ const FileExplorerPage = () => {
               {t('files.searchTruncated')}
             </span>
           )}
-          <button onClick={clearSearch} className="text-indigo-600 hover:underline dark:text-indigo-400">
+          <button onClick={clearSearch} className="text-[var(--accent-600)] hover:underline dark:text-[var(--accent-400)]">
             {t('files.clearSearch')}
           </button>
         </div>
       )}
 
-      <div className={`${card} overflow-hidden ${dragging ? 'ring-2 ring-indigo-500' : ''}`}>
+      <div className={`${card} overflow-hidden ${dragging ? 'ring-2 ring-[var(--accent-500)]' : ''}`}>
         {loading || searching ? (
           <div className="flex justify-center p-12">
-            <Loader2 className="animate-spin text-indigo-500" size={28} />
+            <Loader2 className="animate-spin text-[var(--accent-500)]" size={28} />
           </div>
         ) : rows.length === 0 ? (
           <div className="p-12 text-center">
@@ -492,7 +492,7 @@ const FileExplorerPage = () => {
                       isCutMarked ? 'opacity-40' : ''
                     } ${
                       selected.has(entry.path)
-                        ? 'bg-indigo-50 dark:bg-indigo-500/10'
+                        ? 'bg-[var(--accent-50)] dark:bg-[var(--accent-500)]/10'
                         : 'hover:bg-slate-50 dark:hover:bg-slate-800/50'
                     }`}
                   >
@@ -502,7 +502,7 @@ const FileExplorerPage = () => {
                           type="checkbox"
                           checked={selected.has(entry.path)}
                           onChange={() => toggleSelected(entry.path)}
-                          className="h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
+                          className="h-4 w-4 rounded border-slate-300 text-[var(--accent-600)] focus:ring-[var(--accent-500)]"
                         />
                       </td>
                     )}
@@ -510,9 +510,9 @@ const FileExplorerPage = () => {
                       {entry.type === 'folder' ? (
                         <button
                           onClick={() => navigate(toFilesUrl(entry.path))}
-                          className="flex items-center gap-2.5 font-medium text-slate-900 hover:text-indigo-600 dark:text-slate-100 dark:hover:text-indigo-400"
+                          className="flex items-center gap-2.5 font-medium text-slate-900 hover:text-[var(--accent-600)] dark:text-slate-100 dark:hover:text-[var(--accent-400)]"
                         >
-                          {entryIcon(entry, "text-indigo-500")}
+                          {entryIcon(entry, "text-[var(--accent-500)]")}
                           {entry.name}
                         </button>
                       ) : entry.previewKind === 'none' ? (
@@ -523,7 +523,7 @@ const FileExplorerPage = () => {
                       ) : (
                         <button
                           onClick={() => setPreview(entry)}
-                          className="flex items-center gap-2.5 text-slate-800 hover:text-indigo-600 dark:text-slate-200 dark:hover:text-indigo-400"
+                          className="flex items-center gap-2.5 text-slate-800 hover:text-[var(--accent-600)] dark:text-slate-200 dark:hover:text-[var(--accent-400)]"
                         >
                           {entryIcon(entry, "text-slate-400 dark:text-slate-500")}
                           {entry.name}
@@ -534,7 +534,7 @@ const FileExplorerPage = () => {
                         <button
                           onClick={() => navigate(toFilesUrl(foundIn))}
                           title={t('files.goToFolder')}
-                          className={`mt-1 block max-w-full truncate ${thumbnails ? 'pl-[74px]' : 'pl-[27px]'} text-left font-mono text-xs text-slate-400 hover:text-indigo-600 hover:underline dark:text-slate-500 dark:hover:text-indigo-400`}
+                          className={`mt-1 block max-w-full truncate ${thumbnails ? 'pl-[74px]' : 'pl-[27px]'} text-left font-mono text-xs text-slate-400 hover:text-[var(--accent-600)] hover:underline dark:text-slate-500 dark:hover:text-[var(--accent-400)]`}
                         >
                           {foundIn ? `${t('files.root')}/${foundIn}` : t('files.root')}
                         </button>

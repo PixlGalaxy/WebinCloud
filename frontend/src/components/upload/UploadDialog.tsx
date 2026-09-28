@@ -9,7 +9,7 @@ import type { UploadItem } from './useUploadQueue';
 
 const STATUS_ICON = {
   queued: <Clock size={16} className="text-amber-500" />,
-  uploading: <Loader2 size={16} className="animate-spin text-indigo-500" />,
+  uploading: <Loader2 size={16} className="animate-spin text-[var(--accent-500)]" />,
   done: <CheckCircle2 size={16} className="text-emerald-500" />,
   error: <XCircle size={16} className="text-rose-500" />,
   cancelled: <Ban size={16} className="text-amber-500" />,

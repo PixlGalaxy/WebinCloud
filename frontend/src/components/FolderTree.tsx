@@ -100,7 +100,7 @@ const FolderTree = ({ value, onChange }: Props) => {
         <div
           className={`flex items-center gap-1 rounded-md py-1 pr-2 transition ${
             isSelected
-              ? 'bg-indigo-600 text-white'
+              ? 'bg-[var(--accent-600)] text-white'
               : 'text-slate-700 hover:bg-slate-100 dark:text-slate-200 dark:hover:bg-slate-800'
           }`}
           style={{ paddingLeft: `${depth * 14 + 4}px` }}
@@ -125,9 +125,9 @@ const FolderTree = ({ value, onChange }: Props) => {
             className="flex min-w-0 flex-1 items-center gap-1.5 text-left text-sm"
           >
             {isOpen ? (
-              <FolderOpen size={15} className={isSelected ? '' : 'text-indigo-500'} />
+              <FolderOpen size={15} className={isSelected ? '' : 'text-[var(--accent-500)]'} />
             ) : (
-              <Folder size={15} className={isSelected ? '' : 'text-indigo-500'} />
+              <Folder size={15} className={isSelected ? '' : 'text-[var(--accent-500)]'} />
             )}
             <span className="truncate">{name}</span>
           </button>
@@ -219,7 +219,7 @@ const FolderTree = ({ value, onChange }: Props) => {
               setNewName('');
               if (value) setExpanded((prev) => new Set(prev).add(value));
             }}
-            className="inline-flex items-center gap-1.5 rounded-lg bg-indigo-600 px-2.5 py-1.5 text-xs font-medium text-white transition hover:bg-indigo-700"
+            className="inline-flex items-center gap-1.5 rounded-lg bg-[var(--accent-600)] px-2.5 py-1.5 text-xs font-medium text-white transition hover:bg-[var(--accent-700)]"
           >
             <FolderPlus size={14} />
             {value ? t('folderTree.newHere') : t('folderTree.newAtRoot')}

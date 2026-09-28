@@ -1,53 +1,68 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
 import { getRuntimeConfig } from '../api/config';
+import { api } from '../api/client';
+import type { User } from '../api/types';
+import { useAuth } from './AuthContext';
+import { isSkinId, isThemeMode, type SkinId, type ThemeMode } from '../theme/themes';
 
-const THEMES = ['dark', 'light'] as const;
-export type Theme = (typeof THEMES)[number];
-
-const COOKIE = 'theme';
-const ONE_YEAR = 60 * 60 * 24 * 365;
-
-function isTheme(value: unknown): value is Theme {
-  return THEMES.includes(value as Theme);
-}
-
-function readCookie(): Theme | null {
-  const match = document.cookie.match(/(?:^|;\s*)theme=(dark|light)/);
-  return match ? (match[1] as Theme) : null;
-}
+export type { ThemeMode, SkinId } from '../theme/themes';
 
 interface ThemeContextValue {
-  theme: Theme;
-  toggleTheme: () => void;
+  /** The visitor's raw choice — may be 'system'. */
+  themeMode: ThemeMode;
+  skin: SkinId;
+  /** What 'system' actually resolves to right now; always 'dark' or 'light'. */
+  mode: 'dark' | 'light';
+  setAppearance: (appearance: { mode?: ThemeMode; skin?: SkinId }) => Promise<void>;
 }
 
 const ThemeContext = createContext<ThemeContextValue | undefined>(undefined);
 
-export function ThemeProvider({ children }: { children: ReactNode }) {
-  // The inline script in index.html already applied this same value.
-  const [theme, setTheme] = useState<Theme>(() => readCookie() ?? 'dark');
-  const [chosenByUser] = useState(() => readCookie() !== null);
+function useSystemPrefersDark(): boolean {
+  const [prefersDark, setPrefersDark] = useState(
+    () => typeof matchMedia !== 'undefined' && matchMedia('(prefers-color-scheme: dark)').matches,
+  );
 
   useEffect(() => {
-    if (chosenByUser) return;
+    const query = matchMedia('(prefers-color-scheme: dark)');
+    const onChange = () => setPrefersDark(query.matches);
+    query.addEventListener('change', onChange);
+    return () => query.removeEventListener('change', onChange);
+  }, []);
+
+  return prefersDark;
+}
+
+export function ThemeProvider({ children }: { children: ReactNode }) {
+  const { user, updateUser } = useAuth();
+  // Signed-out screens (login, public shares) ignore any account preference
+  // and always show the server's configured default instead.
+  const [envMode, setEnvMode] = useState<'dark' | 'light'>('dark');
+  const systemPrefersDark = useSystemPrefersDark();
+
+  useEffect(() => {
     getRuntimeConfig()
       .then((config) => {
-        if (isTheme(config.theme)) setTheme(config.theme);
+        if (config.theme === 'dark' || config.theme === 'light') setEnvMode(config.theme);
       })
       .catch(() => undefined);
-  }, [chosenByUser]);
+  }, []);
+
+  const themeMode: ThemeMode = user ? (isThemeMode(user.theme_mode) ? user.theme_mode : 'dark') : envMode;
+  const skin: SkinId = user ? (isSkinId(user.theme_skin) ? user.theme_skin : 'default') : 'default';
+  const mode: 'dark' | 'light' = themeMode === 'system' ? (systemPrefersDark ? 'dark' : 'light') : themeMode;
 
   useEffect(() => {
-    document.documentElement.classList.toggle('dark', theme === 'dark');
-  }, [theme]);
+    document.documentElement.classList.toggle('dark', mode === 'dark');
+    document.documentElement.dataset.skin = skin;
+  }, [mode, skin]);
 
-  const toggleTheme = () => {
-    const next: Theme = theme === 'dark' ? 'light' : 'dark';
-    document.cookie = `${COOKIE}=${next}; path=/; max-age=${ONE_YEAR}; samesite=lax`;
-    setTheme(next);
+  const setAppearance = async (appearance: { mode?: ThemeMode; skin?: SkinId }) => {
+    const updated = await api.post<User>('/auth/appearance', appearance);
+    updateUser(updated);
   };
 
-  return <ThemeContext.Provider value={{ theme, toggleTheme }}>{children}</ThemeContext.Provider>;
+  return <ThemeContext.Provider value={{ themeMode, skin, mode, setAppearance }}>{children}</ThemeContext.Provider>;
 }
 
 export function useTheme() {

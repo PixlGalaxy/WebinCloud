@@ -53,7 +53,7 @@ const ConflictModal = ({ conflicts, incoming, onCancel, onResolve }: Props) => {
                     <p className="text-xs uppercase tracking-wide text-slate-400 dark:text-slate-500">
                       {t('conflict.incoming')}
                     </p>
-                    <p className="font-medium text-indigo-600 dark:text-indigo-400">
+                    <p className="font-medium text-[var(--accent-600)] dark:text-[var(--accent-400)]">
                       {replacement ? formatSize(replacement.size) : '—'}
                     </p>
                     <p className="text-xs text-slate-500 dark:text-slate-400">

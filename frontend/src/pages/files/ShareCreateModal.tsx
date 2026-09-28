@@ -107,7 +107,7 @@ const ShareCreateModal = ({ entry, onClose }: Props) => {
     return (
       <Modal title={t('share.title', { name: entry.name })} onClose={onClose}>
         <div className="flex justify-center py-8">
-          <Loader2 className="animate-spin text-indigo-500" size={28} />
+          <Loader2 className="animate-spin text-[var(--accent-500)]" size={28} />
         </div>
       </Modal>
     );
@@ -128,7 +128,7 @@ const ShareCreateModal = ({ entry, onClose }: Props) => {
                 key={share.id}
                 className="rounded-lg border border-slate-200 px-3 py-2 dark:border-slate-700"
               >
-                <code className="block truncate font-mono text-xs text-indigo-600 dark:text-indigo-400">
+                <code className="block truncate font-mono text-xs text-[var(--accent-600)] dark:text-[var(--accent-400)]">
                   {share.url}
                 </code>
                 <span className="text-xs text-slate-500 dark:text-slate-400">
@@ -167,7 +167,7 @@ const ShareCreateModal = ({ entry, onClose }: Props) => {
               type="checkbox"
               checked={allowDownload}
               onChange={(e) => setAllowDownload(e.target.checked)}
-              className="h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
+              className="h-4 w-4 rounded border-slate-300 text-[var(--accent-600)] focus:ring-[var(--accent-500)]"
             />
             {t('share.allowDownload')}
           </label>
@@ -178,7 +178,7 @@ const ShareCreateModal = ({ entry, onClose }: Props) => {
                 type="checkbox"
                 checked={allowUpload}
                 onChange={(e) => setAllowUpload(e.target.checked)}
-                className="h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
+                className="h-4 w-4 rounded border-slate-300 text-[var(--accent-600)] focus:ring-[var(--accent-500)]"
               />
               {t('share.allowUpload')}
             </label>
@@ -192,9 +192,9 @@ const ShareCreateModal = ({ entry, onClose }: Props) => {
               checked={useAbsolute}
               onChange={(e) => setUseAbsolute(e.target.checked)}
               disabled={pathNames.length === 0}
-              className="h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
+              className="h-4 w-4 rounded border-slate-300 text-[var(--accent-600)] focus:ring-[var(--accent-500)]"
             />
-            <Link2 size={15} className="text-indigo-500" />
+            <Link2 size={15} className="text-[var(--accent-500)]" />
             {t('share.absolutePath')}
           </label>
 
@@ -207,7 +207,7 @@ const ShareCreateModal = ({ entry, onClose }: Props) => {
                   onClick={() => setPathNameId(pathName.id)}
                   className={`rounded-full px-3 py-1.5 text-sm font-medium transition ${
                     pathNameId === pathName.id
-                      ? 'bg-indigo-600 text-white'
+                      ? 'bg-[var(--accent-600)] text-white'
                       : 'bg-slate-100 text-slate-600 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700'
                   }`}
                 >
@@ -230,7 +230,7 @@ const ShareCreateModal = ({ entry, onClose }: Props) => {
               type="checkbox"
               checked={usePassword}
               onChange={(e) => setUsePassword(e.target.checked)}
-              className="h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
+              className="h-4 w-4 rounded border-slate-300 text-[var(--accent-600)] focus:ring-[var(--accent-500)]"
             />
             {t('share.protectWithPassword')}
           </label>
@@ -249,9 +249,9 @@ const ShareCreateModal = ({ entry, onClose }: Props) => {
               type="checkbox"
               checked={useExpiry}
               onChange={(e) => setUseExpiry(e.target.checked)}
-              className="h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
+              className="h-4 w-4 rounded border-slate-300 text-[var(--accent-600)] focus:ring-[var(--accent-500)]"
             />
-            <Calendar size={15} className="text-indigo-500" />
+            <Calendar size={15} className="text-[var(--accent-500)]" />
             {t('share.setExpiry')}
           </label>
           {useExpiry ? (

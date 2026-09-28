@@ -95,7 +95,7 @@ const ShareManagerPage = () => {
 
       {shares === null ? (
         <div className={`${card} flex justify-center p-12`}>
-          <Loader2 className="animate-spin text-indigo-500" size={28} />
+          <Loader2 className="animate-spin text-[var(--accent-500)]" size={28} />
         </div>
       ) : shares.length === 0 ? (
         <div className={`${card} p-12 text-center`}>
@@ -109,12 +109,12 @@ const ShareManagerPage = () => {
               key={group.targetPath}
               ref={group.targetPath === highlighted ? highlightedRef : undefined}
               className={`${card} p-4 transition ${
-                group.targetPath === highlighted ? 'ring-2 ring-indigo-500' : ''
+                group.targetPath === highlighted ? 'ring-2 ring-[var(--accent-500)]' : ''
               }`}
             >
               <div className="flex items-start gap-3">
                 {group.links[0].target_type === 'folder' ? (
-                  <Folder size={20} className="mt-0.5 shrink-0 text-indigo-500" />
+                  <Folder size={20} className="mt-0.5 shrink-0 text-[var(--accent-500)]" />
                 ) : (
                   <FileIcon size={20} className="mt-0.5 shrink-0 text-slate-400" />
                 )}
@@ -135,13 +135,13 @@ const ShareManagerPage = () => {
                 {group.links.map((share) => (
                   <li key={share.id} className="flex flex-wrap items-start gap-3 pt-3 first:pt-3">
                     <div className="min-w-0 flex-1">
-                      <code className="block truncate font-mono text-xs text-indigo-600 dark:text-indigo-400">
+                      <code className="block truncate font-mono text-xs text-[var(--accent-600)] dark:text-[var(--accent-400)]">
                         {share.url}
                       </code>
 
                       <div className="mt-2 flex flex-wrap items-center gap-2 text-xs">
                     {share.pathName ? (
-                      <span className="rounded-full bg-indigo-50 px-2 py-0.5 font-medium text-indigo-700 dark:bg-indigo-500/15 dark:text-indigo-300">
+                      <span className="rounded-full bg-[var(--accent-50)] px-2 py-0.5 font-medium text-[var(--accent-700)] dark:bg-[var(--accent-500)]/15 dark:text-[var(--accent-300)]">
                         {share.pathName}
                       </span>
                     ) : (
@@ -331,7 +331,7 @@ const EditShareModal = ({ share, pathNames, onClose, onSaved }: EditProps) => {
               type="checkbox"
               checked={allowDownload}
               onChange={(e) => setAllowDownload(e.target.checked)}
-              className="h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
+              className="h-4 w-4 rounded border-slate-300 text-[var(--accent-600)] focus:ring-[var(--accent-500)]"
             />
             {t('share.allowDownload')}
           </label>
@@ -341,7 +341,7 @@ const EditShareModal = ({ share, pathNames, onClose, onSaved }: EditProps) => {
                 type="checkbox"
                 checked={allowUpload}
                 onChange={(e) => setAllowUpload(e.target.checked)}
-                className="h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
+                className="h-4 w-4 rounded border-slate-300 text-[var(--accent-600)] focus:ring-[var(--accent-500)]"
               />
               {t('share.allowUpload')}
             </label>
@@ -355,7 +355,7 @@ const EditShareModal = ({ share, pathNames, onClose, onSaved }: EditProps) => {
               checked={useAbsolute}
               onChange={(e) => setUseAbsolute(e.target.checked)}
               disabled={pathNames.length === 0}
-              className="h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
+              className="h-4 w-4 rounded border-slate-300 text-[var(--accent-600)] focus:ring-[var(--accent-500)]"
             />
             {t('share.absolutePath')}
           </label>
@@ -369,7 +369,7 @@ const EditShareModal = ({ share, pathNames, onClose, onSaved }: EditProps) => {
                   onClick={() => setPathNameId(pathName.id)}
                   className={`rounded-full px-3 py-1.5 text-sm font-medium transition ${
                     pathNameId === pathName.id
-                      ? 'bg-indigo-600 text-white'
+                      ? 'bg-[var(--accent-600)] text-white'
                       : 'bg-slate-100 text-slate-600 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700'
                   }`}
                 >
@@ -386,9 +386,9 @@ const EditShareModal = ({ share, pathNames, onClose, onSaved }: EditProps) => {
               type="checkbox"
               checked={useExpiry}
               onChange={(e) => setUseExpiry(e.target.checked)}
-              className="h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
+              className="h-4 w-4 rounded border-slate-300 text-[var(--accent-600)] focus:ring-[var(--accent-500)]"
             />
-            <Calendar size={15} className="text-indigo-500" />
+            <Calendar size={15} className="text-[var(--accent-500)]" />
             {t('share.setExpiry')}
           </label>
           {useExpiry ? (
@@ -427,7 +427,7 @@ const EditShareModal = ({ share, pathNames, onClose, onSaved }: EditProps) => {
                     setClearPassword(e.target.checked);
                     if (e.target.checked) setPassword('');
                   }}
-                  className="h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
+                  className="h-4 w-4 rounded border-slate-300 text-[var(--accent-600)] focus:ring-[var(--accent-500)]"
                 />
                 {t('share.removePassword')}
               </label>

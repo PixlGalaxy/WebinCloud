@@ -14,7 +14,7 @@ interface Props {
   onSaved: () => void;
 }
 
-const checkbox = 'h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500';
+const checkbox = 'h-4 w-4 rounded border-slate-300 text-[var(--accent-600)] focus:ring-[var(--accent-500)]';
 const sectionTitle = 'flex items-center gap-2 text-sm font-semibold text-slate-900 dark:text-slate-100';
 
 const UserFormModal = ({ user, onClose, onSaved }: Props) => {
@@ -109,7 +109,7 @@ const UserFormModal = ({ user, onClose, onSaved }: Props) => {
 
         <section className="space-y-4">
           <h3 className={sectionTitle}>
-            <UserIcon size={16} className="text-indigo-500" />
+            <UserIcon size={16} className="text-[var(--accent-500)]" />
             {t('users.accountSection')}
           </h3>
 
@@ -186,7 +186,7 @@ const UserFormModal = ({ user, onClose, onSaved }: Props) => {
                     onClick={() => setRole(value)}
                     className={`flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium transition ${
                       role === value
-                        ? 'bg-indigo-600 text-white'
+                        ? 'bg-[var(--accent-600)] text-white'
                         : 'text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800'
                     }`}
                   >
@@ -213,7 +213,7 @@ const UserFormModal = ({ user, onClose, onSaved }: Props) => {
 
         <section className="space-y-4 border-t border-slate-200 pt-5 dark:border-slate-700">
           <h3 className={sectionTitle}>
-            <FolderPlus size={16} className="text-indigo-500" />
+            <FolderPlus size={16} className="text-[var(--accent-500)]" />
             {t('users.foldersSection')}
           </h3>
 

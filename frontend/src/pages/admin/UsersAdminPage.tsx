@@ -56,7 +56,7 @@ const UsersAdminPage = () => {
       <div className={`${card} overflow-hidden`}>
         {users === null ? (
           <div className="flex justify-center p-12">
-            <Loader2 className="animate-spin text-indigo-500" size={28} />
+            <Loader2 className="animate-spin text-[var(--accent-500)]" size={28} />
           </div>
         ) : (
           <table className="w-full text-sm">

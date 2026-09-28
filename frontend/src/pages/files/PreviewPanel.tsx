@@ -4,6 +4,7 @@ import type { PreviewKind } from '../../api/files';
 import { ApiError } from '../../api/client';
 import { useI18n } from '../../i18n/I18nContext';
 import { useTheme } from '../../context/ThemeContext';
+import { useAutoplayVideos } from '../../hooks/useAutoplayVideos';
 import { btn, errorBox } from '../../components/ui/styles';
 
 const CodeEditor = lazy(() => import('./CodeEditor'));
@@ -37,7 +38,8 @@ interface Props {
 
 const PreviewPanel = ({ name, previewKind, rawUrl, downloadUrl, sizeBytes, editor, onClose, onSaved }: Props) => {
   const { t } = useI18n();
-  const { theme } = useTheme();
+  const { mode } = useTheme();
+  const { autoplay } = useAutoplayVideos();
 
   const [text, setText] = useState<string | null>(null);
   const [original, setOriginal] = useState('');
@@ -139,7 +141,7 @@ const PreviewPanel = ({ name, previewKind, rawUrl, downloadUrl, sizeBytes, edito
                 onClick={() => setHtmlView('rendered')}
                 className={`flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium transition ${
                   htmlView === 'rendered'
-                    ? 'bg-indigo-600 text-white'
+                    ? 'bg-[var(--accent-600)] text-white'
                     : 'text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800'
                 }`}
               >
@@ -149,7 +151,7 @@ const PreviewPanel = ({ name, previewKind, rawUrl, downloadUrl, sizeBytes, edito
                 onClick={() => setHtmlView('raw')}
                 className={`flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium transition ${
                   htmlView === 'raw'
-                    ? 'bg-indigo-600 text-white'
+                    ? 'bg-[var(--accent-600)] text-white'
                     : 'text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800'
                 }`}
               >
@@ -191,7 +193,7 @@ const PreviewPanel = ({ name, previewKind, rawUrl, downloadUrl, sizeBytes, edito
         <div className="min-h-0 flex-1 overflow-auto bg-slate-50 dark:bg-slate-950">
           {loading ? (
             <div className="flex h-full items-center justify-center">
-              <Loader2 className="animate-spin text-indigo-500" size={32} />
+              <Loader2 className="animate-spin text-[var(--accent-500)]" size={32} />
             </div>
           ) : previewKind === 'image' ? (
             <div className="flex h-full items-center justify-center p-6">
@@ -199,7 +201,7 @@ const PreviewPanel = ({ name, previewKind, rawUrl, downloadUrl, sizeBytes, edito
             </div>
           ) : previewKind === 'video' ? (
             <div className="flex h-full items-center justify-center p-6">
-              <video src={raw} controls autoPlay className="max-h-full max-w-full" />
+              <video src={raw} controls autoPlay={autoplay} className="max-h-full max-w-full" />
             </div>
           ) : previewKind === 'audio' ? (
             <div className="flex h-full items-center justify-center p-6">
@@ -224,7 +226,7 @@ const PreviewPanel = ({ name, previewKind, rawUrl, downloadUrl, sizeBytes, edito
             <Suspense
               fallback={
                 <div className="flex h-full items-center justify-center">
-                  <Loader2 className="animate-spin text-indigo-500" size={32} />
+                  <Loader2 className="animate-spin text-[var(--accent-500)]" size={32} />
                 </div>
               }
             >
@@ -234,7 +236,7 @@ const PreviewPanel = ({ name, previewKind, rawUrl, downloadUrl, sizeBytes, edito
             <Suspense
               fallback={
                 <div className="flex h-full items-center justify-center">
-                  <Loader2 className="animate-spin text-indigo-500" size={32} />
+                  <Loader2 className="animate-spin text-[var(--accent-500)]" size={32} />
                 </div>
               }
             >
@@ -244,7 +246,7 @@ const PreviewPanel = ({ name, previewKind, rawUrl, downloadUrl, sizeBytes, edito
             <Suspense
               fallback={
                 <div className="flex h-full items-center justify-center">
-                  <Loader2 className="animate-spin text-indigo-500" size={32} />
+                  <Loader2 className="animate-spin text-[var(--accent-500)]" size={32} />
                 </div>
               }
             >
@@ -255,7 +257,7 @@ const PreviewPanel = ({ name, previewKind, rawUrl, downloadUrl, sizeBytes, edito
                   name={name}
                   value={text}
                   readOnly={!canWrite}
-                  isDark={theme === 'dark'}
+                  isDark={mode === 'dark'}
                   onChange={setText}
                 />
               )}
@@ -264,7 +266,7 @@ const PreviewPanel = ({ name, previewKind, rawUrl, downloadUrl, sizeBytes, edito
             <Suspense
               fallback={
                 <div className="flex h-full items-center justify-center">
-                  <Loader2 className="animate-spin text-indigo-500" size={32} />
+                  <Loader2 className="animate-spin text-[var(--accent-500)]" size={32} />
                 </div>
               }
             >
@@ -272,7 +274,7 @@ const PreviewPanel = ({ name, previewKind, rawUrl, downloadUrl, sizeBytes, edito
                 name={name}
                 value={text}
                 readOnly={!canWrite}
-                isDark={theme === 'dark'}
+                isDark={mode === 'dark'}
                 onChange={setText}
               />
             </Suspense>

@@ -1,3 +1,34 @@
+/** A real light/dark switch. 'system' follows the visitor's OS preference. */
+export const THEME_MODES = ['light', 'dark', 'system'] as const;
+export type ThemeMode = (typeof THEME_MODES)[number];
+
+/** Just the accent color family — works under either mode. */
+export const THEME_SKINS = [
+  'default',
+  'ocean',
+  'sunset',
+  'forest',
+  'grape',
+  'crimson',
+  'solar',
+  'arctic',
+  'mint',
+  'blossom',
+  'ares',
+  'poseidon',
+  'zeus',
+  'jade',
+  'verdigris',
+  'nebula',
+  'sakura',
+  'slate',
+  'mono',
+  'graphite',
+  'ash',
+  'terracotta',
+] as const;
+export type ThemeSkin = (typeof THEME_SKINS)[number];
+
 export interface User {
   id: string;
   email: string;
@@ -7,6 +38,8 @@ export interface User {
   avatar_path: string | null;
   role: 'admin' | 'user';
   is_active: number;
+  theme_mode: ThemeMode;
+  theme_skin: ThemeSkin;
   created_at: string;
   updated_at: string;
 }

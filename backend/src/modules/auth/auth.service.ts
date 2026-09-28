@@ -1,7 +1,16 @@
 import { randomBytes, createHash } from 'crypto';
 import type { Db } from '../../db/client.js';
-import type { User, Session, PublicUser } from '../../types/index.js';
+import type { User, Session, PublicUser, ThemeMode, ThemeSkin } from '../../types/index.js';
+import { THEME_MODES, THEME_SKINS } from '../../types/index.js';
 import { hashPassword, verifyPassword } from './password.js';
+
+export function isThemeMode(value: unknown): value is ThemeMode {
+  return THEME_MODES.includes(value as ThemeMode);
+}
+
+export function isThemeSkin(value: unknown): value is ThemeSkin {
+  return THEME_SKINS.includes(value as ThemeSkin);
+}
 
 function hashToken(token: string): string {
   return createHash('sha256').update(token).digest('hex');
@@ -69,5 +78,15 @@ export class AuthService {
     this.db.prepare("UPDATE users SET password_hash = ?, updated_at = datetime('now') WHERE id = ?").run(newHash, userId);
     this.db.prepare('DELETE FROM sessions WHERE user_id = ?').run(userId);
     return true;
+  }
+
+  setAppearance(userId: string, appearance: { mode?: ThemeMode; skin?: ThemeSkin }): User {
+    if (appearance.mode !== undefined) {
+      this.db.prepare("UPDATE users SET theme_mode = ?, updated_at = datetime('now') WHERE id = ?").run(appearance.mode, userId);
+    }
+    if (appearance.skin !== undefined) {
+      this.db.prepare("UPDATE users SET theme_skin = ?, updated_at = datetime('now') WHERE id = ?").run(appearance.skin, userId);
+    }
+    return this.db.prepare('SELECT * FROM users WHERE id = ?').get(userId) as User;
   }
 }

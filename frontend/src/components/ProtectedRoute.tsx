@@ -8,7 +8,7 @@ import ForceChangePasswordModal from './ForceChangePasswordModal';
 function Spinner() {
   return (
     <div className="min-h-screen flex items-center justify-center bg-slate-50 dark:bg-slate-950">
-      <Loader2 className="animate-spin text-indigo-500" size={32} />
+      <Loader2 className="animate-spin text-[var(--accent-500)]" size={32} />
     </div>
   );
 }

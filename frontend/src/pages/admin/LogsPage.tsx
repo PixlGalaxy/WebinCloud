@@ -149,7 +149,7 @@ const LogsPage = () => {
       <div className={`${card} overflow-hidden`}>
         {loading && !data ? (
           <div className="flex justify-center p-12">
-            <Loader2 className="animate-spin text-indigo-500" size={28} />
+            <Loader2 className="animate-spin text-[var(--accent-500)]" size={28} />
           </div>
         ) : data && data.entries.length === 0 ? (
           <p className="p-12 text-center text-slate-500 dark:text-slate-400">{t('logs.empty')}</p>
