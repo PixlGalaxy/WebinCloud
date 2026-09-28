@@ -31,14 +31,11 @@ docker run -d \
   -v WebinCloud_Data:/data \
   -v WebinCloud_AppData:/appdata \
   -v WebinCloud_Temp:/temp \
-  -e ADMIN_EMAIL=admin@example.com \
-  -e ADMIN_USERNAME=admin \
-  -e ADMIN_PASSWORD=change-me \
   --restart unless-stopped \
   ghcr.io/pixlgalaxy/webincloud:latest
 ```
 
-Open `http://localhost:8080` and sign in with the administrator account above. That account is created only on the first run, while the user table is still empty; changing the variables later has no effect, so set a real password from the start.
+Open `http://localhost:8080` and sign in with `admin` / `changeme`. That exact pair only ever works once: on first login you're immediately asked to choose a new username, email and password, and the app is unusable until you do. There's nothing to set in advance — no admin credentials belong in an env var.
 
 To serve an existing directory instead of a Docker volume, bind it:
 
@@ -57,11 +54,7 @@ services:
     ports:
       - "8080:80"
     environment:
-      ADMIN_EMAIL: admin@example.com
-      ADMIN_USERNAME: admin
-      ADMIN_PASSWORD: change-me
       LANGUAGE: en
-      THEME: dark
     volumes:
       - WebinCloud_Data:/data
       - WebinCloud_AppData:/appdata
@@ -93,18 +86,11 @@ Inside the container:
 
 ## Configuration
 
-Everything below is optional except the administrator account.
+Almost everything is configured from **Admin Panel → Settings** once the app is running — app title, app name, default theme, the logo/icon/favicon, session lifetime, cookie security, rate limits, archive cleanup and the MaxMind key. Nothing there needs an env var or a container restart to change, except the handful of settings marked "requires a backend restart" in the panel itself, which you apply with the restart button right there — no `docker restart` needed either.
 
-### Customization
+`.env` is now only for the very first boot's starting values, before the panel has anything saved. See `.env.example` for the full list with defaults.
 
-| Variable | Default | Description |
-| --- | --- | --- |
-| `LANGUAGE` | `en` | Default interface and API message language for signed-out screens: `en`, `es`, `fr` or `nl`. Signed-in users pick their own language in Settings, saved to their account |
-| `THEME` | `dark` | Default appearance for signed-out screens: `dark` or `light`. Signed-in users pick their own theme in Settings, saved to their account |
-| `APP_TITLE` | `Webin Cloud Server` | Browser tab title |
-| `APP_NAME` | `Webin Cloud` | Product name used in the interface |
-
-The logo and icons are files rather than settings. Replace them in `/appdata/branding` (`logo.png`, `icon.png`, `favicon.ico`); the defaults are copied there on first boot and a reload picks up any change:
+The logo and icons can still be replaced from the filesystem instead of the panel, if you prefer: they live in `/appdata/branding` (`logo.png`, `icon.png`, `favicon.ico`), and a reload picks up any change:
 
 ```
 docker cp my-logo.png webincloud:/appdata/branding/logo.png
@@ -112,27 +98,9 @@ docker cp my-logo.png webincloud:/appdata/branding/logo.png
 
 Translations live in `locales/*.json`. English and Spanish are written and maintained by the project's author, a native speaker of both. The rest (currently French and Dutch) were machine-translated and haven't been reviewed by a native speaker — if you spot something off, a PR fixing it or adding a new language is welcome.
 
-### Accounts and sessions
+### The admin account
 
-| Variable | Default | Description |
-| --- | --- | --- |
-| `ADMIN_EMAIL` | — | Administrator created on first run only |
-| `ADMIN_USERNAME` | — | Administrator created on first run only |
-| `ADMIN_PASSWORD` | — | Administrator created on first run only |
-| `SESSION_TTL_HOURS` | `24` | Session lifetime. Also caps the inactivity "auto sign-out" timer users can set in Settings |
-| `COOKIE_SECURE` | `false` | Set to `true` only when serving over HTTPS, otherwise the session cookie is never returned |
-| `LOGIN_RATE_LIMIT_MAX` | `10` | Max login attempts per IP and per account within the window below, before a 429 |
-| `LOGIN_RATE_LIMIT_WINDOW_MINUTES` | `15` | Window for the login rate limit |
-| `SHARE_UNLOCK_RATE_LIMIT_MAX` | `10` | Max password attempts per IP and per share link within the window below, before a 429 |
-| `SHARE_UNLOCK_RATE_LIMIT_WINDOW_MINUTES` | `15` | Window for the share-unlock rate limit |
-
-### Storage
-
-| Variable | Default | Description |
-| --- | --- | --- |
-| `ARCHIVE_ABANDON_SECONDS` | `30` | Seconds without a progress poll before a running ZIP is cancelled and its partial file removed |
-| `MAXMIND_LICENSE_KEY` | — | Optional. Powers the country map on the admin dashboard with a local MaxMind GeoLite2-Country database, downloaded on first boot and refreshed weekly. Get a free key at [maxmind.com/en/geolite2/signup](https://www.maxmind.com/en/geolite2/signup). Without it, the map just shows no dots |
-| `DATA_ROOT` | `/data` | Override only for a custom layout |
+There's no `ADMIN_EMAIL`/`ADMIN_USERNAME`/`ADMIN_PASSWORD` — a real password has no business sitting in plaintext in an env var. The first boot always seeds `admin` / `changeme`, and that exact pair only ever works once: logging in with it immediately forces a new username, email and password before anything else is reachable, and the old credentials stop working from that point on.
 | `APPDATA_ROOT` | `/appdata` | Override only for a custom layout |
 | `TEMP_ROOT` | `/temp` | Override only for a custom layout |
 

@@ -4,6 +4,7 @@ import { useAuth } from '../context/AuthContext';
 import Navbar from './Navbar';
 import Footer from './Footer';
 import ForceChangePasswordModal from './ForceChangePasswordModal';
+import CompleteAdminSetupModal from './CompleteAdminSetupModal';
 
 function Spinner() {
   return (
@@ -14,7 +15,7 @@ function Spinner() {
 }
 
 export function ProtectedRoute() {
-  const { user, isLoading, mustChangePassword } = useAuth();
+  const { user, isLoading, mustChangePassword, mustCompleteSetup } = useAuth();
 
   if (isLoading) return <Spinner />;
   if (!user) return <Navigate to="/login" replace />;
@@ -26,7 +27,7 @@ export function ProtectedRoute() {
         <Outlet />
       </main>
       <Footer />
-      {mustChangePassword && <ForceChangePasswordModal />}
+      {mustCompleteSetup ? <CompleteAdminSetupModal /> : mustChangePassword && <ForceChangePasswordModal />}
     </div>
   );
 }

@@ -2,9 +2,11 @@ import { api } from './client';
 
 export interface RuntimeConfig {
   language: string;
-  theme: string;
   appName: string;
   appTitle: string;
+  /** Admin-set system-wide default appearance for signed-out screens — see ThemeContext. */
+  defaultThemeMode: string;
+  defaultThemeSkin: string;
   maxAutoSignoutMinutes: number;
 }
 

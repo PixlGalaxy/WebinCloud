@@ -7,9 +7,10 @@ import type { AuthenticatedRequest } from './session.middleware.js';
 import { createAuthGuards } from './session.middleware.js';
 import { AuthService, isThemeMode, isThemeSkin, toPublicUser } from './auth.service.js';
 import { logger } from '../../logger.js';
-import { badRequest } from '../../errors.js';
+import { AppError, badRequest } from '../../errors.js';
 import { createRateLimiter } from '../../middleware/rate-limit.js';
 import type { MetricsService } from '../admin/metrics.service.js';
+import { EMAIL, USERNAME, assertUniqueUser } from '../users/validation.js';
 
 export function createAuthRoutes(db: Db, config: EnvConfig, t: Translate, metrics: MetricsService): Router {
   const router = Router();
@@ -63,7 +64,11 @@ export function createAuthRoutes(db: Db, config: EnvConfig, t: Translate, metric
         path: '/',
         maxAge: config.SESSION_TTL_HOURS * 60 * 60 * 1000,
       });
-      return res.json({ user: toPublicUser(result.user), mustChangePassword: result.mustChangePassword });
+      return res.json({
+        user: toPublicUser(result.user),
+        mustChangePassword: result.mustChangePassword,
+        mustCompleteSetup: result.mustCompleteSetup,
+      });
     } catch (error) {
       logger.error('Login failed', error);
       return res.status(500).json({ error: t('error.internal') });
@@ -116,6 +121,54 @@ export function createAuthRoutes(db: Db, config: EnvConfig, t: Translate, metric
       return res.json({ success: true });
     } catch (error) {
       logger.error('Password change failed', error);
+      return res.status(500).json({ error: t('error.internal') });
+    }
+  });
+
+  // The seeded first-run admin (username "admin", password "changeme") must
+  // replace all three before doing anything else — see AuthService.login's
+  // mustCompleteSetup and bootstrap.ts.
+  router.post('/complete-setup', requireAuth, async (req: AuthenticatedRequest, res) => {
+    const { currentPassword, newUsername, newEmail, newPassword } = req.body as {
+      currentPassword?: string;
+      newUsername?: string;
+      newEmail?: string;
+      newPassword?: string;
+    };
+    // Usernames are otherwise immutable after creation (UsersService.update has
+    // no username field at all) — this endpoint is a deliberate, narrow
+    // exception for exactly the seeded first-run account, not a general
+    // "rename yourself" tool for every user.
+    if (req.user!.username !== 'admin') {
+      return res.status(403).json({ error: t('auth.forbidden') });
+    }
+    if (!currentPassword || !newUsername || !newEmail || !newPassword) {
+      return res.status(400).json({ error: t('auth.setupFieldsRequired') });
+    }
+    if (!USERNAME.test(newUsername)) return res.status(400).json({ error: t('users.invalidUsername') });
+    if (!EMAIL.test(newEmail)) return res.status(400).json({ error: t('users.invalidEmail') });
+    if (newPassword.length < 8) return res.status(400).json({ error: t('auth.passwordTooShort') });
+
+    try {
+      assertUniqueUser(db, 'username', newUsername, req.user!.id);
+      assertUniqueUser(db, 'email', newEmail, req.user!.id);
+
+      const ok = await authService.completeSetup(req.user!.id, currentPassword, {
+        username: newUsername,
+        email: newEmail,
+        password: newPassword,
+      });
+      if (!ok) {
+        logger.auth.warn(`Setup completion for "${req.user!.username}" from ${req.ip} failed: wrong current password`);
+        return res.status(401).json({ error: t('auth.currentPasswordIncorrect') });
+      }
+      logger.auth.info(`"${req.user!.username}" completed first-run setup as "${newUsername}" from ${req.ip}`);
+      metrics.forgetUser(req.user!.username);
+      res.clearCookie('session', { path: '/' });
+      return res.json({ success: true });
+    } catch (error) {
+      if (error instanceof AppError) throw error; // conflict() from assertUniqueUser — Express 5 forwards it to the error handler.
+      logger.error('Setup completion failed', error);
       return res.status(500).json({ error: t('error.internal') });
     }
   });

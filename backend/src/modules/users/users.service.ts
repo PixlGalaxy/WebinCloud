@@ -1,11 +1,12 @@
 import { randomUUID } from 'crypto';
 import type { Db } from '../../db/client.js';
 import type { User, PublicUser } from '../../types/index.js';
-import { badRequest, conflict, notFound } from '../../errors.js';
+import { badRequest, notFound } from '../../errors.js';
 import { hashPassword } from '../auth/password.js';
 import { toPublicUser } from '../auth/auth.service.js';
 import { PathNamesService } from '../path-names/path-names.service.js';
 import type { MetricsService } from '../admin/metrics.service.js';
+import { EMAIL, USERNAME, assertUniqueUser } from './validation.js';
 
 export interface CreateUserInput {
   email: string;
@@ -23,11 +24,6 @@ export interface UpdateUserInput {
   password?: string;
 }
 
-// Intentionally permissive: self-hosted installs use intranet addresses such as
-// "admin@localhost", which a TLD-requiring pattern would reject.
-const EMAIL = /^[^\s@]+@[^\s@]+$/;
-const USERNAME = /^[a-zA-Z0-9._-]{3,32}$/;
-
 export class UsersService {
   constructor(private db: Db, private metrics: MetricsService) {}
 
@@ -42,20 +38,13 @@ export class UsersService {
     return toPublicUser(row);
   }
 
-  private assertUnique(field: 'email' | 'username', value: string, exceptId?: string): void {
-    const row = this.db
-      .prepare(`SELECT id FROM users WHERE ${field} = ? AND id IS NOT ?`)
-      .get(value, exceptId ?? null) as { id: string } | undefined;
-    if (row) throw conflict(field === 'email' ? 'users.emailTaken' : 'users.usernameTaken');
-  }
-
   async create(input: CreateUserInput): Promise<PublicUser> {
     if (!EMAIL.test(input.email)) throw badRequest('users.invalidEmail');
     if (!USERNAME.test(input.username)) throw badRequest('users.invalidUsername');
     if (input.password.length < 8) throw badRequest('auth.passwordTooShort');
 
-    this.assertUnique('email', input.email);
-    this.assertUnique('username', input.username);
+    assertUniqueUser(this.db, 'email', input.email);
+    assertUniqueUser(this.db, 'username', input.username);
 
     const id = randomUUID();
     this.db
@@ -82,7 +71,7 @@ export class UsersService {
 
     if (input.email !== undefined) {
       if (!EMAIL.test(input.email)) throw badRequest('users.invalidEmail');
-      this.assertUnique('email', input.email, id);
+      assertUniqueUser(this.db, 'email', input.email, id);
     }
     if (input.password !== undefined && input.password.length < 8) throw badRequest('auth.passwordTooShort');
 

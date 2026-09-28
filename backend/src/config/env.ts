@@ -6,17 +6,9 @@ import { logger } from '../logger.js';
 // src/config/env.ts (or dist/config/env.js) -> repo root
 const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), '../../..');
 
-export const THEMES = ['dark', 'light'] as const;
-export type Theme = (typeof THEMES)[number];
-
-function isTheme(value: string | undefined): value is Theme {
-  return THEMES.includes(value as Theme);
-}
-
 export interface EnvConfig {
   NODE_ENV: 'development' | 'production';
   PORT: number;
-  THEME: Theme;
   DATA_ROOT: string;
   APPDATA_ROOT: string;
   TEMP_ROOT: string;
@@ -31,9 +23,6 @@ export interface EnvConfig {
   BRANDING_DIR: string;
   /** Packaged fallbacks shipped with the image. */
   DEFAULT_BRANDING_DIR: string;
-  ADMIN_EMAIL?: string;
-  ADMIN_USERNAME?: string;
-  ADMIN_PASSWORD?: string;
   SESSION_TTL_HOURS: number;
   COOKIE_SECURE: boolean;
   /** Seconds without a progress poll before a running archive is cancelled. */
@@ -69,15 +58,10 @@ export function loadEnv(): EnvConfig {
   if (env.LANGUAGE && !isLanguage(env.LANGUAGE)) {
     logger.warn(`Unsupported LANGUAGE "${env.LANGUAGE}", falling back to "en"`);
   }
-  if (env.THEME && !isTheme(env.THEME)) {
-    logger.warn(`Unsupported THEME "${env.THEME}", falling back to "dark"`);
-  }
 
   return {
     NODE_ENV: isProd ? 'production' : 'development',
     PORT: parseInt(env.PORT || '4000', 10),
-    // Default appearance; a visitor's own choice is kept in a cookie and wins.
-    THEME: isTheme(env.THEME) ? env.THEME : 'dark',
     DATA_ROOT,
     APPDATA_ROOT,
     TEMP_ROOT,
@@ -89,9 +73,6 @@ export function loadEnv(): EnvConfig {
     DEFAULT_BRANDING_DIR: env.DEFAULT_BRANDING_DIR || join(repoRoot, 'branding'),
     // Shared with the frontend so both render the same strings.
     LOCALES_DIR: resolve(env.LOCALES_DIR || join(repoRoot, 'locales')),
-    ADMIN_EMAIL: env.ADMIN_EMAIL || (isProd ? undefined : 'admin@localhost'),
-    ADMIN_USERNAME: env.ADMIN_USERNAME || (isProd ? undefined : 'admin'),
-    ADMIN_PASSWORD: env.ADMIN_PASSWORD || (isProd ? undefined : 'admin1234'),
     SESSION_TTL_HOURS: parseInt(env.SESSION_TTL_HOURS || '24', 10),
     ARCHIVE_ABANDON_SECONDS: parseInt(env.ARCHIVE_ABANDON_SECONDS || '30', 10),
     LOGIN_RATE_LIMIT_MAX: parseInt(env.LOGIN_RATE_LIMIT_MAX || '10', 10),

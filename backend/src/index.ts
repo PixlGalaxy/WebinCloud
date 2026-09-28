@@ -2,6 +2,8 @@ import { mkdirSync } from 'fs';
 import { loadEnv } from './config/env.js';
 import { initializeDb } from './db/client.js';
 import { runMigrations } from './db/migrate.js';
+import { SettingsService } from './db/settings.js';
+import { SETTINGS_KEYS } from './modules/admin/settings-keys.js';
 import { bootstrapAdmin } from './modules/auth/bootstrap.js';
 import { seedDevUsers } from './modules/auth/dev-seed.js';
 import { PathNamesService } from './modules/path-names/path-names.service.js';
@@ -10,7 +12,7 @@ import { createApp } from './app.js';
 import { logger } from './logger.js';
 
 async function main() {
-  const config = loadEnv();
+  let config = loadEnv();
 
   mkdirSync(config.APPDATA_ROOT, { recursive: true });
   mkdirSync(config.DATA_ROOT, { recursive: true });
@@ -19,8 +21,32 @@ async function main() {
 
   const db = initializeDb(config.DB_PATH);
   runMigrations(db);
-  await bootstrapAdmin(db, config);
-  if (!process.env.ADMIN_PASSWORD) await seedDevUsers(db, config);
+
+  // Admin-panel overrides for the settings that are baked into closures at
+  // startup (rate limiters, session TTL, archive cleanup, GeoIP) — anything an
+  // admin has saved from Settings wins over the env default from here on,
+  // until the next restart re-reads it the same way.
+  const settings = new SettingsService(db);
+  config = {
+    ...config,
+    SESSION_TTL_HOURS: settings.getNumber(SETTINGS_KEYS.sessionTtlHours, config.SESSION_TTL_HOURS),
+    COOKIE_SECURE: settings.getBoolean(SETTINGS_KEYS.cookieSecure, config.COOKIE_SECURE),
+    LOGIN_RATE_LIMIT_MAX: settings.getNumber(SETTINGS_KEYS.loginRateLimitMax, config.LOGIN_RATE_LIMIT_MAX),
+    LOGIN_RATE_LIMIT_WINDOW_MINUTES: settings.getNumber(
+      SETTINGS_KEYS.loginRateLimitWindowMinutes,
+      config.LOGIN_RATE_LIMIT_WINDOW_MINUTES,
+    ),
+    SHARE_UNLOCK_RATE_LIMIT_MAX: settings.getNumber(SETTINGS_KEYS.shareUnlockRateLimitMax, config.SHARE_UNLOCK_RATE_LIMIT_MAX),
+    SHARE_UNLOCK_RATE_LIMIT_WINDOW_MINUTES: settings.getNumber(
+      SETTINGS_KEYS.shareUnlockRateLimitWindowMinutes,
+      config.SHARE_UNLOCK_RATE_LIMIT_WINDOW_MINUTES,
+    ),
+    ARCHIVE_ABANDON_SECONDS: settings.getNumber(SETTINGS_KEYS.archiveAbandonSeconds, config.ARCHIVE_ABANDON_SECONDS),
+    MAXMIND_LICENSE_KEY: settings.getOptionalString(SETTINGS_KEYS.maxmindLicenseKey) ?? config.MAXMIND_LICENSE_KEY,
+  };
+
+  await bootstrapAdmin(db);
+  await seedDevUsers(db, config);
 
   // Covers accounts that existed before path names were introduced.
   const pathNames = new PathNamesService(db);

@@ -8,13 +8,10 @@ import {
   Info,
   Link2,
   Loader2,
-  Moon,
-  Monitor,
   Palette,
   Pencil,
   Plus,
   SlidersHorizontal,
-  Sun,
   Trash2,
   Upload,
   UserRound,
@@ -30,18 +27,12 @@ import { useTheme, type ThemeMode } from '../../context/ThemeContext';
 import { useAutoplayVideos } from '../../hooks/useAutoplayVideos';
 import { useThumbnailsPreference } from '../../hooks/useThumbnailsPreference';
 import { useAutoSignOut } from '../../context/AutoSignOutContext';
-import { SKINS, THEME_MODES, type SkinId } from '../../theme/themes';
+import type { SkinId } from '../../theme/themes';
 import { SUPPORTED_LANGUAGES, LANGUAGE_NAMES, type Language, type TranslationKey } from '../../i18n/translations';
 import { btn, card, errorBox, input, label } from '../../components/ui/styles';
 import Avatar from '../../components/ui/Avatar';
 import Toast from '../../components/ui/Toast';
-
-const MODE_ICON: Record<ThemeMode, LucideIcon> = { light: Sun, dark: Moon, system: Monitor };
-const MODE_LABEL: Record<ThemeMode, TranslationKey> = {
-  light: 'settings.themeModeLight',
-  dark: 'settings.themeModeDark',
-  system: 'settings.themeModeSystem',
-};
+import ThemePicker from '../../components/ThemePicker';
 
 type Section = 'account' | 'sharing' | 'appearance' | 'preferences';
 
@@ -475,72 +466,14 @@ const AppearanceSection = () => {
 
       {error && <div className={`${errorBox} mb-4`}>{error}</div>}
 
-      <h3 className="font-medium text-slate-800 dark:text-slate-100">{t('settings.themeModeTitle')}</h3>
-      <p className="mt-0.5 mb-3 text-xs text-slate-500 dark:text-slate-400">{t('settings.themeModeHint')}</p>
-      <div className="grid max-w-md grid-cols-3 gap-3">
-        {THEME_MODES.map((mode) => {
-          const selected = mode === themeMode;
-          const Icon = MODE_ICON[mode];
-          return (
-            <button
-              key={mode}
-              type="button"
-              onClick={() => void chooseMode(mode)}
-              disabled={savingMode}
-              className={`relative flex flex-col items-center gap-2 rounded-xl border-2 p-4 transition disabled:cursor-wait ${
-                selected
-                  ? 'border-[var(--accent-500)] bg-[var(--accent-50)] dark:bg-[var(--accent-500)]/10'
-                  : 'border-slate-200 hover:border-slate-300 dark:border-slate-700 dark:hover:border-slate-600'
-              }`}
-            >
-              {selected && (
-                <span className="absolute -right-1.5 -top-1.5 flex h-5 w-5 items-center justify-center rounded-full bg-[var(--accent-500)] text-white shadow">
-                  <Check size={12} strokeWidth={3} />
-                </span>
-              )}
-              <Icon size={22} className="text-slate-600 dark:text-slate-300" />
-              <span className="text-sm font-medium text-slate-700 dark:text-slate-200">{t(MODE_LABEL[mode])}</span>
-            </button>
-          );
-        })}
-      </div>
-
-      <h3 className="mt-8 font-medium text-slate-800 dark:text-slate-100">{t('settings.skinTitle')}</h3>
-      <p className="mt-0.5 mb-3 text-xs text-slate-500 dark:text-slate-400">{t('settings.skinHint')}</p>
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5 xl:grid-cols-6">
-        {SKINS.map((def) => {
-          const selected = def.id === skin;
-          return (
-            <button
-              key={def.id}
-              type="button"
-              onClick={() => void chooseSkin(def.id)}
-              disabled={savingSkin !== null}
-              className={`relative flex flex-col items-center gap-3 rounded-xl border-2 p-4 transition disabled:cursor-wait ${
-                selected
-                  ? 'bg-slate-50 dark:bg-slate-800'
-                  : 'border-slate-200 hover:border-slate-300 dark:border-slate-700 dark:hover:border-slate-600'
-              }`}
-              style={selected ? { borderColor: def.dots[1], backgroundColor: `${def.dots[1]}1a` } : undefined}
-            >
-              {selected && (
-                <span
-                  className="absolute -right-1.5 -top-1.5 flex h-5 w-5 items-center justify-center rounded-full text-white shadow"
-                  style={{ backgroundColor: def.dots[1] }}
-                >
-                  <Check size={12} strokeWidth={3} />
-                </span>
-              )}
-              <div className="flex gap-1.5">
-                {def.dots.map((color) => (
-                  <span key={color} className="h-4 w-4 rounded-full" style={{ backgroundColor: color }} />
-                ))}
-              </div>
-              <span className="text-sm font-medium text-slate-700 dark:text-slate-200">{t(def.labelKey)}</span>
-            </button>
-          );
-        })}
-      </div>
+      <ThemePicker
+        mode={themeMode}
+        skin={skin}
+        onModeChange={(mode) => void chooseMode(mode)}
+        onSkinChange={(id) => void chooseSkin(id)}
+        savingMode={savingMode}
+        savingSkin={savingSkin}
+      />
 
       {toast && <Toast message={toast} />}
     </section>

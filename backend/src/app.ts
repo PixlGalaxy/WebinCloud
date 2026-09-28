@@ -2,7 +2,8 @@ import express from 'express';
 import cookieParser from 'cookie-parser';
 import type { Db } from './db/client.js';
 import type { EnvConfig } from './config/env.js';
-import { getOrCreateSecret } from './db/settings.js';
+import { getOrCreateSecret, SettingsService } from './db/settings.js';
+import { SETTINGS_KEYS } from './modules/admin/settings-keys.js';
 import { createTranslator } from './i18n/index.js';
 import { requestLogger } from './middleware/request-logger.js';
 import { createSessionMiddleware } from './modules/auth/session.middleware.js';
@@ -62,6 +63,8 @@ export function createApp(db: Db, config: EnvConfig): express.Application {
   const geoip = new GeoipService(config);
   void geoip.init();
   const metrics = new MetricsService(geoip);
+  const settings = new SettingsService(db);
+  const backendStartedAt = Date.now();
 
   app.set('trust proxy', 'loopback');
   app.disable('x-powered-by');
@@ -73,16 +76,19 @@ export function createApp(db: Db, config: EnvConfig): express.Application {
   app.use(createConnectionTracker(metrics));
 
   seedBranding(config);
-  app.use('/api/branding', createBrandingRoutes(config));
+  app.use('/api/branding', createBrandingRoutes(config, t));
 
   app.get('/api/health', (_req, res) => res.json({ status: 'ok' }));
-  // Lets the static frontend pick up runtime settings without a rebuild.
+  // Lets the static frontend pick up runtime settings without a rebuild. Title,
+  // app name and default appearance are read fresh here (not baked into
+  // `config`), so an admin panel edit takes effect on the very next request.
   app.get('/api/config', (_req, res) =>
     res.json({
-      language: config.LANGUAGE,
-      theme: config.THEME,
-      appName: config.APP_NAME,
-      appTitle: config.APP_TITLE,
+      language: settings.getString(SETTINGS_KEYS.defaultLanguage, config.LANGUAGE),
+      appName: settings.getString(SETTINGS_KEYS.appName, config.APP_NAME),
+      appTitle: settings.getString(SETTINGS_KEYS.appTitle, config.APP_TITLE),
+      defaultThemeMode: settings.getString(SETTINGS_KEYS.defaultThemeMode, 'dark'),
+      defaultThemeSkin: settings.getString(SETTINGS_KEYS.defaultThemeSkin, 'default'),
       // A session dies at SESSION_TTL_HOURS regardless of activity, so an
       // inactivity timeout longer than that would never actually trigger.
       maxAutoSignoutMinutes: config.SESSION_TTL_HOURS * 60,
@@ -107,7 +113,7 @@ export function createApp(db: Db, config: EnvConfig): express.Application {
 
   app.use('/api/shares', createSharesRoutes(db, config, t, shares));
 
-  app.use('/api/admin', createAdminRoutes(t, metrics));
+  app.use('/api/admin', createAdminRoutes(t, metrics, settings, config, backendStartedAt));
 
   app.use(createNotFoundHandler(t));
   app.use(createErrorHandler(t));

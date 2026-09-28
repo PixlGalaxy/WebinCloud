@@ -36,20 +36,23 @@ function useSystemPrefersDark(): boolean {
 export function ThemeProvider({ children }: { children: ReactNode }) {
   const { user, updateUser } = useAuth();
   // Signed-out screens (login, public shares) ignore any account preference
-  // and always show the server's configured default instead.
-  const [envMode, setEnvMode] = useState<'dark' | 'light'>('dark');
+  // and always show the admin-configured default instead (Admin Panel ->
+  // Settings -> Appearance), applies with no restart needed.
+  const [defaultMode, setDefaultMode] = useState<ThemeMode>('dark');
+  const [defaultSkin, setDefaultSkin] = useState<SkinId>('default');
   const systemPrefersDark = useSystemPrefersDark();
 
   useEffect(() => {
     getRuntimeConfig()
       .then((config) => {
-        if (config.theme === 'dark' || config.theme === 'light') setEnvMode(config.theme);
+        if (isThemeMode(config.defaultThemeMode)) setDefaultMode(config.defaultThemeMode);
+        if (isSkinId(config.defaultThemeSkin)) setDefaultSkin(config.defaultThemeSkin);
       })
       .catch(() => undefined);
   }, []);
 
-  const themeMode: ThemeMode = user ? (isThemeMode(user.theme_mode) ? user.theme_mode : 'dark') : envMode;
-  const skin: SkinId = user ? (isSkinId(user.theme_skin) ? user.theme_skin : 'default') : 'default';
+  const themeMode: ThemeMode = user ? (isThemeMode(user.theme_mode) ? user.theme_mode : 'dark') : defaultMode;
+  const skin: SkinId = user ? (isSkinId(user.theme_skin) ? user.theme_skin : 'default') : defaultSkin;
   const mode: 'dark' | 'light' = themeMode === 'system' ? (systemPrefersDark ? 'dark' : 'light') : themeMode;
 
   useEffect(() => {

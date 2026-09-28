@@ -1,21 +1,25 @@
 import { useSearchParams } from 'react-router-dom';
-import { LayoutDashboard, ScrollText, Users, type LucideIcon } from 'lucide-react';
+import { LayoutDashboard, ScrollText, Settings, Users, Wrench, type LucideIcon } from 'lucide-react';
 import { useI18n } from '../../i18n/I18nContext';
 import type { TranslationKey } from '../../i18n/translations';
 import DashboardSection from './DashboardSection';
 import UsersAdminPage from './UsersAdminPage';
 import LogsPage from './LogsPage';
+import SettingsAdminSection from './settings/SettingsAdminSection';
+import SystemSection from './system/SystemSection';
 
-type Section = 'dashboard' | 'users' | 'logs';
+type Section = 'dashboard' | 'users' | 'logs' | 'settings' | 'system';
 
 function isSection(value: string | null): value is Section {
-  return value === 'dashboard' || value === 'users' || value === 'logs';
+  return value === 'dashboard' || value === 'users' || value === 'logs' || value === 'settings' || value === 'system';
 }
 
 const SECTIONS: { key: Section; icon: LucideIcon; labelKey: TranslationKey }[] = [
   { key: 'dashboard', icon: LayoutDashboard, labelKey: 'adminDashboard.title' },
   { key: 'users', icon: Users, labelKey: 'page.users' },
   { key: 'logs', icon: ScrollText, labelKey: 'page.logs' },
+  { key: 'settings', icon: Settings, labelKey: 'adminSettings.navLabel' },
+  { key: 'system', icon: Wrench, labelKey: 'adminSystem.navLabel' },
 ];
 
 const sectionLinkClass = (active: boolean) =>
@@ -53,6 +57,8 @@ const AdminPage = () => {
           {active === 'dashboard' && <DashboardSection />}
           {active === 'users' && <UsersAdminPage />}
           {active === 'logs' && <LogsPage />}
+          {active === 'settings' && <SettingsAdminSection />}
+          {active === 'system' && <SystemSection />}
         </div>
       </div>
     </div>

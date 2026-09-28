@@ -7,12 +7,16 @@ interface AuthContextValue {
   isLoading: boolean;
   /** True right after logging in with the default "changeme" password. */
   mustChangePassword: boolean;
+  /** True right after logging in as the seeded "admin"/"changeme" account — a superset of mustChangePassword. */
+  mustCompleteSetup: boolean;
   login: (usernameOrEmail: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
   /** Lets pages that change the signed-in user (e.g. the avatar) sync it back. */
   updateUser: (user: User) => void;
   /** Clears the forced-change prompt once the password has actually been changed. */
   clearMustChangePassword: () => void;
+  /** Clears the forced-setup prompt once username/email/password have actually been replaced. */
+  clearMustCompleteSetup: () => void;
 }
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
@@ -21,6 +25,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [mustChangePassword, setMustChangePassword] = useState(false);
+  const [mustCompleteSetup, setMustCompleteSetup] = useState(false);
 
   useEffect(() => {
     api
@@ -33,12 +38,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const login = async (usernameOrEmail: string, password: string) => {
-    const { user, mustChangePassword } = await api.post<{ user: User; mustChangePassword: boolean }>(
-      '/auth/login',
-      { usernameOrEmail, password },
-    );
+    const { user, mustChangePassword, mustCompleteSetup } = await api.post<{
+      user: User;
+      mustChangePassword: boolean;
+      mustCompleteSetup: boolean;
+    }>('/auth/login', { usernameOrEmail, password });
     setUser(user);
     setMustChangePassword(mustChangePassword);
+    setMustCompleteSetup(mustCompleteSetup);
   };
 
   const logout = async () => {
@@ -50,6 +57,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     } finally {
       setUser(null);
       setMustChangePassword(false);
+      setMustCompleteSetup(false);
     }
   };
 
@@ -59,10 +67,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         user,
         isLoading,
         mustChangePassword,
+        mustCompleteSetup,
         login,
         logout,
         updateUser: setUser,
         clearMustChangePassword: () => setMustChangePassword(false),
+        clearMustCompleteSetup: () => setMustCompleteSetup(false),
       }}
     >
       {children}

@@ -1,4 +1,5 @@
-import { api } from './client';
+import { api, ApiError } from './client';
+import type { ThemeMode, SkinId } from '../theme/themes';
 
 export type ConnectionActivity = 'browsing' | 'downloading' | 'uploading' | 'modifying' | 'idle';
 
@@ -24,4 +25,80 @@ export interface MetricsSnapshot {
 export const adminApi = {
   metrics: () => api.get<MetricsSnapshot>('/admin/metrics'),
   metricsStreamUrl: () => '/backend/api/admin/metrics/stream',
+};
+
+interface RestartTierField<T> {
+  active: T;
+  saved: T;
+}
+
+export interface AdminSettings {
+  server: {
+    sessionTtlHours: RestartTierField<number>;
+    cookieSecure: RestartTierField<boolean>;
+    loginRateLimitMax: RestartTierField<number>;
+    loginRateLimitWindowMinutes: RestartTierField<number>;
+    shareUnlockRateLimitMax: RestartTierField<number>;
+    shareUnlockRateLimitWindowMinutes: RestartTierField<number>;
+    archiveAbandonSeconds: RestartTierField<number>;
+  };
+  maxmindLicenseKeyActive: boolean;
+  maxmindLicenseKeySaved: boolean;
+  restartRequired: boolean;
+  appTitle: string;
+  appName: string;
+  defaultThemeMode: string;
+  defaultThemeSkin: string;
+  defaultLanguage: string;
+}
+
+export interface AdminSettingsPatch {
+  sessionTtlHours?: number;
+  cookieSecure?: boolean;
+  loginRateLimitMax?: number;
+  loginRateLimitWindowMinutes?: number;
+  shareUnlockRateLimitMax?: number;
+  shareUnlockRateLimitWindowMinutes?: number;
+  archiveAbandonSeconds?: number;
+  /** Empty string clears it. */
+  maxmindLicenseKey?: string;
+  appTitle?: string;
+  appName?: string;
+  defaultThemeMode?: ThemeMode;
+  defaultThemeSkin?: SkinId;
+  defaultLanguage?: string;
+}
+
+export const settingsApi = {
+  get: () => api.get<AdminSettings>('/admin/settings'),
+  update: (patch: AdminSettingsPatch) => api.patch<{ success: true }>('/admin/settings', patch),
+};
+
+export interface ServiceStatus {
+  running: boolean;
+  uptimeSeconds: number | null;
+}
+
+export const servicesApi = {
+  status: () => api.get<{ backend: ServiceStatus; frontend: ServiceStatus }>('/admin/services'),
+  restart: (service: 'backend' | 'frontend') => api.post<{ success: true }>(`/admin/services/${service}/restart`),
+};
+
+export type BrandingAsset = 'logo.png' | 'icon.png' | 'favicon.ico';
+
+export const brandingAdminApi = {
+  /** Cache-busted so a freshly-uploaded (or reset) file shows up without a hard reload. */
+  url: (name: BrandingAsset, version: number) => `/backend/api/branding/${name}?v=${version}`,
+
+  upload: async (name: BrandingAsset, file: File): Promise<void> => {
+    const form = new FormData();
+    form.append('file', file);
+    const res = await fetch(`/backend/api/branding/${name}`, { method: 'POST', credentials: 'include', body: form });
+    if (!res.ok) {
+      const body = await res.json().catch(() => ({ error: res.statusText }));
+      throw new ApiError(res.status, body.error ?? 'Upload failed');
+    }
+  },
+
+  reset: (name: BrandingAsset) => api.del<{ success: true }>(`/branding/${name}`),
 };

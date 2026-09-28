@@ -50,8 +50,7 @@ ENV NODE_ENV=production \
     TEMP_ROOT=/temp \
     LOCALES_DIR=/app/locales \
     DEFAULT_BRANDING_DIR=/app/branding \
-    LANGUAGE=en \
-    THEME=dark
+    LANGUAGE=en
 
 # WebinCloud_Data holds user files, WebinCloud_AppData the database and avatars,
 # and WebinCloud_Temp the generated archives, which are disposable.

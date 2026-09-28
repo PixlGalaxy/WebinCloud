@@ -30,7 +30,7 @@ export class AuthService {
     usernameOrEmail: string,
     password: string,
     meta: { userAgent?: string; ip?: string },
-  ): Promise<{ user: User; sessionToken: string; mustChangePassword: boolean } | null> {
+  ): Promise<{ user: User; sessionToken: string; mustChangePassword: boolean; mustCompleteSetup: boolean } | null> {
     const user = this.db
       .prepare('SELECT * FROM users WHERE (email = ? OR username = ?) AND is_active = 1')
       .get(usernameOrEmail, usernameOrEmail) as User | undefined;
@@ -46,7 +46,15 @@ export class AuthService {
       )
       .run(hashToken(sessionToken), user.id, meta.userAgent ?? null, meta.ip ?? null, `+${this.sessionTtlHours} hours`);
 
-    return { user, sessionToken, mustChangePassword: password === DEFAULT_PASSWORD };
+    // The seeded first-run account needs a full setup (username+email+password),
+    // not just a password change — see bootstrap.ts and /auth/complete-setup.
+    const mustCompleteSetup = user.username === 'admin' && password === DEFAULT_PASSWORD;
+    return {
+      user,
+      sessionToken,
+      mustChangePassword: !mustCompleteSetup && password === DEFAULT_PASSWORD,
+      mustCompleteSetup,
+    };
   }
 
   getSessionByToken(token: string): { user: User; session: Session } | null {
@@ -76,6 +84,27 @@ export class AuthService {
 
     const newHash = await hashPassword(newPassword);
     this.db.prepare("UPDATE users SET password_hash = ?, updated_at = datetime('now') WHERE id = ?").run(newHash, userId);
+    this.db.prepare('DELETE FROM sessions WHERE user_id = ?').run(userId);
+    return true;
+  }
+
+  /** Replaces the seeded first-run admin's username/email/password in one go, re-verifying `currentPassword` first. */
+  async completeSetup(
+    userId: string,
+    currentPassword: string,
+    updates: { username: string; email: string; password: string },
+  ): Promise<boolean> {
+    const user = this.db.prepare('SELECT password_hash FROM users WHERE id = ?').get(userId) as
+      | Pick<User, 'password_hash'>
+      | undefined;
+    if (!user || !(await verifyPassword(currentPassword, user.password_hash))) return false;
+
+    const newHash = await hashPassword(updates.password);
+    this.db
+      .prepare(
+        "UPDATE users SET username = ?, email = ?, password_hash = ?, updated_at = datetime('now') WHERE id = ?",
+      )
+      .run(updates.username, updates.email, newHash, userId);
     this.db.prepare('DELETE FROM sessions WHERE user_id = ?').run(userId);
     return true;
   }
