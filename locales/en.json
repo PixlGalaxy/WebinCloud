@@ -322,7 +322,15 @@
   "settings.skinGraphite": "Graphite",
   "settings.skinAsh": "Ash",
   "settings.skinTerracotta": "Terracotta",
+  "settings.skinOlive": "Olive",
+  "settings.skinMaroon": "Maroon",
   "settings.preferencesTitle": "Preferences",
   "settings.autoplayVideos": "Autoplay videos",
-  "settings.autoplayVideosHint": "Start playing a video as soon as you open its preview. Kept on this browser only."
+  "settings.autoplayVideosHint": "Start playing a video as soon as you open its preview. Kept on this browser only.",
+  "settings.alwaysShowThumbnails": "Always show thumbnails",
+  "settings.alwaysShowThumbnailsHint": "Show image and video previews in the file list instead of plain icons. Same as the toggle in the file explorer toolbar, kept on this browser only.",
+  "settings.autoSignOut": "Auto sign-out",
+  "settings.autoSignOutHint": "Sign you out automatically after a period of inactivity in this browser.",
+  "settings.autoSignOutMinutesLabel": "Minutes of inactivity before signing out",
+  "settings.autoSignOutRangeHint": "{min}–{max}, capped by the server's session lifetime"
 }

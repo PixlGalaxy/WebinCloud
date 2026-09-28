@@ -306,6 +306,32 @@ html.dark {
   --accent-900: #1c1917;
 }
 
+[data-skin='olive'] {
+  --accent-50: #f6faef;
+  --accent-100: #ebf5db;
+  --accent-200: #daebbc;
+  --accent-300: #c2df90;
+  --accent-400: #a8d161;
+  --accent-500: #8cbe37;
+  --accent-600: #759e2e;
+  --accent-700: #608226;
+  --accent-800: #4c671e;
+  --accent-900: #384b16;
+}
+
+[data-skin='maroon'] {
+  --accent-50: #f9f0f1;
+  --accent-100: #f2dedf;
+  --accent-200: #e7c0c3;
+  --accent-300: #d8979d;
+  --accent-400: #c76b73;
+  --accent-500: #b1434c;
+  --accent-600: #943840;
+  --accent-700: #7a2e35;
+  --accent-800: #602429;
+  --accent-900: #461b1e;
+}
+
 @keyframes toast-in {
   from {
     opacity: 0;

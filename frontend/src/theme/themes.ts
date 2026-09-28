@@ -31,6 +31,8 @@ export const SKIN_IDS = [
   'graphite',
   'ash',
   'terracotta',
+  'olive',
+  'maroon',
 ] as const;
 
 export type SkinId = (typeof SKIN_IDS)[number];
@@ -73,6 +75,8 @@ export const SKINS: SkinDef[] = [
   { id: 'graphite', labelKey: 'settings.skinGraphite', dots: ['#d4d4d8', '#71717a', '#3f3f46'] },
   { id: 'ash', labelKey: 'settings.skinAsh', dots: ['#d4d4d4', '#737373', '#404040'] },
   { id: 'terracotta', labelKey: 'settings.skinTerracotta', dots: ['#d6d3d1', '#78716c', '#44403c'] },
+  { id: 'olive', labelKey: 'settings.skinOlive', dots: ['#c2df90', '#8cbe37', '#608226'] },
+  { id: 'maroon', labelKey: 'settings.skinMaroon', dots: ['#d8979d', '#b1434c', '#7a2e35'] },
 ];
 
 export function skinDef(id: SkinId): SkinDef {

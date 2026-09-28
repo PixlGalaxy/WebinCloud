@@ -26,6 +26,8 @@ export const THEME_SKINS = [
   'graphite',
   'ash',
   'terracotta',
+  'olive',
+  'maroon',
 ] as const;
 export type ThemeSkin = (typeof THEME_SKINS)[number];
 

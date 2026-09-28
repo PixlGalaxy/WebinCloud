@@ -5,6 +5,7 @@ export interface RuntimeConfig {
   theme: string;
   appName: string;
   appTitle: string;
+  maxAutoSignoutMinutes: number;
 }
 
 let pending: Promise<RuntimeConfig> | null = null;

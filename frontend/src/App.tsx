@@ -3,6 +3,7 @@ import { ThemeProvider } from './context/ThemeContext';
 import { AppConfigProvider } from './context/AppConfigContext';
 import { I18nProvider } from './i18n/I18nContext';
 import { AuthProvider } from './context/AuthContext';
+import { AutoSignOutProvider } from './context/AutoSignOutContext';
 import { ArchiveProvider } from './context/ArchiveContext';
 import ArchivePanel from './components/ArchivePanel';
 import { TransferProvider } from './context/TransferContext';
@@ -28,6 +29,7 @@ const App = () => (
         {/* Auth wraps Theme: appearance is account data, so it needs the signed-in user. */}
         <AuthProvider>
           <ThemeProvider>
+          <AutoSignOutProvider>
             <ArchiveProvider>
               <TransferProvider>
                 <ClipboardProvider>
@@ -64,6 +66,7 @@ const App = () => (
                 </ClipboardProvider>
               </TransferProvider>
             </ArchiveProvider>
+          </AutoSignOutProvider>
           </ThemeProvider>
         </AuthProvider>
       </I18nProvider>

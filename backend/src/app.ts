@@ -73,6 +73,9 @@ export function createApp(db: Db, config: EnvConfig): express.Application {
       theme: config.THEME,
       appName: config.APP_NAME,
       appTitle: config.APP_TITLE,
+      // A session dies at SESSION_TTL_HOURS regardless of activity, so an
+      // inactivity timeout longer than that would never actually trigger.
+      maxAutoSignoutMinutes: config.SESSION_TTL_HOURS * 60,
     }),
   );
 

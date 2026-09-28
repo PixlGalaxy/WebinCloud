@@ -48,8 +48,7 @@ import ShareCreateModal from './ShareCreateModal';
 import DotfileNotice from '../../components/DotfileNotice';
 import { useFolderWatch } from './useFolderWatch';
 import { formatSize, toFilesUrl } from './paths';
-
-const THUMBNAILS_KEY = 'webincloud.thumbnails';
+import { useThumbnailsPreference } from '../../hooks/useThumbnailsPreference';
 
 const FileExplorerPage = () => {
   const path = useParams()['*'] ?? '';
@@ -98,23 +97,8 @@ const FileExplorerPage = () => {
   // Picks up changes made by anyone else while this folder is open.
   useFolderWatch(path, reload);
 
-  const [thumbnails, setThumbnails] = useState(() => {
-    try {
-      return localStorage.getItem(THUMBNAILS_KEY) === '1';
-    } catch {
-      return false;
-    }
-  });
-
-  const toggleThumbnails = () => {
-    const next = !thumbnails;
-    setThumbnails(next);
-    try {
-      localStorage.setItem(THUMBNAILS_KEY, next ? '1' : '0');
-    } catch {
-      // Blocked storage: the choice just won't survive a reload.
-    }
-  };
+  const { thumbnails, setThumbnails } = useThumbnailsPreference();
+  const toggleThumbnails = () => setThumbnails(!thumbnails);
 
   /** Small icon normally; a larger tile (thumbnail or icon) when previews are on. */
   const entryIcon = (entry: DirEntry, iconClass: string) =>

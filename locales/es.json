@@ -322,7 +322,15 @@
   "settings.skinGraphite": "Grafito",
   "settings.skinAsh": "Ceniza",
   "settings.skinTerracotta": "Terracota",
+  "settings.skinOlive": "Oliva",
+  "settings.skinMaroon": "Granate",
   "settings.preferencesTitle": "Preferencias",
   "settings.autoplayVideos": "Reproducir videos automáticamente",
-  "settings.autoplayVideosHint": "Empieza a reproducir un video en cuanto abres su vista previa. Se guarda solo en este navegador."
+  "settings.autoplayVideosHint": "Empieza a reproducir un video en cuanto abres su vista previa. Se guarda solo en este navegador.",
+  "settings.alwaysShowThumbnails": "Mostrar siempre miniaturas",
+  "settings.alwaysShowThumbnailsHint": "Muestra vistas previas de imágenes y videos en la lista de archivos en vez de íconos simples. Es el mismo interruptor de la barra de herramientas del explorador, se guarda solo en este navegador.",
+  "settings.autoSignOut": "Cierre de sesión automático",
+  "settings.autoSignOutHint": "Cierra tu sesión automáticamente tras un período de inactividad en este navegador.",
+  "settings.autoSignOutMinutesLabel": "Minutos de inactividad antes de cerrar sesión",
+  "settings.autoSignOutRangeHint": "{min}–{max}, limitado por la duración de sesión del servidor"
 }
