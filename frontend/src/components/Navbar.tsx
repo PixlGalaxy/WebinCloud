@@ -3,7 +3,6 @@ import { NavLink, Link } from 'react-router-dom';
 import {
   AlertTriangle,
   Home,
-  CircleUser,
   Share2,
   Users,
   ScrollText,
@@ -37,7 +36,6 @@ interface NavItem {
 
 const NAV_ITEMS: NavItem[] = [
   { to: '/files', labelKey: 'nav.home', icon: Home },
-  { to: '/profile', labelKey: 'nav.account', icon: CircleUser },
   { to: '/share', labelKey: 'nav.share', icon: Share2 },
 ];
 
