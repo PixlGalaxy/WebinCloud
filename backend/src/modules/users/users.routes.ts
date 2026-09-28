@@ -6,10 +6,11 @@ import { createAuthGuards } from '../auth/session.middleware.js';
 import { asyncHandler } from '../../middleware/async-handler.js';
 import { routeParam } from '../../route-params.js';
 import { UsersService, type CreateUserInput, type UpdateUserInput } from './users.service.js';
+import type { MetricsService } from '../admin/metrics.service.js';
 
-export function createUsersRoutes(db: Db, t: Translate): Router {
+export function createUsersRoutes(db: Db, t: Translate, metrics: MetricsService): Router {
   const router = Router();
-  const users = new UsersService(db);
+  const users = new UsersService(db, metrics);
   const { requireAuth, requireAdmin } = createAuthGuards(t);
 
   router.use(requireAuth, requireAdmin);

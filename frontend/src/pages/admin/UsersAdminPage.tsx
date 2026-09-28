@@ -44,8 +44,7 @@ const UsersAdminPage = () => {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between gap-3">
-        <h1 className="text-xl font-semibold text-slate-900 dark:text-slate-100">{t('page.users')}</h1>
+      <div className="flex justify-end">
         <button onClick={() => setEditing(null)} className={btn.primary}>
           <UserPlus size={16} /> {t('users.new')}
         </button>

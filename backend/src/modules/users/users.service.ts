@@ -5,6 +5,7 @@ import { badRequest, conflict, notFound } from '../../errors.js';
 import { hashPassword } from '../auth/password.js';
 import { toPublicUser } from '../auth/auth.service.js';
 import { PathNamesService } from '../path-names/path-names.service.js';
+import type { MetricsService } from '../admin/metrics.service.js';
 
 export interface CreateUserInput {
   email: string;
@@ -28,7 +29,7 @@ const EMAIL = /^[^\s@]+@[^\s@]+$/;
 const USERNAME = /^[a-zA-Z0-9._-]{3,32}$/;
 
 export class UsersService {
-  constructor(private db: Db) {}
+  constructor(private db: Db, private metrics: MetricsService) {}
 
   list(): PublicUser[] {
     const rows = this.db.prepare('SELECT * FROM users ORDER BY username').all() as User[];
@@ -109,6 +110,7 @@ export class UsersService {
     // A deactivated user, a demoted admin or a new password must stop old sessions.
     if (input.isActive === false || input.role !== undefined || input.password) {
       this.db.prepare('DELETE FROM sessions WHERE user_id = ?').run(id);
+      this.metrics.forgetUser(existing.username);
     }
 
     return this.get(id);
@@ -116,7 +118,11 @@ export class UsersService {
 
   remove(id: string, actingUserId: string): void {
     if (id === actingUserId) throw badRequest('users.cannotDeleteSelf');
+    const existing = this.db.prepare('SELECT username FROM users WHERE id = ?').get(id) as
+      | { username: string }
+      | undefined;
     const result = this.db.prepare('DELETE FROM users WHERE id = ?').run(id);
     if (result.changes === 0) throw notFound();
+    if (existing) this.metrics.forgetUser(existing.username);
   }
 }

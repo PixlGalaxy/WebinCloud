@@ -50,6 +50,10 @@ export interface EnvConfig {
   APP_TITLE: string;
   /** Product name used in UI copy and image alt text. */
   APP_NAME: string;
+  /** Optional: enables the admin dashboard's world map. Without it, the map just has no dots. */
+  MAXMIND_LICENSE_KEY?: string;
+  /** Where the downloaded GeoLite2-Country.mmdb is cached across restarts. */
+  GEOIP_DIR: string;
 }
 
 export function loadEnv(): EnvConfig {
@@ -99,5 +103,7 @@ export function loadEnv(): EnvConfig {
     LANGUAGE: isLanguage(env.LANGUAGE) ? env.LANGUAGE : 'en',
     APP_TITLE: env.APP_TITLE || 'Webin Cloud Server',
     APP_NAME: env.APP_NAME || 'Webin Cloud',
+    MAXMIND_LICENSE_KEY: env.MAXMIND_LICENSE_KEY || undefined,
+    GEOIP_DIR: env.GEOIP_DIR || join(APPDATA_ROOT, 'geoip'),
   };
 }

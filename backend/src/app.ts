@@ -23,6 +23,10 @@ import { SharesService } from './modules/shares/shares.service.js';
 import { createSharesRoutes } from './modules/shares/shares.routes.js';
 import { createPublicShareRoutes } from './modules/shares/public-shares.routes.js';
 import { createErrorHandler, createNotFoundHandler } from './middleware/error-handler.js';
+import { GeoipService } from './modules/admin/geoip.service.js';
+import { MetricsService } from './modules/admin/metrics.service.js';
+import { createConnectionTracker } from './middleware/connection-tracker.js';
+import { createAdminRoutes } from './modules/admin/admin.routes.js';
 
 export function createApp(db: Db, config: EnvConfig): express.Application {
   const app = express();
@@ -55,12 +59,18 @@ export function createApp(db: Db, config: EnvConfig): express.Application {
   setInterval(() => transfers.dropAbandoned(), abandonCheckMs).unref();
   setInterval(() => transfers.sweep(), 15 * 60 * 1000).unref();
 
+  const geoip = new GeoipService(config);
+  void geoip.init();
+  const metrics = new MetricsService(geoip);
+
   app.set('trust proxy', 'loopback');
   app.disable('x-powered-by');
   app.use(requestLogger);
   app.use(express.json({ limit: '10mb' }));
   app.use(cookieParser());
   app.use(createSessionMiddleware(db, config.SESSION_TTL_HOURS));
+  // After the session middleware so req.user/req.session are already resolved.
+  app.use(createConnectionTracker(metrics));
 
   seedBranding(config);
   app.use('/api/branding', createBrandingRoutes(config));
@@ -82,8 +92,8 @@ export function createApp(db: Db, config: EnvConfig): express.Application {
   // Anonymous: everything below is reachable with just the link.
   app.use('/api/public/:segment/:name', createPublicShareRoutes(config, shares, archives));
 
-  app.use('/api/auth', createAuthRoutes(db, config, t));
-  app.use('/api/users', createUsersRoutes(db, t));
+  app.use('/api/auth', createAuthRoutes(db, config, t, metrics));
+  app.use('/api/users', createUsersRoutes(db, t, metrics));
   app.use('/api/logs', createLogsRoutes(t));
   ensureAvatarsDir(config);
   app.use('/api/avatars', createAvatarsRoutes(db, config, t));
@@ -96,6 +106,8 @@ export function createApp(db: Db, config: EnvConfig): express.Application {
   app.use('/api/transfers', createTransfersRoutes(t, transfers));
 
   app.use('/api/shares', createSharesRoutes(db, config, t, shares));
+
+  app.use('/api/admin', createAdminRoutes(t, metrics));
 
   app.use(createNotFoundHandler(t));
   app.use(createErrorHandler(t));

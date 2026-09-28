@@ -29,7 +29,7 @@ LABEL org.opencontainers.image.source="https://github.com/PixlGalaxy/WebinCloud"
       org.opencontainers.image.description="Self-hosted web server for your files: accounts, per-folder permissions, in-browser previews and public share links." \
       org.opencontainers.image.licenses="MIT"
 
-RUN apk add --no-cache nginx tini ffmpeg
+RUN apk add --no-cache nginx tini ffmpeg tar
 
 COPY --from=build-frontend /app/frontend/dist /usr/share/nginx/html
 COPY --from=build-backend /app/backend/dist /app/backend/dist

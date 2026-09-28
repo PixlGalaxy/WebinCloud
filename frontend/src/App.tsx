@@ -15,8 +15,7 @@ import { ProtectedRoute, AdminRoute } from './components/ProtectedRoute';
 import LoginPage from './pages/LoginPage';
 import FileExplorerPage from './pages/files/FileExplorerPage';
 import ShareManagerPage from './pages/share/ShareManagerPage';
-import UsersAdminPage from './pages/admin/UsersAdminPage';
-import LogsPage from './pages/admin/LogsPage';
+import AdminPage from './pages/admin/AdminPage';
 import SettingsPage from './pages/settings/SettingsPage';
 import PublicSharePage from './pages/public/PublicSharePage';
 
@@ -47,8 +46,10 @@ const App = () => (
                     <Route path="/share-settings" element={<Navigate to="/settings?section=sharing" replace />} />
 
                     <Route element={<AdminRoute />}>
-                      <Route path="/admin/users" element={<UsersAdminPage />} />
-                      <Route path="/admin/logs" element={<LogsPage />} />
+                      <Route path="/admin" element={<AdminPage />} />
+                      {/* Users and Logs live inside the Admin Panel now; old links still land there. */}
+                      <Route path="/admin/users" element={<Navigate to="/admin?section=users" replace />} />
+                      <Route path="/admin/logs" element={<Navigate to="/admin?section=logs" replace />} />
                     </Route>
                   </Route>
 

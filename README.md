@@ -131,6 +131,7 @@ Translations live in `locales/*.json`. English and Spanish are written and maint
 | Variable | Default | Description |
 | --- | --- | --- |
 | `ARCHIVE_ABANDON_SECONDS` | `30` | Seconds without a progress poll before a running ZIP is cancelled and its partial file removed |
+| `MAXMIND_LICENSE_KEY` | — | Optional. Powers the country map on the admin dashboard with a local MaxMind GeoLite2-Country database, downloaded on first boot and refreshed weekly. Get a free key at [maxmind.com/en/geolite2/signup](https://www.maxmind.com/en/geolite2/signup). Without it, the map just shows no dots |
 | `DATA_ROOT` | `/data` | Override only for a custom layout |
 | `APPDATA_ROOT` | `/appdata` | Override only for a custom layout |
 | `TEMP_ROOT` | `/temp` | Override only for a custom layout |

@@ -4,8 +4,7 @@ import {
   AlertTriangle,
   Home,
   Share2,
-  Users,
-  ScrollText,
+  LayoutDashboard,
   LogOut,
   UserRound,
   Link2,
@@ -112,16 +111,9 @@ const Navbar = () => {
               ))}
 
               {user.role === 'admin' && (
-                <NavLink to="/admin/users" className={navLinkClass}>
-                  <Users size={21} />
-                  <span className="hidden sm:inline">{t('nav.users')}</span>
-                </NavLink>
-              )}
-
-              {user.role === 'admin' && (
-                <NavLink to="/admin/logs" className={navLinkClass}>
-                  <ScrollText size={21} />
-                  <span className="hidden sm:inline">{t('nav.logs')}</span>
+                <NavLink to="/admin" className={navLinkClass}>
+                  <LayoutDashboard size={21} />
+                  <span className="hidden sm:inline">{t('nav.adminPanel')}</span>
                 </NavLink>
               )}
 

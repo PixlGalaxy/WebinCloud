@@ -9,8 +9,9 @@ import { AuthService, isThemeMode, isThemeSkin, toPublicUser } from './auth.serv
 import { logger } from '../../logger.js';
 import { badRequest } from '../../errors.js';
 import { createRateLimiter } from '../../middleware/rate-limit.js';
+import type { MetricsService } from '../admin/metrics.service.js';
 
-export function createAuthRoutes(db: Db, config: EnvConfig, t: Translate): Router {
+export function createAuthRoutes(db: Db, config: EnvConfig, t: Translate, metrics: MetricsService): Router {
   const router = Router();
   const authService = new AuthService(db, config.SESSION_TTL_HOURS);
   const { requireAuth } = createAuthGuards(t);
@@ -71,6 +72,7 @@ export function createAuthRoutes(db: Db, config: EnvConfig, t: Translate): Route
 
   router.post('/logout', requireAuth, (req: AuthenticatedRequest, res) => {
     authService.logout(req.session!.id);
+    metrics.forgetUser(req.user!.username);
     logger.auth.info(`Logout as "${req.user!.username}" from ${req.ip}`);
     res.clearCookie('session', { path: '/' });
     return res.json({ success: true });
@@ -109,6 +111,7 @@ export function createAuthRoutes(db: Db, config: EnvConfig, t: Translate): Route
         return res.status(401).json({ error: t('auth.currentPasswordIncorrect') });
       }
       logger.auth.info(`Password changed for "${req.user!.username}" from ${req.ip}`);
+      metrics.forgetUser(req.user!.username);
       res.clearCookie('session', { path: '/' });
       return res.json({ success: true });
     } catch (error) {
