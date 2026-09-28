@@ -99,7 +99,7 @@ Everything below is optional except the administrator account.
 
 | Variable | Default | Description |
 | --- | --- | --- |
-| `LANGUAGE` | `en` | Interface and API message language: `en` or `es` |
+| `LANGUAGE` | `en` | Default interface and API message language for signed-out screens: `en`, `es`, `fr` or `nl`. Signed-in users pick their own language in Settings, saved to their account |
 | `THEME` | `dark` | Default appearance for signed-out screens: `dark` or `light`. Signed-in users pick their own theme in Settings, saved to their account |
 | `APP_TITLE` | `Webin Cloud Server` | Browser tab title |
 | `APP_NAME` | `Webin Cloud` | Product name used in the interface |
@@ -109,6 +109,8 @@ The logo and icons are files rather than settings. Replace them in `/appdata/bra
 ```
 docker cp my-logo.png webincloud:/appdata/branding/logo.png
 ```
+
+Translations live in `locales/*.json`. English and Spanish are written and maintained by the project's author, a native speaker of both. The rest (currently French and Dutch) were machine-translated and haven't been reviewed by a native speaker — if you spot something off, a PR fixing it or adding a new language is welcome.
 
 ### Accounts and sessions
 
@@ -146,7 +148,3 @@ The container listens on port 80 and serves the interface at `/` and its API und
 - Accounts, permissions and share links live in SQLite inside `/appdata`. Back up that volume and you have backed up the configuration.
 - ZIP files are written to `/temp` and removed once they are old or once the browser that requested them goes away, so the volume does not grow on its own.
 - Share links are public by design: anyone holding the link can open it, subject to the password and expiry you set.
-
-## Source
-
-https://github.com/PixlGalaxy/WebinCloud

@@ -2,7 +2,7 @@ import { readFileSync } from 'fs';
 import { join } from 'path';
 import { logger } from '../logger.js';
 
-export const SUPPORTED_LANGUAGES = ['en', 'es'] as const;
+export const SUPPORTED_LANGUAGES = ['en', 'es', 'fr', 'nl'] as const;
 export type Language = (typeof SUPPORTED_LANGUAGES)[number];
 
 /** Keys the backend sends to clients. Locale files may hold more (the frontend's). */
