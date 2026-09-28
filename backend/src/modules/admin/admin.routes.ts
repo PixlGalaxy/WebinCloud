@@ -9,6 +9,8 @@ import type { SettingsService } from '../../db/settings.js';
 import { SETTINGS_KEYS } from './settings-keys.js';
 import type { MetricsService } from './metrics.service.js';
 import { getBackendStatus, getNginxStatus, restartBackend, restartNginx, tryConsumeRestartBudget } from './process-control.js';
+import { getImageInfo, getCpuModel, readCgroupMemory, readDiskUsage } from './system-info.js';
+import type { UpdateCheckService } from './update-check.service.js';
 
 function numberField(body: Record<string, unknown>, key: string, min: number, max: number): number | undefined {
   if (body[key] === undefined) return undefined;
@@ -23,6 +25,7 @@ export function createAdminRoutes(
   settings: SettingsService,
   config: EnvConfig,
   backendStartedAt: number,
+  updateCheck: UpdateCheckService,
 ): Router {
   const router = Router();
   const { requireAuth, requireAdmin } = createAuthGuards(t);
@@ -30,6 +33,30 @@ export function createAdminRoutes(
   router.use(requireAuth, requireAdmin);
 
   router.get('/metrics', (_req, res) => res.json(metrics.snapshot()));
+
+  router.get('/system', (_req, res) => {
+    const load = metrics.getSystemLoad();
+    const memory = readCgroupMemory();
+    const disks = [
+      readDiskUsage('Data', config.DATA_ROOT),
+      readDiskUsage('App data', config.APPDATA_ROOT),
+      readDiskUsage('Temp', config.TEMP_ROOT),
+    ].filter((d) => d !== null);
+
+    res.json({
+      image: getImageInfo(config),
+      // CPU and memory only make sense as "the container's" numbers, and only
+      // exist on Linux (cgroups) — off it (e.g. `npm run dev` on Windows) this
+      // is false and the panel shows the same kind of notice as the bandwidth
+      // chart does when /proc/net/dev isn't there either.
+      resourcesAvailable: load.cpuUsagePercent !== null || memory !== null,
+      cpu: { cores: load.cpuCores, usagePercent: load.cpuUsagePercent, model: getCpuModel() },
+      memory,
+      disks,
+      network: { ...load.networkRateBytesPerSec, ready: load.networkStatsReady },
+      update: updateCheck.getStatus(),
+    });
+  });
 
   /** Server-sent events: a fresh snapshot every tick, so the dashboard never needs to poll or be refreshed by hand. */
   router.get('/metrics/stream', (req, res) => {

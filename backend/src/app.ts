@@ -28,6 +28,7 @@ import { GeoipService } from './modules/admin/geoip.service.js';
 import { MetricsService } from './modules/admin/metrics.service.js';
 import { createConnectionTracker } from './middleware/connection-tracker.js';
 import { createAdminRoutes } from './modules/admin/admin.routes.js';
+import { UpdateCheckService } from './modules/admin/update-check.service.js';
 
 export function createApp(db: Db, config: EnvConfig): express.Application {
   const app = express();
@@ -65,6 +66,7 @@ export function createApp(db: Db, config: EnvConfig): express.Application {
   const metrics = new MetricsService(geoip);
   const settings = new SettingsService(db);
   const backendStartedAt = Date.now();
+  const updateCheck = new UpdateCheckService(config.IMAGE_REVISION, config.UPDATE_CHECK_ENABLED);
 
   app.set('trust proxy', 'loopback');
   app.disable('x-powered-by');
@@ -113,7 +115,7 @@ export function createApp(db: Db, config: EnvConfig): express.Application {
 
   app.use('/api/shares', createSharesRoutes(db, config, t, shares));
 
-  app.use('/api/admin', createAdminRoutes(t, metrics, settings, config, backendStartedAt));
+  app.use('/api/admin', createAdminRoutes(t, metrics, settings, config, backendStartedAt, updateCheck));
 
   app.use(createNotFoundHandler(t));
   app.use(createErrorHandler(t));

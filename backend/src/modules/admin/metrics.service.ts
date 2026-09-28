@@ -1,5 +1,6 @@
 import type { GeoipService, GeoCountry } from './geoip.service.js';
 import { readInterfaceCounters } from './network-stats.js';
+import { getCpuCoreLimit, readCgroupCpuUsageMicros } from './system-info.js';
 
 export type Activity = 'browsing' | 'downloading' | 'uploading' | 'modifying' | 'idle';
 
@@ -64,6 +65,11 @@ export class MetricsService {
   private lastCounters: { rx: number; tx: number } | null = null;
   private networkStatsReady = false;
   private listeners = new Set<(snapshot: MetricsSnapshot) => void>();
+
+  private readonly cpuCores = getCpuCoreLimit();
+  private lastCpuUsageMicros: number | null = null;
+  private lastCpuSampleAt: number | null = null;
+  private cpuUsagePercent: number | null = null;
 
   constructor(private geoip: GeoipService) {
     setInterval(() => this.tick(), TICK_MS).unref();
@@ -147,10 +153,46 @@ export class MetricsService {
     if (this.uploadBuckets.length > MAX_BUCKETS) this.uploadBuckets.shift();
     if (this.downloadBuckets.length > MAX_BUCKETS) this.downloadBuckets.shift();
 
+    this.sampleCpu(now);
+
     // Only worth building when a dashboard is actually open.
     if (this.listeners.size === 0) return;
     const snapshot = this.snapshot();
     for (const listener of this.listeners) listener(snapshot);
+  }
+
+  /** Diffs two cgroup CPU-time samples over the tick's wall-clock gap — null off Linux, same as the network reading. */
+  private sampleCpu(now: number): void {
+    const usageMicros = readCgroupCpuUsageMicros();
+    if (usageMicros !== null && this.lastCpuUsageMicros !== null && this.lastCpuSampleAt !== null) {
+      const deltaUsage = usageMicros - this.lastCpuUsageMicros;
+      const deltaWallMicros = (now - this.lastCpuSampleAt) * 1000;
+      if (deltaWallMicros > 0) {
+        const percent = (deltaUsage / deltaWallMicros / this.cpuCores) * 100;
+        this.cpuUsagePercent = Math.max(0, Math.min(100, percent));
+      }
+    }
+    if (usageMicros === null) this.cpuUsagePercent = null;
+    this.lastCpuUsageMicros = usageMicros;
+    this.lastCpuSampleAt = now;
+  }
+
+  /** For the System page — cpu% here (needs two samples over time), memory/disk/image info read fresh per request elsewhere. */
+  getSystemLoad(): {
+    cpuCores: number;
+    cpuUsagePercent: number | null;
+    networkStatsReady: boolean;
+    networkRateBytesPerSec: { upload: number; download: number };
+  } {
+    return {
+      cpuCores: this.cpuCores,
+      cpuUsagePercent: this.cpuUsagePercent,
+      networkStatsReady: this.networkStatsReady,
+      networkRateBytesPerSec: {
+        upload: this.uploadBuckets[this.uploadBuckets.length - 1] ?? 0,
+        download: this.downloadBuckets[this.downloadBuckets.length - 1] ?? 0,
+      },
+    };
   }
 
   snapshot(): MetricsSnapshot {

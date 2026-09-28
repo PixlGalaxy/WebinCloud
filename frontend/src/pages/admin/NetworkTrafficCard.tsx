@@ -2,13 +2,7 @@ import { Activity, ArrowDown, ArrowUp, Info } from 'lucide-react';
 import { line, curveMonotoneX, area } from 'd3-shape';
 import { useI18n } from '../../i18n/I18nContext';
 import { card } from '../../components/ui/styles';
-
-function formatBytesPerSec(bytesPerSec: number): string {
-  if (bytesPerSec < 1024) return `${bytesPerSec.toFixed(0)} B`;
-  if (bytesPerSec < 1024 ** 2) return `${(bytesPerSec / 1024).toFixed(2)} KB`;
-  if (bytesPerSec < 1024 ** 3) return `${(bytesPerSec / 1024 ** 2).toFixed(2)} MB`;
-  return `${(bytesPerSec / 1024 ** 3).toFixed(2)} GB`;
-}
+import { formatBytesPerSec } from './format';
 
 interface Props {
   upload: number[];

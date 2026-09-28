@@ -102,3 +102,43 @@ export const brandingAdminApi = {
 
   reset: (name: BrandingAsset) => api.del<{ success: true }>(`/branding/${name}`),
 };
+
+export interface ImageInfo {
+  nodeVersion: string;
+  appVersion: string;
+  imageRef: string;
+  imageRevision?: string;
+  platform: string;
+  arch: string;
+  osRelease: string;
+  containerized: boolean;
+}
+
+export interface DiskUsage {
+  label: string;
+  path: string;
+  totalBytes: number;
+  usedBytes: number;
+}
+
+export interface UpdateStatus {
+  checked: boolean;
+  updateAvailable: boolean;
+  latestRevision: string | null;
+  checkedAt: string | null;
+}
+
+export interface SystemInfo {
+  image: ImageInfo;
+  /** False off Linux (no cgroups to read) — cpu/memory are meaningless as host stats, so the UI shows a notice instead. */
+  resourcesAvailable: boolean;
+  cpu: { cores: number; usagePercent: number | null; model: string | null };
+  memory: { totalBytes: number; usedBytes: number } | null;
+  disks: DiskUsage[];
+  network: { upload: number; download: number; ready: boolean };
+  update: UpdateStatus;
+}
+
+export const systemApi = {
+  get: () => api.get<SystemInfo>('/admin/system'),
+};

@@ -23,6 +23,15 @@ RUN npm run build && npm prune --omit=dev
 FROM node:26-alpine
 WORKDIR /app
 
+# Filled in by the publish workflow (docker/metadata-action's resolved tag and
+# the commit it built from) — a container can't otherwise know its own image
+# tag from the inside without talking to the Docker daemon. Left as "dev" for
+# a plain local `docker build`. Surfaced on the admin panel's System page.
+ARG APP_IMAGE_REF=dev
+ARG APP_IMAGE_REVISION=
+ENV APP_IMAGE_REF=$APP_IMAGE_REF \
+    APP_IMAGE_REVISION=$APP_IMAGE_REVISION
+
 # Links the package to its repository on GHCR and fills in its description.
 LABEL org.opencontainers.image.source="https://github.com/PixlGalaxy/WebinCloud" \
       org.opencontainers.image.title="Webin Cloud Server" \

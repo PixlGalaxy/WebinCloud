@@ -1,5 +1,6 @@
 import { join, resolve, dirname } from 'path';
 import { fileURLToPath } from 'url';
+import { readFileSync } from 'fs';
 import { isLanguage, type Language } from '../i18n/index.js';
 import { logger } from '../logger.js';
 
@@ -43,6 +44,14 @@ export interface EnvConfig {
   MAXMIND_LICENSE_KEY?: string;
   /** Where the downloaded GeoLite2-Country.mmdb is cached across restarts. */
   GEOIP_DIR: string;
+  /** Read from backend/package.json at boot — shown on the admin panel's System page. */
+  BACKEND_VERSION: string;
+  /** The published tag (e.g. "latest", "1.2.3") baked in by the publish workflow — "dev" for a plain local `docker build`. */
+  IMAGE_REF: string;
+  /** Git commit the running image was built from, if the publish workflow set it. */
+  IMAGE_REVISION?: string;
+  /** Periodically asks GitHub if `main` has moved past IMAGE_REVISION — set DISABLE_UPDATE_CHECK=true to turn off. */
+  UPDATE_CHECK_ENABLED: boolean;
 }
 
 export function loadEnv(): EnvConfig {
@@ -57,6 +66,14 @@ export function loadEnv(): EnvConfig {
 
   if (env.LANGUAGE && !isLanguage(env.LANGUAGE)) {
     logger.warn(`Unsupported LANGUAGE "${env.LANGUAGE}", falling back to "en"`);
+  }
+
+  let backendVersion = '0.0.0';
+  try {
+    const pkg = JSON.parse(readFileSync(join(repoRoot, 'backend', 'package.json'), 'utf-8')) as { version?: string };
+    if (pkg.version) backendVersion = pkg.version;
+  } catch {
+    // Best-effort — shown on the System page, never load-bearing.
   }
 
   return {
@@ -86,5 +103,9 @@ export function loadEnv(): EnvConfig {
     APP_NAME: env.APP_NAME || 'Webin Cloud',
     MAXMIND_LICENSE_KEY: env.MAXMIND_LICENSE_KEY || undefined,
     GEOIP_DIR: env.GEOIP_DIR || join(APPDATA_ROOT, 'geoip'),
+    BACKEND_VERSION: backendVersion,
+    IMAGE_REF: env.APP_IMAGE_REF || 'dev',
+    IMAGE_REVISION: env.APP_IMAGE_REVISION || undefined,
+    UPDATE_CHECK_ENABLED: env.DISABLE_UPDATE_CHECK !== 'true',
   };
 }
