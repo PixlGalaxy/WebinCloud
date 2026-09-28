@@ -77,10 +77,7 @@ const DashboardSection = () => {
       </div>
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-        <div>
-          <h3 className="mb-2 text-sm font-medium text-slate-700 dark:text-slate-200">{t('adminDashboard.mapTitle')}</h3>
-          <WorldMap countries={data?.countries ?? []} geoReady={data?.geoReady ?? false} />
-        </div>
+        <WorldMap countries={data?.countries ?? []} geoReady={data?.geoReady ?? false} />
         <NetworkTrafficCard
           upload={data?.bandwidth.upload ?? []}
           download={data?.bandwidth.download ?? []}

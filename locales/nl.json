@@ -349,6 +349,8 @@
   "adminDashboard.totalConnections": "Totaal",
   "adminDashboard.currentConnections": "Actueel",
   "adminDashboard.mapTitle": "Verbindingen per land",
+  "adminDashboard.resetView": "Weergave herstellen",
+  "adminDashboard.geoAttribution": "Mogelijk gemaakt door MaxMind GeoLite2",
   "adminDashboard.geoNotConfigured": "Stel MAXMIND_LICENSE_KEY in om landen op de kaart te zien",
   "adminDashboard.networkStatsUnavailable": "Live netwerkstatistieken vereisen Linux (/proc/net/dev) — hier niet beschikbaar",
   "adminDashboard.connectionsTitle": "Actuele verbindingen",

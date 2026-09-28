@@ -349,6 +349,8 @@
   "adminDashboard.totalConnections": "Total",
   "adminDashboard.currentConnections": "Current",
   "adminDashboard.mapTitle": "Connections by country",
+  "adminDashboard.resetView": "Reset view",
+  "adminDashboard.geoAttribution": "Powered by MaxMind GeoLite2",
   "adminDashboard.geoNotConfigured": "Set MAXMIND_LICENSE_KEY to see countries on the map",
   "adminDashboard.networkStatsUnavailable": "Live network stats need Linux (/proc/net/dev) — not available here",
   "adminDashboard.connectionsTitle": "Current connections",
