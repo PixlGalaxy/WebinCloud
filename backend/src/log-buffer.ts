@@ -1,7 +1,7 @@
 export interface LogEntry {
   id: number;
   time: string;
-  channel: 'BACKEND' | 'AUTH' | 'SYSTEM';
+  channel: 'BACKEND' | 'FRONTEND' | 'AUTH' | 'SYSTEM';
   level: 'INFO' | 'WARN' | 'ERROR';
   message: string;
 }

@@ -9,6 +9,7 @@ import { seedDevUsers } from './modules/auth/dev-seed.js';
 import { PathNamesService } from './modules/path-names/path-names.service.js';
 import type { User } from './types/index.js';
 import { createApp } from './app.js';
+import { startFrontendLogTailer } from './modules/logs/frontend-log-tailer.js';
 import { logger } from './logger.js';
 
 async function main() {
@@ -53,6 +54,8 @@ async function main() {
   for (const user of db.prepare('SELECT id, username FROM users').all() as Pick<User, 'id' | 'username'>[]) {
     pathNames.ensureDefault(user.id, user.username);
   }
+
+  startFrontendLogTailer();
 
   createApp(db, config).listen(config.PORT, () => {
     logger.info(`Listening on port ${config.PORT} (${config.NODE_ENV})`);

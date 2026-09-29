@@ -282,6 +282,7 @@
   "logs.resume": "Hervatten",
   "logs.perPage": "Invoer per pagina",
   "logs.empty": "Nog geen logvermeldingen",
+  "logs.legend": "Legenda:",
   "logs.range": "{from}–{to} van {total}",
   "logs.page": "Pagina {page} van {pages}",
   "logs.newer": "Nieuwer",

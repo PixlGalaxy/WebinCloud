@@ -282,6 +282,7 @@
   "logs.resume": "Resume",
   "logs.perPage": "Entries per page",
   "logs.empty": "No log entries yet",
+  "logs.legend": "Legend:",
   "logs.range": "{from}–{to} of {total}",
   "logs.page": "Page {page} of {pages}",
   "logs.newer": "Newer",

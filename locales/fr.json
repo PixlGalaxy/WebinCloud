@@ -282,6 +282,7 @@
   "logs.resume": "Reprendre",
   "logs.perPage": "Entrées par page",
   "logs.empty": "Aucune entrée de journal pour le moment",
+  "logs.legend": "Légende :",
   "logs.range": "{from}–{to} sur {total}",
   "logs.page": "Page {page} sur {pages}",
   "logs.newer": "Plus récents",

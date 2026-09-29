@@ -282,6 +282,7 @@
   "logs.resume": "Continuar",
   "logs.perPage": "Entradas por página",
   "logs.empty": "Todavía no hay registros",
+  "logs.legend": "Leyenda:",
   "logs.range": "{from}–{to} de {total}",
   "logs.page": "Página {page} de {pages}",
   "logs.newer": "Más recientes",

@@ -5,10 +5,13 @@ import { ApiError } from '../../api/client';
 import { useI18n } from '../../i18n/I18nContext';
 import { btn, card, errorBox } from '../../components/ui/styles';
 
+// BACKEND/FRONTEND reuse the same orange/sky already used for those two roles
+// on the Share page (the "open backend link" / "open frontend link" buttons).
 const CHANNEL_STYLE: Record<LogEntry['channel'], string> = {
-  BACKEND: 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300',
+  BACKEND: 'bg-orange-100 text-orange-700 dark:bg-orange-500/15 dark:text-orange-300',
+  FRONTEND: 'bg-sky-100 text-sky-700 dark:bg-sky-500/15 dark:text-sky-300',
   AUTH: 'bg-violet-100 text-violet-700 dark:bg-violet-500/15 dark:text-violet-300',
-  SYSTEM: 'bg-sky-100 text-sky-700 dark:bg-sky-500/15 dark:text-sky-300',
+  SYSTEM: 'bg-teal-100 text-teal-700 dark:bg-teal-500/15 dark:text-teal-300',
 };
 
 const LEVEL_STYLE: Record<LogEntry['level'], string> = {
@@ -145,6 +148,27 @@ const LogsPage = () => {
 
       {error && <div className={errorBox}>{error}</div>}
 
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 text-xs text-slate-500 dark:text-slate-400">
+        <span className="font-medium">{t('logs.legend')}</span>
+        <div className="flex flex-wrap items-center gap-1.5">
+          {(Object.keys(CHANNEL_STYLE) as LogEntry['channel'][]).map((channel) => (
+            <span
+              key={channel}
+              className={`rounded px-1.5 py-0.5 text-[10px] font-semibold ${CHANNEL_STYLE[channel]}`}
+            >
+              {channel}
+            </span>
+          ))}
+        </div>
+        <div className="flex flex-wrap items-center gap-3">
+          {(Object.keys(LEVEL_STYLE) as LogEntry['level'][]).map((level) => (
+            <span key={level} className={`font-mono font-semibold ${LEVEL_STYLE[level]}`}>
+              {level}
+            </span>
+          ))}
+        </div>
+      </div>
+
       <div className={`${card} overflow-hidden`}>
         {loading && !data ? (
           <div className="flex justify-center p-12">
@@ -160,7 +184,7 @@ const LogsPage = () => {
                   {formatTime(entry.time)}
                 </span>
                 <span
-                  className={`w-16 shrink-0 rounded px-1.5 py-0.5 text-center text-[10px] font-semibold ${CHANNEL_STYLE[entry.channel]}`}
+                  className={`w-20 shrink-0 rounded px-1.5 py-0.5 text-center text-[10px] font-semibold ${CHANNEL_STYLE[entry.channel]}`}
                 >
                   {entry.channel}
                 </span>
