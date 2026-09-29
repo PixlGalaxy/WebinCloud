@@ -6,7 +6,7 @@ It is a good fit when you want to:
 
 - Put a NAS or any disk on the network and browse it from a browser, with no FTP or SMB client.
 - Give other people access to specific folders, each with their own account and read or write permission.
-- Hand out a link to a file or folder, with an optional password and expiry date.
+- Hand out a link to a file or a folder, with an optional password and expiry date.
 - Serve files at stable, predictable URLs for your own apps to consume.
 
 Everything runs in a single container: an nginx front end and a Node.js backend, with SQLite for accounts and permissions. There is no external database to run.
@@ -35,7 +35,9 @@ docker run -d \
   ghcr.io/pixlgalaxy/webincloud:latest
 ```
 
-Open `http://localhost:8080` and sign in with `admin` / `changeme`. That exact pair only ever works once: on first login you're immediately asked to choose a new username, email and password, and the app is unusable until you do. There's nothing to set in advance — no admin credentials belong in an env var.
+Open `http://localhost:8080` and sign in with `admin` / `changeme`. That exact pair only ever works once: on first login you're immediately asked to choose a new username, email and password, and then the app continues normally. This is the default first-run bootstrap account for a fresh install.
+
+Note: when running the app from source during local development, the app intentionally seeds `admin` / `admin` and `user` / `user` so it is easy to test without a production setup. Those dev credentials are only for development and are reset on each boot; they are not the same as the first-run `admin` / `changeme` account used in a real deployment.
 
 To serve an existing directory instead of a Docker volume, bind it:
 
@@ -86,23 +88,29 @@ Inside the container:
 
 ## Configuration
 
-Almost everything is configured from **Admin Panel → Settings** once the app is running — app title, app name, default theme, the logo/icon/favicon, session lifetime, cookie security, rate limits, archive cleanup and the MaxMind key. Nothing there needs an env var or a container restart to change, except the handful of settings marked "requires a backend restart" in the panel itself, which you apply with the restart button right there — no `docker restart` needed either.
+Almost everything is configured from **Admin Panel → Settings** once the app is running — app title, app name, default theme, the logo/icon/favicon, session lifetime, cookie security, rate limits, and more.
 
 `.env` is now only for the very first boot's starting values, before the panel has anything saved. See `.env.example` for the full list with defaults.
 
-The logo and icons can still be replaced from the filesystem instead of the panel, if you prefer: they live in `/appdata/branding` (`logo.png`, `icon.png`, `favicon.ico`), and a reload picks up any change:
+The logo and icons can still be replaced from the filesystem instead of the panel, if you prefer: they live in `/appdata/branding` (`logo.png`, `icon.png`, `favicon.ico`), and a reload picks up any change.
 
 ```
 docker cp my-logo.png webincloud:/appdata/branding/logo.png
 ```
 
-Translations live in `locales/*.json`. English and Spanish are written and maintained by the project's author, a native speaker of both. The rest (currently French and Dutch) were machine-translated and haven't been reviewed by a native speaker — if you spot something off, a PR fixing it or adding a new language is welcome.
+Translations live in `locales/*.json`. English and Spanish are written and maintained by the project's author, a native speaker of both. The rest (currently French and Dutch) were machine-translated by volunteers and may need improvement.
 
 ### The admin account
 
-There's no `ADMIN_EMAIL`/`ADMIN_USERNAME`/`ADMIN_PASSWORD` — a real password has no business sitting in plaintext in an env var. The first boot always seeds `admin` / `changeme`, and that exact pair only ever works once: logging in with it immediately forces a new username, email and password before anything else is reachable, and the old credentials stop working from that point on.
-| `APPDATA_ROOT` | `/appdata` | Override only for a custom layout |
-| `TEMP_ROOT` | `/temp` | Override only for a custom layout |
+There's no `ADMIN_EMAIL`/`ADMIN_USERNAME`/`ADMIN_PASSWORD` — a real password has no business sitting in plaintext in an env var. The first boot always seeds `admin` / `changeme`, and that exact pair only ever works once. After that, you must complete the setup flow and pick a new username, email and password.
+
+For local development, the app may also seed `admin` / `admin` and `user` / `user` intentionally so you can log in quickly in a test environment. Those are development-only credentials and do not affect production deployments.
+
+| Variable | Default | Purpose |
+| --- | --- | --- |
+| `DATA_ROOT` | `/data` | Files the users browse |
+| `APPDATA_ROOT` | `/appdata` | SQLite database and app metadata |
+| `TEMP_ROOT` | `/temp` | Temporary ZIP and scratch files |
 
 ## Behind a reverse proxy
 
