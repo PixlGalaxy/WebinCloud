@@ -8,11 +8,16 @@ import { createAuthGuards } from './session.middleware.js';
 import { AuthService, isThemeMode, isThemeSkin, toPublicUser } from './auth.service.js';
 import { logger } from '../../logger.js';
 import { AppError, badRequest } from '../../errors.js';
-import { createRateLimiter } from '../../middleware/rate-limit.js';
+import { createRateLimiter, type RateLimiter } from '../../middleware/rate-limit.js';
 import type { MetricsService } from '../admin/metrics.service.js';
 import { EMAIL, USERNAME, assertUniqueUser } from '../users/validation.js';
 
-export function createAuthRoutes(db: Db, config: EnvConfig, t: Translate, metrics: MetricsService): Router {
+export function createAuthRoutes(
+  db: Db,
+  config: EnvConfig,
+  t: Translate,
+  metrics: MetricsService,
+): { router: Router; loginIpLimiter: RateLimiter } {
   const router = Router();
   const authService = new AuthService(db, config.SESSION_TTL_HOURS);
   const { requireAuth } = createAuthGuards(t);
@@ -36,7 +41,7 @@ export function createAuthRoutes(db: Db, config: EnvConfig, t: Translate, metric
     describe: (req) => `login attempts against "${(req.body as { usernameOrEmail?: string }).usernameOrEmail}"`,
   });
 
-  router.post('/login', loginIpLimiter, loginAccountLimiter, async (req: AuthenticatedRequest, res) => {
+  router.post('/login', loginIpLimiter.middleware, loginAccountLimiter.middleware, async (req: AuthenticatedRequest, res) => {
     const { usernameOrEmail, password } = req.body as { usernameOrEmail?: string; password?: string };
     if (!usernameOrEmail || !password) {
       return res.status(400).json({ error: t('auth.credentialsRequired') });
@@ -173,5 +178,5 @@ export function createAuthRoutes(db: Db, config: EnvConfig, t: Translate, metric
     }
   });
 
-  return router;
+  return { router, loginIpLimiter };
 }

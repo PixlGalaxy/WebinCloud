@@ -6,7 +6,7 @@ import busboy from 'busboy';
 import type { EnvConfig } from '../../config/env.js';
 import type { Share } from '../../types/index.js';
 import { asyncHandler } from '../../middleware/async-handler.js';
-import { createRateLimiter } from '../../middleware/rate-limit.js';
+import { createRateLimiter, type RateLimiter } from '../../middleware/rate-limit.js';
 import { badRequest, forbidden, notFound } from '../../errors.js';
 import { logger } from '../../logger.js';
 import { logFileAction, PUBLIC_ACTOR } from '../../activity.js';
@@ -25,7 +25,7 @@ export function createPublicShareRoutes(
   config: EnvConfig,
   shares: SharesService,
   archives: ArchivesService,
-): Router {
+): { router: Router; unlockIpLimiter: RateLimiter } {
   const router = Router({ mergeParams: true });
 
   const unlockWindowMs = config.SHARE_UNLOCK_RATE_LIMIT_WINDOW_MINUTES * 60 * 1000;
@@ -116,8 +116,8 @@ export function createPublicShareRoutes(
 
   router.post(
     '/unlock',
-    unlockIpLimiter,
-    unlockShareLimiter,
+    unlockIpLimiter.middleware,
+    unlockShareLimiter.middleware,
     load,
     asyncHandler(async (req: any, res) => {
       const share = (req as PublicRequest).share!;
@@ -340,7 +340,7 @@ export function createPublicShareRoutes(
     }
   });
 
-  return router;
+  return { router, unlockIpLimiter };
 }
 
 function freeName(folder: string, name: string): string {

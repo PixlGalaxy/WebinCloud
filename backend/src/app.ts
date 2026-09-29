@@ -29,6 +29,9 @@ import { MetricsService } from './modules/admin/metrics.service.js';
 import { createConnectionTracker } from './middleware/connection-tracker.js';
 import { createAdminRoutes } from './modules/admin/admin.routes.js';
 import { UpdateCheckService } from './modules/admin/update-check.service.js';
+import { IpBansService } from './modules/admin/ip-bans.service.js';
+import { createIpBanMiddleware } from './middleware/ip-ban.js';
+import { createIpAccessRoutes } from './modules/admin/ip-access.routes.js';
 
 export function createApp(db: Db, config: EnvConfig): express.Application {
   const app = express();
@@ -67,9 +70,12 @@ export function createApp(db: Db, config: EnvConfig): express.Application {
   const settings = new SettingsService(db);
   const backendStartedAt = Date.now();
   const updateCheck = new UpdateCheckService(config.IMAGE_REVISION, config.UPDATE_CHECK_ENABLED);
+  const ipBans = new IpBansService(db);
 
   app.set('trust proxy', 'loopback');
   app.disable('x-powered-by');
+  // Before anything else — a banned IP shouldn't get session/cookie handling, let alone a route.
+  app.use(createIpBanMiddleware(ipBans));
   app.use(requestLogger);
   app.use(express.json({ limit: '10mb' }));
   app.use(cookieParser());
@@ -98,9 +104,11 @@ export function createApp(db: Db, config: EnvConfig): express.Application {
   );
 
   // Anonymous: everything below is reachable with just the link.
-  app.use('/api/public/:segment/:name', createPublicShareRoutes(config, shares, archives));
+  const { router: publicShareRoutes, unlockIpLimiter } = createPublicShareRoutes(config, shares, archives);
+  app.use('/api/public/:segment/:name', publicShareRoutes);
 
-  app.use('/api/auth', createAuthRoutes(db, config, t, metrics));
+  const { router: authRoutes, loginIpLimiter } = createAuthRoutes(db, config, t, metrics);
+  app.use('/api/auth', authRoutes);
   app.use('/api/users', createUsersRoutes(db, t, metrics));
   app.use('/api/logs', createLogsRoutes(t));
   ensureAvatarsDir(config);
@@ -116,6 +124,7 @@ export function createApp(db: Db, config: EnvConfig): express.Application {
   app.use('/api/shares', createSharesRoutes(db, config, t, shares));
 
   app.use('/api/admin', createAdminRoutes(t, metrics, settings, config, backendStartedAt, updateCheck));
+  app.use('/api/admin/ip-access', createIpAccessRoutes(t, loginIpLimiter, unlockIpLimiter, ipBans));
 
   app.use(createNotFoundHandler(t));
   app.use(createErrorHandler(t));

@@ -142,3 +142,32 @@ export interface SystemInfo {
 export const systemApi = {
   get: () => api.get<SystemInfo>('/admin/system'),
 };
+
+export type RateLimitSource = 'login' | 'shareUnlock';
+
+export interface RateLimitedIp {
+  ip: string;
+  source: RateLimitSource;
+  hits: number;
+  retryAfterSeconds: number;
+}
+
+export interface BannedIp {
+  ip: string;
+  reason: string | null;
+  createdBy: string | null;
+  createdAt: string;
+}
+
+export interface IpAccessInfo {
+  rateLimited: RateLimitedIp[];
+  banned: BannedIp[];
+}
+
+export const ipAccessApi = {
+  get: () => api.get<IpAccessInfo>('/admin/ip-access'),
+  clearRateLimit: (source: RateLimitSource, ip: string) =>
+    api.del<{ success: true }>(`/admin/ip-access/rate-limit/${source}/${encodeURIComponent(ip)}`),
+  ban: (ip: string, reason?: string) => api.post<{ success: true }>('/admin/ip-access/banned', { ip, reason }),
+  unban: (ip: string) => api.del<{ success: true }>(`/admin/ip-access/banned/${encodeURIComponent(ip)}`),
+};
