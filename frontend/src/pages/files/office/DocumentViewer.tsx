@@ -4,6 +4,33 @@ import { Loader2 } from 'lucide-react';
 import { useI18n } from '../../../i18n/I18nContext';
 import { errorBox } from '../../../components/ui/styles';
 
+const SAFE_LINK_PROTOCOLS = new Set(['http:', 'https:', 'mailto:']);
+
+/**
+ * docx-preview copies hyperlink targets straight from the document, so a
+ * crafted .docx could carry a `javascript:` link that runs in this app's origin
+ * when clicked. Anything that is not a plain web/mail link or an in-document
+ * anchor loses its href.
+ */
+function neutralizeUnsafeLinks(root: HTMLElement): void {
+  for (const link of root.querySelectorAll<HTMLAnchorElement>('a[href]')) {
+    const href = link.getAttribute('href') ?? '';
+    if (href.startsWith('#')) continue;
+    let protocol = '';
+    try {
+      protocol = new URL(href, window.location.href).protocol;
+    } catch {
+      // Unparseable: treated as unsafe below.
+    }
+    if (SAFE_LINK_PROTOCOLS.has(protocol)) {
+      link.target = '_blank';
+      link.rel = 'noopener noreferrer';
+    } else {
+      link.removeAttribute('href');
+    }
+  }
+}
+
 interface Props {
   url: string;
 }
@@ -33,7 +60,7 @@ const DocumentViewer = ({ url }: Props) => {
           renderFooters: false,
           renderFootnotes: false,
           renderEndnotes: false,
-        });
+        }).then(() => neutralizeUnsafeLinks(element));
       })
       .catch((err) => {
         console.error('DocumentViewer failed to render', url, err);

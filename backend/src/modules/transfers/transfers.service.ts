@@ -1,10 +1,10 @@
 import { randomUUID } from 'crypto';
 import { createReadStream, createWriteStream, existsSync, promises as fs, statSync } from 'fs';
-import { basename, dirname, extname, join } from 'path';
+import { basename, dirname, extname, join, relative, sep } from 'path';
 import type { Db } from '../../db/client.js';
 import type { User } from '../../types/index.js';
 import { badRequest, conflict, forbidden, notFound } from '../../errors.js';
-import { getAccess, requireWrite } from '../permissions/access-check.js';
+import { getAccess, readChecker, requireWrite } from '../permissions/access-check.js';
 import { joinRelPath, normalizeRelPath, resolveSafePath } from '../files/path-safety.js';
 import type { ConflictMode } from '../files/files.service.js';
 import { logFileAction, userActor } from '../../activity.js';
@@ -101,7 +101,10 @@ export class TransfersService {
    * Starts copying and returns immediately, so the client can keep browsing
    * while it runs. Progress is polled through `get`.
    */
-  start(user: User, rawPaths: string[], destinationFolder: string, onConflict: ConflictMode): TransferJobView {
+  start(user: User, rawPaths: string[], rawDestination: string, onConflict: ConflictMode): TransferJobView {
+    // Normalized before any permission check: a raw "granted/../other" would pass
+    // the grant prefix match for "granted" and then resolve to "other".
+    const destinationFolder = normalizeRelPath(rawDestination);
     if (rawPaths.length === 0) throw badRequest('archives.nothingSelected');
     if (rawPaths.length > MAX_SELECTION) throw badRequest('archives.tooManyItems');
 
@@ -153,7 +156,13 @@ export class TransfersService {
    * Single walk that both sizes the job and lists what goes in, so the tree is
    * not traversed twice for large selections.
    */
-  private async collect(absolute: string, dest: string, into: PlannedEntry[]): Promise<number> {
+  private async collect(
+    absolute: string,
+    dest: string,
+    into: PlannedEntry[],
+    canRead: (relPath: string) => boolean,
+  ): Promise<number> {
+    if (!canRead(relative(this.dataRoot, absolute).split(sep).join('/'))) return 0;
     const stats = await fs.lstat(absolute).catch(() => null);
     if (!stats || stats.isSymbolicLink()) return 0;
 
@@ -167,7 +176,7 @@ export class TransfersService {
 
     let bytes = 0;
     for (const name of names) {
-      bytes += await this.collect(join(absolute, name), join(dest, name), into);
+      bytes += await this.collect(join(absolute, name), join(dest, name), into, canRead);
     }
     return bytes;
   }
@@ -204,8 +213,9 @@ export class TransfersService {
       }
 
       const planned: PlannedEntry[] = [];
+      const canRead = readChecker(this.db, user);
       for (const root of roots) {
-        job.totalBytes += await this.collect(root.absolute, root.dest, planned);
+        job.totalBytes += await this.collect(root.absolute, root.dest, planned, canRead);
       }
       job.totalEntries = planned.length;
       job.status = 'running';

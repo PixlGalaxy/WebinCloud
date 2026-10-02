@@ -10,7 +10,7 @@ import { createRateLimiter, type RateLimiter } from '../../middleware/rate-limit
 import { badRequest, forbidden, notFound } from '../../errors.js';
 import { logger } from '../../logger.js';
 import { logFileAction, PUBLIC_ACTOR } from '../../activity.js';
-import { assertValidName, normalizeRelPath, resolveSafePath } from '../files/path-safety.js';
+import { assertValidName, joinRelPath, normalizeRelPath, resolveSafePath } from '../files/path-safety.js';
 import { inlineMimeOf, previewKindOf } from '../files/mime.js';
 import { SHARE_COOKIE_PREFIX, type SharesService } from './shares.service.js';
 import type { ArchiveOwner, ArchivesService } from '../archives/archives.service.js';
@@ -58,6 +58,8 @@ export function createPublicShareRoutes(
     } catch (err) {
       return next(err);
     }
+    // The owner lost access (grant revoked, account deactivated): the link is dead too.
+    if (!shares.ownerAccess(share, share.target_path).read) return next(notFound());
     (req as PublicRequest).share = share;
     next();
   };
@@ -81,6 +83,14 @@ export function createPublicShareRoutes(
     if (raw === undefined) return '';
     if (typeof raw !== 'string') throw badRequest('files.invalidPath');
     return normalizeRelPath(raw);
+  };
+
+  /** Path relative to the data root, for checking the owner's grants. */
+  const dataRelPath = (share: Share, inner: string): string =>
+    share.target_type === 'file' ? share.target_path : joinRelPath(share.target_path, inner);
+
+  const assertOwnerCanRead = (share: Share, inner: string): void => {
+    if (!shares.ownerAccess(share, dataRelPath(share, inner)).read) throw notFound();
   };
 
   const absoluteInside = (share: Share, inner: string): string => {
@@ -149,15 +159,18 @@ export function createPublicShareRoutes(
       if (share.target_type !== 'folder') throw notFound();
 
       const inner = innerPath(share, req.query.path);
+      assertOwnerCanRead(share, inner);
       const absolute = resolveSafePath(shareRoot(share), inner);
 
       const names = await fs.readdir(absolute).catch(() => {
         throw notFound();
       });
 
+      const canRead = shares.ownerReadChecker(share);
       const entries = names.flatMap((entryName) => {
         const full = join(absolute, entryName);
         if (!existsSync(full)) return [];
+        if (!canRead(dataRelPath(share, joinRelPath(inner, entryName)))) return [];
         const stats = statSync(full);
         const isDir = stats.isDirectory();
         return [
@@ -183,7 +196,9 @@ export function createPublicShareRoutes(
     requireDownload,
     asyncHandler(async (req: any, res) => {
       const share = (req as PublicRequest).share!;
-      const absolute = absoluteInside(share, innerPath(share, req.query.path));
+      const inner = innerPath(share, req.query.path);
+      assertOwnerCanRead(share, inner);
+      const absolute = absoluteInside(share, inner);
 
       const stats = await fs.stat(absolute).catch(() => {
         throw notFound();
@@ -230,7 +245,7 @@ export function createPublicShareRoutes(
       return { absolute, nameInZip: relative === '' ? share.name : basename(relative) };
     });
 
-    res.status(202).json(archives.startForShare(share.id, sources, share.name));
+    res.status(202).json(archives.startForShare(share.id, sources, share.name, shares.ownerReadChecker(share)));
   });
 
   router.get('/archive/:id', load, requireUnlocked, (req: any, res) => {
@@ -263,6 +278,7 @@ export function createPublicShareRoutes(
     let inner: string;
     try {
       inner = innerPath(share, req.query.path);
+      if (!shares.ownerAccess(share, dataRelPath(share, inner)).write) return next(forbidden());
       folderAbsolute = resolveSafePath(shareRoot(share), inner);
     } catch (err) {
       return next(err);
