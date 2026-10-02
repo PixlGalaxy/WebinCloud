@@ -1,12 +1,12 @@
 import { randomUUID } from 'crypto';
 import { createReadStream, createWriteStream, promises as fs } from 'fs';
-import { basename, join } from 'path';
+import { basename, join, relative, sep } from 'path';
 import { ZipArchive, type ProgressData } from 'archiver';
 import type { Db } from '../../db/client.js';
 import type { User } from '../../types/index.js';
 import { badRequest, forbidden, notFound } from '../../errors.js';
 import { logger } from '../../logger.js';
-import { getAccess } from '../permissions/access-check.js';
+import { getAccess, readChecker } from '../permissions/access-check.js';
 import { normalizeRelPath, resolveSafePath } from '../files/path-safety.js';
 
 export type ArchiveStatus = 'preparing' | 'running' | 'done' | 'error';
@@ -146,7 +146,13 @@ export class ArchivesService {
    * Single walk that both sizes the job and lists what goes in, so the tree is
    * not traversed twice for large selections.
    */
-  private async collect(absolute: string, nameInZip: string, into: PlannedEntry[]): Promise<number> {
+  private async collect(
+    absolute: string,
+    nameInZip: string,
+    into: PlannedEntry[],
+    canRead: (relPath: string) => boolean,
+  ): Promise<number> {
+    if (!canRead(relative(this.dataRoot, absolute).split(sep).join('/'))) return 0;
     const stats = await fs.lstat(absolute).catch(() => null);
     if (!stats || stats.isSymbolicLink()) return 0;
 
@@ -160,7 +166,7 @@ export class ArchivesService {
 
     let bytes = 0;
     for (const name of names) {
-      bytes += await this.collect(join(absolute, name), `${nameInZip}/${name}`, into);
+      bytes += await this.collect(join(absolute, name), `${nameInZip}/${name}`, into, canRead);
     }
     return bytes;
   }
@@ -180,21 +186,29 @@ export class ArchivesService {
       { kind: 'user', id: user.id },
       paths.map((path) => ({ absolute: resolveSafePath(this.dataRoot, path), nameInZip: basename(path) })),
       this.nameFor(paths),
+      readChecker(this.db, user),
     );
   }
 
   /**
    * Selection made through a public link. The caller has already checked the
    * share is readable and unlocked, and resolved the paths inside its subtree.
+   * `canRead` is the share owner's current access, so the link never exposes
+   * more than its owner could read themselves.
    */
-  startForShare(shareId: string, sources: ArchiveSource[], fallbackName: string): ArchiveJobView {
+  startForShare(
+    shareId: string,
+    sources: ArchiveSource[],
+    fallbackName: string,
+    canRead: (relPath: string) => boolean,
+  ): ArchiveJobView {
     if (sources.length === 0) throw badRequest('archives.nothingSelected');
     if (sources.length > MAX_SELECTION) throw badRequest('archives.tooManyItems');
 
     const fileName =
       sources.length === 1 ? `${sources[0].nameInZip}.zip` : `${fallbackName}-${sources.length}-items.zip`;
 
-    return this.startJob({ kind: 'share', id: shareId }, sources, fileName);
+    return this.startJob({ kind: 'share', id: shareId }, sources, fileName, canRead);
   }
 
   private validateSelection(rawPaths: string[]): string[] {
@@ -212,7 +226,12 @@ export class ArchivesService {
     return paths.length === 1 ? `${basename(paths[0])}.zip` : `webincloud-${paths.length}-items.zip`;
   }
 
-  private startJob(owner: ArchiveOwner, sources: ArchiveSource[], fileName: string): ArchiveJobView {
+  private startJob(
+    owner: ArchiveOwner,
+    sources: ArchiveSource[],
+    fileName: string,
+    canRead: (relPath: string) => boolean,
+  ): ArchiveJobView {
     const id = randomUUID();
     const job: ArchiveJob = {
       id,
@@ -228,17 +247,21 @@ export class ArchivesService {
     };
     this.jobs.set(id, job);
 
-    void this.build(job, sources);
+    void this.build(job, sources, canRead);
     return this.view(job);
   }
 
-  private async build(job: ArchiveJob, sources: ArchiveSource[]): Promise<void> {
+  private async build(
+    job: ArchiveJob,
+    sources: ArchiveSource[],
+    canRead: (relPath: string) => boolean,
+  ): Promise<void> {
     try {
       await fs.mkdir(this.tempRoot, { recursive: true });
 
       const planned: PlannedEntry[] = [];
       for (const source of sources) {
-        job.totalBytes += await this.collect(source.absolute, source.nameInZip, planned);
+        job.totalBytes += await this.collect(source.absolute, source.nameInZip, planned, canRead);
       }
       job.totalEntries = planned.length;
 
