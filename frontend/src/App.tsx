@@ -57,7 +57,7 @@ const App = () => (
                 </Routes>
 
                 {/* Outside the routes so they survive navigation. */}
-                <div className="fixed bottom-4 right-4 z-40 w-80 space-y-2">
+                <div className="fixed bottom-4 left-4 right-4 z-40 space-y-2 sm:left-auto sm:w-80">
                   <UploadTray />
                   <ArchivePanel />
                   <TransferPanel />

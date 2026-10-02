@@ -179,8 +179,8 @@ const LogsPage = () => {
         ) : (
           <ul className="divide-y divide-slate-100 font-mono text-xs dark:divide-slate-800">
             {data?.entries.map((entry) => (
-              <li key={entry.id} className="flex items-start gap-3 px-4 py-1.5 hover:bg-slate-50 dark:hover:bg-slate-800/50">
-                <span className="w-36 shrink-0 text-slate-400 dark:text-slate-500" title={entry.time}>
+              <li key={entry.id} className="flex flex-wrap items-start gap-x-3 gap-y-1 px-4 py-1.5 hover:bg-slate-50 sm:flex-nowrap dark:hover:bg-slate-800/50">
+                <span className="shrink-0 text-slate-400 sm:w-36 dark:text-slate-500" title={entry.time}>
                   {formatTime(entry.time)}
                 </span>
                 <span
@@ -189,7 +189,7 @@ const LogsPage = () => {
                   {entry.channel}
                 </span>
                 <span className={`w-10 shrink-0 font-semibold ${LEVEL_STYLE[entry.level]}`}>{entry.level}</span>
-                <span className={`min-w-0 flex-1 break-all ${LEVEL_STYLE[entry.level]}`}>{entry.message}</span>
+                <span className={`min-w-0 flex-1 basis-full break-all sm:basis-auto ${LEVEL_STYLE[entry.level]}`}>{entry.message}</span>
               </li>
             ))}
           </ul>

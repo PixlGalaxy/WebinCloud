@@ -134,6 +134,7 @@
   "files.clearSearch": "Clear search",
   "files.goToFolder": "Open the containing folder",
   "files.select": "Select",
+  "files.actions": "Actions",
   "files.selectedCount": "{count} selected",
   "files.downloadEach": "Download",
   "files.downloadZip": "Download as ZIP",

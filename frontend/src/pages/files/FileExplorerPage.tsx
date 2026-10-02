@@ -20,6 +20,7 @@ import {
   Image as ImageIcon,
   Eye,
   X,
+  MoreVertical,
 } from 'lucide-react';
 import {
   filesApi,
@@ -271,12 +272,12 @@ const FileExplorerPage = () => {
       <div className="flex flex-wrap items-center justify-between gap-3">
         <Breadcrumbs path={path} rootLabel={t('files.root')} />
 
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto">
           <button
             onClick={toggleThumbnails}
             title={t(thumbnails ? 'files.thumbnailsHide' : 'files.thumbnailsShow')}
             aria-pressed={thumbnails}
-            className={thumbnails ? btn.primary : btn.secondary}
+            className={`${thumbnails ? btn.primary : btn.secondary} flex-1 sm:flex-none`}
           >
             <ImageIcon size={16} />
           </button>
@@ -286,7 +287,7 @@ const FileExplorerPage = () => {
               e.preventDefault();
               void runSearch();
             }}
-            className="relative"
+            className="relative order-first w-full sm:order-none sm:w-auto"
           >
             <Search className="absolute left-3 top-2.5 text-slate-400 dark:text-slate-500" size={16} />
             <input
@@ -309,13 +310,14 @@ const FileExplorerPage = () => {
 
           <button
             onClick={() => (selecting ? exitSelection() : setSelecting(true))}
-            className={
+            title={t('files.select')}
+            className={`${
               selecting
                 ? 'inline-flex items-center justify-center gap-2 rounded-lg bg-[var(--accent-600)] px-4 py-2 text-sm font-medium text-white transition hover:bg-[var(--accent-700)]'
                 : btn.info
-            }
+            } flex-1 sm:flex-none`}
           >
-            <SquareCheck size={16} /> {t('files.select')}
+            <SquareCheck size={16} /> <span className="hidden sm:inline">{t('files.select')}</span>
           </button>
 
           {canWrite && (
@@ -325,25 +327,33 @@ const FileExplorerPage = () => {
                   onClick={() => void handlePaste()}
                   disabled={pasteHereDisabled}
                   title={pasteHereDisabled ? t('files.pasteDisabledSameFolder') : t('files.clipboardReady', { count: clip.entries.length })}
-                  className={`${btn.success} disabled:opacity-40`}
+                  className={`${btn.success} flex-1 sm:flex-none disabled:opacity-40`}
                 >
-                  <ClipboardPaste size={16} /> {t('files.paste')}
+                  <ClipboardPaste size={16} /> <span className="hidden sm:inline">{t('files.paste')}</span>
                 </button>
               )}
-              <button onClick={() => setNewFolder('')} className={btn.warning}>
-                <FolderPlus size={16} /> {t('files.newFolder')}
+              <button onClick={() => setNewFolder('')} title={t('files.newFolder')} className={`${btn.warning} flex-1 sm:flex-none`}>
+                <FolderPlus size={16} /> <span className="hidden sm:inline">{t('files.newFolder')}</span>
               </button>
-              <button onClick={() => uploads.pickFolder({ kind: 'user' }, path)} className={btn.success}>
-                <FolderUp size={16} /> {t('files.uploadFolder')}
+              <button
+                onClick={() => uploads.pickFolder({ kind: 'user' }, path)}
+                title={t('files.uploadFolder')}
+                className={`${btn.success} flex-1 sm:flex-none`}
+              >
+                <FolderUp size={16} /> <span className="hidden sm:inline">{t('files.uploadFolder')}</span>
               </button>
-              <button onClick={() => uploads.pickFiles({ kind: 'user' }, path)} className={btn.primary}>
-                <Upload size={16} /> {t('files.uploadFiles')}
+              <button
+                onClick={() => uploads.pickFiles({ kind: 'user' }, path)}
+                title={t('files.uploadFiles')}
+                className={`${btn.primary} flex-1 sm:flex-none`}
+              >
+                <Upload size={16} /> <span className="hidden sm:inline">{t('files.uploadFiles')}</span>
               </button>
             </>
           )}
           <button
             onClick={() => void refreshNow()}
-            className={btn.secondary}
+            className={`${btn.secondary} flex-1 sm:flex-none`}
             title={t('files.refresh')}
             disabled={refreshing}
           >
@@ -376,14 +386,14 @@ const FileExplorerPage = () => {
               title={hasSelectedFolder ? t('files.foldersNeedZip') : undefined}
               className={`${btn.secondary} disabled:opacity-40`}
             >
-              <Download size={16} /> {t('files.downloadEach')}
+              <Download size={16} /> <span className="hidden sm:inline">{t('files.downloadEach')}</span>
             </button>
             <button
               onClick={() => void downloadZip()}
               disabled={selected.size === 0}
               className="inline-flex items-center justify-center gap-2 rounded-lg bg-amber-500 px-4 py-2 text-sm font-medium text-white transition hover:bg-amber-600 disabled:opacity-40"
             >
-              <FileArchive size={16} /> {t('files.downloadZip')}
+              <FileArchive size={16} /> <span className="hidden sm:inline">{t('files.downloadZip')}</span>
             </button>
             <button
               onClick={() => {
@@ -393,7 +403,7 @@ const FileExplorerPage = () => {
               disabled={selected.size === 0}
               className={`${btn.secondary} disabled:opacity-40`}
             >
-              <Copy size={16} /> {t('files.copy')}
+              <Copy size={16} /> <span className="hidden sm:inline">{t('files.copy')}</span>
             </button>
             {canWrite && (
               <button
@@ -404,7 +414,7 @@ const FileExplorerPage = () => {
                 disabled={selected.size === 0}
                 className={`${btn.secondary} disabled:opacity-40`}
               >
-                <Scissors size={16} /> {t('files.cut')}
+                <Scissors size={16} /> <span className="hidden sm:inline">{t('files.cut')}</span>
               </button>
             )}
             <button onClick={exitSelection} className={btn.iconGhost} title={t('common.cancel')}>
@@ -449,10 +459,10 @@ const FileExplorerPage = () => {
             <thead className="border-b border-slate-200 bg-slate-50 text-left text-slate-500 dark:border-slate-800 dark:bg-slate-800/50 dark:text-slate-400">
               <tr>
                 {selecting && <th className="w-10 pl-5" />}
-                <th className="px-5 py-3 font-medium">{t('files.name')}</th>
+                <th className="px-3 py-3 font-medium sm:px-5">{t('files.name')}</th>
                 <th className="hidden w-32 px-5 py-3 font-medium sm:table-cell">{t('files.size')}</th>
                 <th className="hidden w-56 px-5 py-3 font-medium md:table-cell">{t('files.modified')}</th>
-                <th className="w-32 px-5 py-3" />
+                <th className="w-12 px-3 py-3 sm:w-32 sm:px-5" />
               </tr>
             </thead>
             <tbody>
@@ -490,7 +500,7 @@ const FileExplorerPage = () => {
                         />
                       </td>
                     )}
-                    <td className="px-5 py-3">
+                    <td className="break-words px-3 py-3 [overflow-wrap:anywhere] sm:px-5">
                       {entry.type === 'folder' ? (
                         <button
                           onClick={() => navigate(toFilesUrl(entry.path))}
@@ -530,8 +540,20 @@ const FileExplorerPage = () => {
                     <td className="hidden px-5 py-3 text-slate-500 dark:text-slate-400 md:table-cell">
                       {formatDate(entry.modifiedAt)}
                     </td>
-                    <td className="px-5 py-3">
-                      <div className="flex items-center justify-end gap-1">
+                    <td className="px-3 py-3 sm:px-5">
+                      {/* Phones get one button that opens the same menu as a right-click; the row of icons doesn't fit. */}
+                      <button
+                        onClick={(e) => {
+                          const rect = e.currentTarget.getBoundingClientRect();
+                          setMenu({ x: rect.right, y: rect.bottom, entries: [entry], multi: false });
+                        }}
+                        className={`${btn.iconGhost} sm:hidden`}
+                        title={t('files.actions')}
+                        aria-label={t('files.actions')}
+                      >
+                        <MoreVertical size={18} />
+                      </button>
+                      <div className="hidden items-center justify-end gap-1 sm:flex">
                         {entry.type === 'file' && entry.previewKind !== 'none' && (
                           <button
                             onClick={() => setPreview(entry)}

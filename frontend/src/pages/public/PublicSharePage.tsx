@@ -166,7 +166,7 @@ const PublicSharePage = () => {
   const shell = (children: React.ReactNode) => (
     <div className="min-h-screen flex flex-col bg-slate-50 dark:bg-slate-950">
       <Navbar />
-      <main className="mx-auto w-full max-w-7xl flex-1 p-6">{children}</main>
+      <main className="mx-auto w-full min-w-0 max-w-7xl flex-1 p-4 sm:p-6">{children}</main>
       <Footer />
     </div>
   );
@@ -259,7 +259,7 @@ const PublicSharePage = () => {
           )}
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto">
           {info.type === 'file' && info.previewKind === 'html' && (
             <div className="flex items-center rounded-lg border border-slate-300 p-0.5 dark:border-slate-600">
               <button
@@ -270,7 +270,7 @@ const PublicSharePage = () => {
                     : 'text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800'
                 }`}
               >
-                <Play size={14} /> {t('files.htmlRendered')}
+                <Play size={14} /> <span className="hidden sm:inline">{t('files.htmlRendered')}</span>
               </button>
               <button
                 onClick={() => setHtmlView('raw')}
@@ -280,7 +280,7 @@ const PublicSharePage = () => {
                     : 'text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800'
                 }`}
               >
-                <Code2 size={14} /> {t('files.htmlRaw')}
+                <Code2 size={14} /> <span className="hidden sm:inline">{t('files.htmlRaw')}</span>
               </button>
             </div>
           )}
@@ -292,13 +292,13 @@ const PublicSharePage = () => {
                   href={publicShareApi.rawUrl(segment, shareName)}
                   target="_blank"
                   rel="noreferrer"
-                  className={btn.secondary}
+                  className={`${btn.secondary} flex-1 sm:flex-none`}
                   title={t('share.openDirectHint')}
                 >
                   <ExternalLink size={16} /> {t('share.openDirect')}
                 </a>
               )}
-              <button onClick={() => requestDownload(info.name, '')} className={btn.primary}>
+              <button onClick={() => requestDownload(info.name, '')} className={`${btn.primary} flex-1 sm:flex-none`}>
                 <Download size={16} /> {t('files.download')}
               </button>
             </>
@@ -307,27 +307,40 @@ const PublicSharePage = () => {
             <>
               <button
                 onClick={() => (selecting ? exitSelection() : setSelecting(true))}
-                className={
+                title={t('files.select')}
+                className={`${
                   selecting
                     ? 'inline-flex items-center justify-center gap-2 rounded-lg bg-[var(--accent-600)] px-4 py-2 text-sm font-medium text-white transition hover:bg-[var(--accent-700)]'
                     : btn.secondary
-                }
+                } flex-1 sm:flex-none`}
               >
-                <SquareCheck size={16} /> {t('files.select')}
+                <SquareCheck size={16} /> <span className="hidden sm:inline">{t('files.select')}</span>
               </button>
-              <button onClick={() => void zipSelection([])} className={btn.primary}>
-                <FileArchive size={16} /> {t('share.downloadFolderZip')}
+              <button
+                onClick={() => void zipSelection([])}
+                title={t('share.downloadFolderZip')}
+                className={`${btn.primary} flex-1 sm:flex-none`}
+              >
+                <FileArchive size={16} /> <span className="hidden sm:inline">{t('share.downloadFolderZip')}</span>
               </button>
             </>
           )}
 
           {info.allowUpload && (
             <>
-              <button onClick={() => uploads.pickFolder(shareScope, innerPath)} className={btn.success}>
-                <FolderUp size={16} /> {t('files.uploadFolder')}
+              <button
+                onClick={() => uploads.pickFolder(shareScope, innerPath)}
+                title={t('files.uploadFolder')}
+                className={`${btn.success} flex-1 sm:flex-none`}
+              >
+                <FolderUp size={16} /> <span className="hidden sm:inline">{t('files.uploadFolder')}</span>
               </button>
-              <button onClick={() => uploads.pickFiles(shareScope, innerPath)} className={btn.primary}>
-                <Upload size={16} /> {t('files.uploadFiles')}
+              <button
+                onClick={() => uploads.pickFiles(shareScope, innerPath)}
+                title={t('files.uploadFiles')}
+                className={`${btn.primary} flex-1 sm:flex-none`}
+              >
+                <Upload size={16} /> <span className="hidden sm:inline">{t('files.uploadFiles')}</span>
               </button>
             </>
           )}
@@ -501,10 +514,10 @@ const PublicSharePage = () => {
               <thead className="border-b border-slate-200 bg-slate-50 text-left text-slate-500 dark:border-slate-800 dark:bg-slate-800/50 dark:text-slate-400">
                 <tr>
                   {selecting && <th className="w-10 pl-5" />}
-                  <th className="px-5 py-3 font-medium">{t('files.name')}</th>
+                  <th className="px-3 py-3 font-medium sm:px-5">{t('files.name')}</th>
                   <th className="hidden w-32 px-5 py-3 font-medium sm:table-cell">{t('files.size')}</th>
                   <th className="hidden w-56 px-5 py-3 font-medium md:table-cell">{t('files.modified')}</th>
-                  <th className="w-28 px-5 py-3" />
+                  <th className="w-24 px-3 py-3 sm:w-28 sm:px-5" />
                 </tr>
               </thead>
               <tbody>
@@ -535,7 +548,7 @@ const PublicSharePage = () => {
                           />
                         </td>
                       )}
-                      <td className="px-5 py-3">
+                      <td className="break-words px-3 py-3 [overflow-wrap:anywhere] sm:px-5">
                         {entry.type === 'folder' ? (
                           <button
                             onClick={() => void loadEntries(entry.path)}
@@ -565,7 +578,7 @@ const PublicSharePage = () => {
                       <td className="hidden px-5 py-3 text-slate-500 dark:text-slate-400 md:table-cell">
                         {formatDate(entry.modifiedAt)}
                       </td>
-                      <td className="px-5 py-3">
+                      <td className="px-3 py-3 sm:px-5">
                         <div className="flex items-center justify-end gap-1">
                           {entry.type === 'file' && entry.previewKind !== 'none' && (
                             <button

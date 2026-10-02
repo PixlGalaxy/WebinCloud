@@ -134,6 +134,7 @@
   "files.clearSearch": "Zoekopdracht wissen",
   "files.goToFolder": "Open de map die dit bevat",
   "files.select": "Selecteren",
+  "files.actions": "Acties",
   "files.selectedCount": "{count} geselecteerd",
   "files.downloadEach": "Downloaden",
   "files.downloadZip": "Downloaden als ZIP",

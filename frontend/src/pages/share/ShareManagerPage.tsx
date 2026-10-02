@@ -134,7 +134,7 @@ const ShareManagerPage = () => {
               <ul className="mt-3 divide-y divide-slate-200 border-t border-slate-200 dark:divide-slate-700 dark:border-slate-700">
                 {group.links.map((share) => (
                   <li key={share.id} className="flex flex-wrap items-start gap-3 pt-3 first:pt-3">
-                    <div className="min-w-0 flex-1">
+                    <div className="min-w-0 flex-1 basis-full sm:basis-auto">
                       <code className="block truncate font-mono text-xs text-[var(--accent-600)] dark:text-[var(--accent-400)]">
                         {share.url}
                       </code>

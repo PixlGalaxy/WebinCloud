@@ -134,6 +134,7 @@
   "files.clearSearch": "Effacer la recherche",
   "files.goToFolder": "Ouvrir le dossier parent",
   "files.select": "Sélectionner",
+  "files.actions": "Actions",
   "files.selectedCount": "{count} sélectionné(s)",
   "files.downloadEach": "Télécharger",
   "files.downloadZip": "Télécharger en ZIP",
