@@ -23,6 +23,16 @@ export function toPublicUser(user: User): PublicUser {
   return rest;
 }
 
+/**
+ * Verified against when no account matches, so a miss costs the same argon2
+ * work as a wrong password and response time does not reveal which usernames exist.
+ */
+let dummyHash: Promise<string> | null = null;
+function getDummyHash(): Promise<string> {
+  dummyHash ??= hashPassword(randomBytes(16).toString('hex'));
+  return dummyHash;
+}
+
 export class AuthService {
   constructor(private db: Db, private sessionTtlHours: number) {}
 
@@ -35,7 +45,10 @@ export class AuthService {
       .prepare('SELECT * FROM users WHERE (email = ? OR username = ?) AND is_active = 1')
       .get(usernameOrEmail, usernameOrEmail) as User | undefined;
 
-    if (!user) return null;
+    if (!user) {
+      await verifyPassword(password, await getDummyHash());
+      return null;
+    }
     if (!(await verifyPassword(password, user.password_hash))) return null;
 
     const sessionToken = randomBytes(32).toString('hex');

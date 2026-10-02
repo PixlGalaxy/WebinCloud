@@ -44,6 +44,17 @@ export function getAccess(db: Db, user: User, relPath: string): Access {
   return accessFrom(listGrants(db, user.id), user, relPath);
 }
 
+/**
+ * Read check for recursive walks (archives, copies): loads the grants once and
+ * answers per path, so a subfolder a non-inheriting grant does not cover is
+ * skipped instead of being swept in along with its parent.
+ */
+export function readChecker(db: Db, user: User): (relPath: string) => boolean {
+  if (user.role === 'admin') return () => true;
+  const grants = listGrants(db, user.id);
+  return (relPath) => accessFrom(grants, user, relPath).read;
+}
+
 export function requireRead(db: Db, user: User, relPath: string): void {
   if (!getAccess(db, user, relPath).read) throw forbidden();
 }
