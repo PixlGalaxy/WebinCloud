@@ -4,7 +4,7 @@ import { basename } from 'path';
 import type { Db } from '../../db/client.js';
 import type { Share, User } from '../../types/index.js';
 import { badRequest, conflict, forbidden, notFound } from '../../errors.js';
-import { getAccess } from '../permissions/access-check.js';
+import { getAccess, readChecker, type Access } from '../permissions/access-check.js';
 import { normalizeRelPath, resolveSafePath } from '../files/path-safety.js';
 import type { PathName } from '../path-names/path-names.service.js';
 import { logFileAction, userActor } from '../../activity.js';
@@ -213,6 +213,30 @@ export class SharesService {
 
   assertUsable(share: Share): void {
     if (isExpired(share)) throw notFound('shares.expired');
+  }
+
+  // --- owner access ---------------------------------------------------------
+  // A link never grants more than its owner can reach right now: revoking a
+  // grant, deactivating or deleting the owner takes effect on every link at once.
+
+  private activeOwner(share: Share): User | null {
+    return (
+      (this.db.prepare('SELECT * FROM users WHERE id = ? AND is_active = 1').get(share.owner_user_id) as
+        | User
+        | undefined) ?? null
+    );
+  }
+
+  ownerAccess(share: Share, relPath: string): Access {
+    const owner = this.activeOwner(share);
+    if (!owner) return { read: false, write: false };
+    return getAccess(this.db, owner, relPath);
+  }
+
+  /** Per-path read check against the owner's grants, for recursive walks such as archives. */
+  ownerReadChecker(share: Share): (relPath: string) => boolean {
+    const owner = this.activeOwner(share);
+    return owner ? readChecker(this.db, owner) : () => false;
   }
 
   // --- unlock cookies -------------------------------------------------------
