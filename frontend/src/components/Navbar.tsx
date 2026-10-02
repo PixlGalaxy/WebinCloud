@@ -21,7 +21,7 @@ import Avatar from './ui/Avatar';
 import { btn } from './ui/styles';
 
 const navLinkClass = ({ isActive }: { isActive: boolean }) =>
-  `flex items-center gap-2.5 px-4 py-2.5 rounded-lg text-base font-medium transition ${
+  `flex items-center gap-2.5 px-2.5 sm:px-4 py-2.5 rounded-lg text-base font-medium transition ${
     isActive
       ? 'bg-[var(--accent-50)] text-[var(--accent-700)] dark:bg-[var(--accent-500)]/15 dark:text-[var(--accent-300)]'
       : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-white'
@@ -84,11 +84,11 @@ const Navbar = () => {
     await logout();
   };
 
-  const logo = <img src="/backend/api/branding/logo.png" alt={appName} className="h-16 w-auto" />;
+  const logo = <img src="/backend/api/branding/logo.png" alt={appName} className="h-10 w-auto max-w-[45vw] object-contain object-left sm:h-16 sm:max-w-none" />;
 
   return (
     <nav className="bg-white border-b border-slate-200 dark:bg-slate-900 dark:border-slate-800">
-      <div className="w-full px-6 h-24 flex items-center justify-between gap-4">
+      <div className="w-full px-4 sm:px-6 h-16 sm:h-24 flex items-center justify-between gap-2 sm:gap-4">
         {user ? (
           <Link
             to="/files"
@@ -100,7 +100,7 @@ const Navbar = () => {
           <div className="shrink-0">{logo}</div>
         )}
 
-        <div className="flex items-center gap-1">
+        <div className="flex min-w-0 items-center gap-0.5 sm:gap-1">
           {user && (
             <>
               {NAV_ITEMS.map(({ to, labelKey, icon: Icon }) => (
@@ -130,7 +130,7 @@ const Navbar = () => {
                 {menuOpen && (
                   <div
                     role="menu"
-                    className="absolute right-0 z-30 mt-2 w-60 overflow-hidden rounded-xl border border-slate-200 bg-white py-1.5 shadow-lg dark:border-slate-700 dark:bg-slate-900"
+                    className="absolute right-0 z-30 mt-2 w-60 max-w-[calc(100vw-2rem)] overflow-hidden rounded-xl border border-slate-200 bg-white py-1.5 shadow-lg dark:border-slate-700 dark:bg-slate-900"
                   >
                     {ACCOUNT_MENU.map(({ to, labelKey, icon: Icon, color }) => (
                       <Link

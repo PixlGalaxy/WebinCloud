@@ -127,13 +127,13 @@ const PreviewPanel = ({ name, previewKind, rawUrl, downloadUrl, sizeBytes, edito
   const tooLargeForOffice = isOffice && sizeBytes !== undefined && sizeBytes > MAX_OFFICE_PREVIEW_BYTES;
 
   return (
-    <div className="fixed inset-0 z-50 flex flex-col bg-slate-900/60 p-4 sm:p-8" onClick={requestClose}>
+    <div className="fixed inset-0 z-50 flex flex-col bg-slate-900/60 p-2 sm:p-8" onClick={requestClose}>
       <div
         className="mx-auto flex h-full w-full max-w-6xl flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl dark:border-slate-700 dark:bg-slate-900"
         onClick={(e) => e.stopPropagation()}
       >
-        <header className="flex items-center gap-3 border-b border-slate-200 px-5 py-3 dark:border-slate-700">
-          <h2 className="flex-1 truncate font-medium text-slate-900 dark:text-slate-100">{name}</h2>
+        <header className="flex items-center gap-2 border-b border-slate-200 px-3 py-3 sm:gap-3 sm:px-5 dark:border-slate-700">
+          <h2 className="min-w-0 flex-1 truncate font-medium text-slate-900 dark:text-slate-100" title={name}>{name}</h2>
 
           {previewKind === 'html' && (
             <div className="flex items-center rounded-lg border border-slate-300 p-0.5 dark:border-slate-600">
@@ -145,7 +145,7 @@ const PreviewPanel = ({ name, previewKind, rawUrl, downloadUrl, sizeBytes, edito
                     : 'text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800'
                 }`}
               >
-                <Play size={14} /> {t('files.htmlRendered')}
+                <Play size={14} /> <span className="hidden sm:inline">{t('files.htmlRendered')}</span>
               </button>
               <button
                 onClick={() => setHtmlView('raw')}
@@ -155,20 +155,20 @@ const PreviewPanel = ({ name, previewKind, rawUrl, downloadUrl, sizeBytes, edito
                     : 'text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800'
                 }`}
               >
-                <Code2 size={14} /> {t('files.htmlRaw')}
+                <Code2 size={14} /> <span className="hidden sm:inline">{t('files.htmlRaw')}</span>
               </button>
             </div>
           )}
 
           {isTextLike && canWrite && editor && (
-            <button onClick={() => void save()} disabled={!dirty || saving} className={btn.primary}>
+            <button onClick={() => void save()} disabled={!dirty || saving} className={btn.primary} title={t('common.save')}>
               {saving ? <Loader2 className="animate-spin" size={16} /> : <Save size={16} />}
-              {t('common.save')}
+              <span className="hidden sm:inline">{t('common.save')}</span>
             </button>
           )}
 
-          <a href={downloadUrl} className={btn.secondary}>
-            <Download size={16} /> {t('files.download')}
+          <a href={downloadUrl} className={btn.secondary} title={t('files.download')}>
+            <Download size={16} /> <span className="hidden sm:inline">{t('files.download')}</span>
           </a>
 
           <button onClick={requestClose} className={btn.iconGhost} title={t('common.close')}>

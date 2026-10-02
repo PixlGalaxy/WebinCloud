@@ -48,7 +48,7 @@ const SECTIONS: { key: Section; icon: LucideIcon; labelKey: TranslationKey }[] =
 ];
 
 const sectionLinkClass = (active: boolean) =>
-  `flex shrink-0 items-center gap-2.5 rounded-lg px-3.5 py-2.5 text-sm font-medium transition sm:w-full ${
+  `flex min-w-0 shrink-0 items-center gap-2.5 rounded-lg px-3.5 py-2.5 text-left text-sm font-medium transition sm:w-full ${
     active
       ? 'bg-[var(--accent-50)] text-[var(--accent-700)] dark:bg-[var(--accent-500)]/15 dark:text-[var(--accent-300)]'
       : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-white'
@@ -636,7 +636,7 @@ const SettingsPage = () => {
       <h1 className="text-xl font-semibold text-slate-900 dark:text-slate-100">{t('page.settings')}</h1>
 
       <div className="flex flex-col gap-6 sm:flex-row sm:items-start">
-        <nav className="flex shrink-0 gap-1 overflow-x-auto sm:w-64 sm:flex-col sm:overflow-visible">
+        <nav className="grid shrink-0 grid-cols-2 gap-1 sm:flex sm:w-64 sm:flex-col">
           {SECTIONS.map(({ key, icon: Icon, labelKey }) => (
             <button key={key} type="button" onClick={() => selectSection(key)} className={sectionLinkClass(active === key)}>
               <Icon size={18} />
