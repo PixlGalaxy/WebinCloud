@@ -54,17 +54,25 @@ function isAddressOrRange(value: string): boolean {
  * LAN), `linklocal`, `cloudflare`, or explicit addresses and CIDR ranges.
  * Unknown entries are ignored and reported back, so a typo cannot widen trust.
  */
-export function parseTrustProxy(raw: string | undefined): { trusted: string[]; invalid: string[] } {
+export function parseTrustProxy(raw: string | undefined): { trusted: string[]; invalid: string[]; setting: string } {
   const trusted = new Set(['loopback']);
   const invalid: string[] = [];
+  const accepted: string[] = [];
 
   for (const entry of (raw ?? '').split(',').map((part) => part.trim()).filter(Boolean)) {
     const lower = entry.toLowerCase();
     if (lower === 'cloudflare') CLOUDFLARE_RANGES.forEach((range) => trusted.add(range));
     else if (PRESETS.has(lower)) trusted.add(lower);
     else if (isAddressOrRange(entry)) trusted.add(entry);
-    else invalid.push(entry);
+    else {
+      invalid.push(entry);
+      continue;
+    }
+    const shown = PRESETS.has(lower) || lower === 'cloudflare' ? lower : entry;
+    if (!accepted.includes(shown)) accepted.push(shown);
   }
 
-  return { trusted: [...trusted], invalid };
+  // `setting` is the cleaned-up value as an admin would type it (no expanded
+  // Cloudflare ranges, no implicit loopback), for showing and storing.
+  return { trusted: [...trusted], invalid, setting: accepted.join(', ') };
 }

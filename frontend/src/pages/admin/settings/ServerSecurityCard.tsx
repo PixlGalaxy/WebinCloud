@@ -74,6 +74,7 @@ const ServerSecurityCard = () => {
   });
   const [cookieSecure, setCookieSecure] = useState(false);
   const [maxmindKey, setMaxmindKey] = useState('');
+  const [trustProxy, setTrustProxy] = useState('');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const [toast, setToast] = useState<string | null>(null);
@@ -90,6 +91,7 @@ const ServerSecurityCard = () => {
         archiveAbandonSeconds: d.server.archiveAbandonSeconds.saved,
       });
       setCookieSecure(d.server.cookieSecure.saved);
+      setTrustProxy(d.server.trustProxy.saved);
     });
 
   useEffect(() => {
@@ -103,6 +105,7 @@ const ServerSecurityCard = () => {
       await settingsApi.update({
         ...values,
         cookieSecure,
+        trustProxy,
         ...(maxmindKey.trim() ? { maxmindLicenseKey: maxmindKey.trim() } : {}),
       });
       setMaxmindKey('');
@@ -168,6 +171,30 @@ const ServerSecurityCard = () => {
           <Tooltip text={t('adminSettings.cookieSecureDescription')} />
         </span>
       </label>
+
+      <div className="mt-5 max-w-md">
+        <label className={`${label} flex items-center gap-1.5`} htmlFor="admin-trust-proxy">
+          {t('adminSettings.trustProxyLabel')}
+          <Tooltip text={t('adminSettings.trustProxyDescription')} />
+        </label>
+        <input
+          id="admin-trust-proxy"
+          type="text"
+          value={trustProxy}
+          onChange={(e) => setTrustProxy(e.target.value)}
+          placeholder="uniquelocal"
+          spellCheck={false}
+          autoCapitalize="off"
+          autoCorrect="off"
+          className={`${input} font-mono`}
+        />
+        <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">{t('adminSettings.trustProxyHint')}</p>
+        {data.yourIp && (
+          <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+            {t('adminSettings.trustProxyYourIp', { ip: data.yourIp })}
+          </p>
+        )}
+      </div>
 
       <div className="mt-5 max-w-md">
         <label className={`${label} flex items-center gap-1.5`} htmlFor="admin-maxmind-key">

@@ -52,7 +52,7 @@ Verified during the review:
 - **Content served inline**: the MIME types allowed inline never include `text/html` or `image/svg+xml`, so text, HTML and SVG files are served as `text/plain`, always with `nosniff`. The HTML preview runs in an `<iframe sandbox="allow-scripts">` with no `allow-same-origin`, so it gets an opaque origin.
 - **Uploads**: avatars accept PNG, JPEG, WebP or GIF up to 5 MB. Branding files are checked by magic bytes and limited to 5 MB. Files are written to `.part` first and renamed when complete. Public uploads never overwrite existing files.
 - **Subprocesses**: ffmpeg runs through `execFile`, with no shell, a fixed argument list, an absolute input path and a timeout.
-- **Abuse limits**: login is rate-limited per IP and per account, and share unlocking per IP and per share. Banned IPs are rejected before any other middleware. Restarting services from the admin panel is throttled through the database. Behind another reverse proxy, `TRUST_PROXY` must list that proxy so these limits see each visitor's real IP; only the listed proxies (plus the bundled nginx) are believed in `X-Forwarded-For`, so a client cannot forge its address.
+- **Abuse limits**: login is rate-limited per IP and per account, and share unlocking per IP and per share. Banned IPs are rejected before any other middleware. Restarting services from the admin panel is throttled through the database. Behind another reverse proxy, **Trusted proxies** (Admin → Settings, or `TRUST_PROXY`) must list that proxy so these limits see each visitor's real IP; only the listed proxies (plus the bundled nginx) are believed in `X-Forwarded-For`, so a client cannot forge its address.
 - **Misc**: `x-powered-by` is disabled and `server_tokens` is off. The share-unlock cookie is an HMAC tied to the password hash, so changing the password invalidates it. It is compared in constant time.
 
 ## Endpoint inventory
@@ -113,7 +113,7 @@ design decision or is mitigated by how the app is deployed.
 - [ ] Put the container behind HTTPS and set **Cookie secure** (Admin → Settings) / `COOKIE_SECURE=true`.
 - [ ] Add HSTS at the TLS-terminating proxy.
 - [ ] Do not publish port `4000`; only expose port `80` of the container.
-- [ ] Behind another reverse proxy, set `TRUST_PROXY` (for example `uniquelocal`) so logins, rate limits and bans see real client IPs.
+- [ ] Behind another reverse proxy, set **Trusted proxies** in Admin → Settings (for example `uniquelocal`) so logins, rate limits and bans see real client IPs.
 - [ ] Do not bind-mount directories that contain symlinks pointing outside the data folder.
 - [ ] Give upload links an expiry and a password, and watch free space on `/data`.
 - [ ] Back up the `/appdata` volume: it holds accounts, permissions, share links and the signing secret.

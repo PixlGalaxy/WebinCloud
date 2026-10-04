@@ -7,6 +7,7 @@ import { isThemeMode, isThemeSkin } from '../auth/auth.service.js';
 import { isLanguage } from '../../i18n/index.js';
 import type { SettingsService } from '../../db/settings.js';
 import { SETTINGS_KEYS } from './settings-keys.js';
+import { parseTrustProxy } from '../../config/trust-proxy.js';
 import type { MetricsService } from './metrics.service.js';
 import { getBackendStatus, getNginxStatus, restartBackend, restartNginx, tryConsumeRestartBudget } from './process-control.js';
 import { getImageInfo, getCpuModel, readCgroupMemory, readDiskUsage } from './system-info.js';
@@ -81,7 +82,7 @@ export function createAdminRoutes(
   // Restart-tier fields: "active" is what the running process actually uses
   // right now (baked in at boot), "saved" is what's in the database. They only
   // differ right after an admin edits one, until the backend is restarted.
-  router.get('/settings', (_req, res) => {
+  router.get('/settings', (req, res) => {
     const savedMaxmindKey = settings.getOptionalString(SETTINGS_KEYS.maxmindLicenseKey);
     const server = {
       sessionTtlHours: { active: config.SESSION_TTL_HOURS, saved: settings.getNumber(SETTINGS_KEYS.sessionTtlHours, config.SESSION_TTL_HOURS) },
@@ -109,6 +110,10 @@ export function createAdminRoutes(
         active: config.ARCHIVE_ABANDON_SECONDS,
         saved: settings.getNumber(SETTINGS_KEYS.archiveAbandonSeconds, config.ARCHIVE_ABANDON_SECONDS),
       },
+      trustProxy: {
+        active: config.TRUST_PROXY_SETTING,
+        saved: settings.getString(SETTINGS_KEYS.trustProxy, config.TRUST_PROXY_SETTING),
+      },
     };
     const restartRequired =
       Object.values(server).some((field) => field.active !== field.saved) ||
@@ -119,6 +124,9 @@ export function createAdminRoutes(
       maxmindLicenseKeyActive: Boolean(config.MAXMIND_LICENSE_KEY),
       maxmindLicenseKeySaved: Boolean(savedMaxmindKey),
       restartRequired,
+      // Lets the admin confirm the trusted-proxy setting works: behind a proxy
+      // that isn't trusted yet, this is the proxy's address instead of theirs.
+      yourIp: req.ip ?? null,
       appTitle: settings.getString(SETTINGS_KEYS.appTitle, config.APP_TITLE),
       appName: settings.getString(SETTINGS_KEYS.appName, config.APP_NAME),
       defaultThemeMode: settings.getString(SETTINGS_KEYS.defaultThemeMode, 'dark'),
@@ -158,6 +166,15 @@ export function createAdminRoutes(
 
     const archiveAbandonSeconds = numberField(body, 'archiveAbandonSeconds', 5, 3600);
     if (archiveAbandonSeconds !== undefined) settings.set(SETTINGS_KEYS.archiveAbandonSeconds, String(archiveAbandonSeconds));
+
+    if (body.trustProxy !== undefined) {
+      if (typeof body.trustProxy !== 'string' || body.trustProxy.length > 1000) {
+        throw badRequest('adminSettings.invalidTrustProxy');
+      }
+      const parsed = parseTrustProxy(body.trustProxy);
+      if (parsed.invalid.length > 0) throw badRequest('adminSettings.invalidTrustProxy');
+      settings.set(SETTINGS_KEYS.trustProxy, parsed.setting);
+    }
 
     if (body.maxmindLicenseKey !== undefined) {
       if (typeof body.maxmindLicenseKey !== 'string') throw badRequest('adminSettings.invalidValue');

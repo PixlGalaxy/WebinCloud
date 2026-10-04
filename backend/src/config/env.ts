@@ -55,6 +55,8 @@ export interface EnvConfig {
   UPDATE_CHECK_ENABLED: boolean;
   /** Proxies allowed to report the client IP in X-Forwarded-For (always includes loopback). See trust-proxy.ts. */
   TRUST_PROXY: string[];
+  /** The same, as typed by the admin (e.g. "uniquelocal, cloudflare") — shown in the admin panel. */
+  TRUST_PROXY_SETTING: string;
 }
 
 export function loadEnv(): EnvConfig {
@@ -116,5 +118,6 @@ export function loadEnv(): EnvConfig {
     IMAGE_REVISION: env.APP_IMAGE_REVISION || undefined,
     UPDATE_CHECK_ENABLED: env.DISABLE_UPDATE_CHECK !== 'true',
     TRUST_PROXY: trustProxy.trusted,
+    TRUST_PROXY_SETTING: trustProxy.setting,
   };
 }

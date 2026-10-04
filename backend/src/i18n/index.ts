@@ -46,6 +46,7 @@ const BACKEND_KEYS = [
   'branding.noFile',
   'branding.unknownAsset',
   'adminSettings.invalidValue',
+  'adminSettings.invalidTrustProxy',
   'adminSettings.unknownService',
   'adminSettings.serviceRestartFailed',
   'ipAccess.invalidIp',
