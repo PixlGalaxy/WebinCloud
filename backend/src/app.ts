@@ -72,7 +72,9 @@ export function createApp(db: Db, config: EnvConfig): express.Application {
   const updateCheck = new UpdateCheckService(config.IMAGE_REVISION, config.UPDATE_CHECK_ENABLED);
   const ipBans = new IpBansService(db);
 
-  app.set('trust proxy', 'loopback');
+  // The bundled nginx (loopback) plus any outer proxies from TRUST_PROXY, so
+  // req.ip is the visitor's address rather than the proxy's.
+  app.set('trust proxy', config.TRUST_PROXY);
   app.disable('x-powered-by');
   // Before anything else — a banned IP shouldn't get session/cookie handling, let alone a route.
   app.use(createIpBanMiddleware(ipBans));

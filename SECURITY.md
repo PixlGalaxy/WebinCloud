@@ -23,7 +23,7 @@ Only the latest published image (`ghcr.io/pixlgalaxy/webincloud:latest`) and the
 | Scope | Backend (`backend/src`, every route), frontend previewers, `nginx.conf`, `Dockerfile`, `entrypoint.sh` |
 | Dependency audit | `npm audit --omit=dev`: 0 known vulnerabilities in backend and frontend |
 | Open critical / high findings | **None** |
-| Open medium findings | 5 (see [Open findings](#open-findings)) |
+| Open medium findings | 4 (see [Open findings](#open-findings)) |
 
 ### Fixed in the 2026-10-02 review
 
@@ -52,7 +52,7 @@ Verified during the review:
 - **Content served inline**: the MIME types allowed inline never include `text/html` or `image/svg+xml`, so text, HTML and SVG files are served as `text/plain`, always with `nosniff`. The HTML preview runs in an `<iframe sandbox="allow-scripts">` with no `allow-same-origin`, so it gets an opaque origin.
 - **Uploads**: avatars accept PNG, JPEG, WebP or GIF up to 5 MB. Branding files are checked by magic bytes and limited to 5 MB. Files are written to `.part` first and renamed when complete. Public uploads never overwrite existing files.
 - **Subprocesses**: ffmpeg runs through `execFile`, with no shell, a fixed argument list, an absolute input path and a timeout.
-- **Abuse limits**: login is rate-limited per IP and per account, and share unlocking per IP and per share. Banned IPs are rejected before any other middleware. Restarting services from the admin panel is throttled through the database.
+- **Abuse limits**: login is rate-limited per IP and per account, and share unlocking per IP and per share. Banned IPs are rejected before any other middleware. Restarting services from the admin panel is throttled through the database. Behind another reverse proxy, `TRUST_PROXY` must list that proxy so these limits see each visitor's real IP; only the listed proxies (plus the bundled nginx) are believed in `X-Forwarded-For`, so a client cannot forge its address.
 - **Misc**: `x-powered-by` is disabled and `server_tokens` is off. The share-unlock cookie is an HMAC tied to the password hash, so changing the password invalidates it. It is compared in constant time.
 
 ## Endpoint inventory
@@ -91,7 +91,6 @@ design decision or is mitigated by how the app is deployed.
 2. **No size or quota limit on uploads.** nginx sets `client_max_body_size 0` and the backend has no limit, so public upload links (anonymous) and users with write access can fill the `/data` disk. *Fix idea:* a configurable maximum size per upload and a rate limit on public uploads.
 3. **Symlinks inside `/data` are followed** by listing, download, raw preview and public-share listing (only search, ZIP and copy skip them). The app itself cannot create symlinks, but if the host bind-mounts a directory that contains a symlink pointing outside it, users with access to that folder can read the target. *Fix idea:* compare `realpath` against `DATA_ROOT` in `resolveSafePath`, or reject symlinks.
 4. **No Content-Security-Policy.** The other headers are in place. A CSP (`default-src 'self'`, with exceptions for `blob:`/`data:` media and inline styles) would limit the impact of any future XSS. It needs testing against the PDF, video and office previewers before it is enabled.
-5. **Rate limits and IP bans behind another reverse proxy.** `trust proxy` only trusts loopback (the bundled nginx). Behind Traefik, Caddy or another nginx, every client appears with the outer proxy's IP: one client can lock everyone out of login, and IP bans become useless. *Fix idea:* a `TRUST_PROXY` setting (hops or CIDR).
 
 ### Low / informational
 
@@ -114,6 +113,7 @@ design decision or is mitigated by how the app is deployed.
 - [ ] Put the container behind HTTPS and set **Cookie secure** (Admin → Settings) / `COOKIE_SECURE=true`.
 - [ ] Add HSTS at the TLS-terminating proxy.
 - [ ] Do not publish port `4000`; only expose port `80` of the container.
+- [ ] Behind another reverse proxy, set `TRUST_PROXY` (for example `uniquelocal`) so logins, rate limits and bans see real client IPs.
 - [ ] Do not bind-mount directories that contain symlinks pointing outside the data folder.
 - [ ] Give upload links an expiry and a password, and watch free space on `/data`.
 - [ ] Back up the `/appdata` volume: it holds accounts, permissions, share links and the signing secret.

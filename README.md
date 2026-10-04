@@ -119,6 +119,24 @@ The container listens on port 80 and serves the interface at `/` and its API und
 - Set `COOKIE_SECURE=true` once you terminate TLS, so the session cookie is marked `Secure`.
 - Disable request buffering and raise the body size limit, or large uploads will fail.
 - Do not buffer responses: the file browser uses an event stream to refresh when a folder changes.
+- Set `TRUST_PROXY` so the app sees each visitor's real IP instead of the proxy's (see below).
+
+### Real client IPs
+
+Behind another proxy, every request reaches the container from that proxy, so the admin dashboard, the login rate limit and IP bans would all see the proxy's address (for example `192.168.x.x`). `TRUST_PROXY` lists the proxies allowed to report the real client IP through the `X-Forwarded-For` header:
+
+| Setup | Value |
+| --- | --- |
+| Nginx Proxy Manager, Traefik, Caddy, etc. on the same host or LAN | `TRUST_PROXY=uniquelocal` |
+| The same, with the domain proxied through Cloudflare (orange cloud) | `TRUST_PROXY=uniquelocal,cloudflare` |
+| A specific proxy address or range | `TRUST_PROXY=192.168.69.10` or `TRUST_PROXY=192.168.69.0/24` |
+
+`uniquelocal` covers the private ranges (`10.0.0.0/8`, `172.16.0.0/12`, `192.168.0.0/16`, `fc00::/7`), which includes Docker networks. Entries are comma-separated, and the bundled nginx is always trusted. Only list proxies you control: a trusted address can claim to be any client. Restart the container after changing it; the backend logs the trusted proxies at startup.
+
+```yaml
+    environment:
+      TRUST_PROXY: uniquelocal
+```
 
 ## Notes
 

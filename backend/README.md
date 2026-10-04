@@ -55,6 +55,7 @@ All settings are environment variables; `.env.example` at the repository root li
 | `TEMP_ROOT` | `../temp` (`/temp` in production) | Generated ZIPs and thumbnails |
 | `LANGUAGE` | `en` | Default language: `en`, `es`, `fr` or `nl` |
 | `FFMPEG_PATH` | `ffmpeg` | ffmpeg executable used for thumbnails |
+| `TRUST_PROXY` | *(loopback only)* | Extra proxies trusted for `X-Forwarded-For`: `uniquelocal`, `linklocal`, `cloudflare`, IPs or CIDRs, comma-separated |
 
 Settings such as session lifetime, cookie security and rate limits can also be changed from **Admin Panel → Settings**. Values saved there take precedence over the environment once the backend restarts.
 

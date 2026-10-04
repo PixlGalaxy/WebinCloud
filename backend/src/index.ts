@@ -61,6 +61,12 @@ async function main() {
     logger.info(`Listening on port ${config.PORT} (${config.NODE_ENV})`);
     logger.info(`Data root: ${config.DATA_ROOT}`);
     logger.info(`App data root: ${config.APPDATA_ROOT}`);
+    const outer = config.TRUST_PROXY.filter((entry) => entry !== 'loopback');
+    logger.info(
+      outer.length > 0
+        ? `Trusted proxies: loopback, ${outer.length > 4 ? `${outer.slice(0, 4).join(', ')} (+${outer.length - 4} more)` : outer.join(', ')}`
+        : 'Trusted proxies: loopback only (set TRUST_PROXY when running behind another reverse proxy)',
+    );
   });
 }
 
