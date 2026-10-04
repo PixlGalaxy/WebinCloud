@@ -3,6 +3,7 @@ import { fileURLToPath } from 'url';
 import { readFileSync } from 'fs';
 import { isLanguage, type Language } from '../i18n/index.js';
 import { logger } from '../logger.js';
+import { parseTrustProxy } from './trust-proxy.js';
 
 // src/config/env.ts (or dist/config/env.js) -> repo root
 const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), '../../..');
@@ -52,6 +53,10 @@ export interface EnvConfig {
   IMAGE_REVISION?: string;
   /** Periodically asks GitHub if `main` has moved past IMAGE_REVISION — set DISABLE_UPDATE_CHECK=true to turn off. */
   UPDATE_CHECK_ENABLED: boolean;
+  /** Proxies allowed to report the client IP in X-Forwarded-For (always includes loopback). See trust-proxy.ts. */
+  TRUST_PROXY: string[];
+  /** The same, as typed by the admin (e.g. "uniquelocal, cloudflare") — shown in the admin panel. */
+  TRUST_PROXY_SETTING: string;
 }
 
 export function loadEnv(): EnvConfig {
@@ -66,6 +71,11 @@ export function loadEnv(): EnvConfig {
 
   if (env.LANGUAGE && !isLanguage(env.LANGUAGE)) {
     logger.warn(`Unsupported LANGUAGE "${env.LANGUAGE}", falling back to "en"`);
+  }
+
+  const trustProxy = parseTrustProxy(env.TRUST_PROXY);
+  if (trustProxy.invalid.length > 0) {
+    logger.warn(`Ignoring unrecognized TRUST_PROXY entries: ${trustProxy.invalid.join(', ')}`);
   }
 
   let backendVersion = '0.0.0';
@@ -107,5 +117,7 @@ export function loadEnv(): EnvConfig {
     IMAGE_REF: env.APP_IMAGE_REF || 'dev',
     IMAGE_REVISION: env.APP_IMAGE_REVISION || undefined,
     UPDATE_CHECK_ENABLED: env.DISABLE_UPDATE_CHECK !== 'true',
+    TRUST_PROXY: trustProxy.trusted,
+    TRUST_PROXY_SETTING: trustProxy.setting,
   };
 }

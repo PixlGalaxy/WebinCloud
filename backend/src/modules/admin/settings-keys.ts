@@ -14,6 +14,7 @@ export const SETTINGS_KEYS = {
   shareUnlockRateLimitWindowMinutes: 'share_unlock_rate_limit_window_minutes',
   archiveAbandonSeconds: 'archive_abandon_seconds',
   maxmindLicenseKey: 'maxmind_license_key',
+  trustProxy: 'trust_proxy',
 
   // Live-tier: read fresh on every `/api/config` request, no restart needed.
   appTitle: 'app_title',
@@ -33,4 +34,5 @@ export const RESTART_TIER_KEYS = [
   SETTINGS_KEYS.shareUnlockRateLimitWindowMinutes,
   SETTINGS_KEYS.archiveAbandonSeconds,
   SETTINGS_KEYS.maxmindLicenseKey,
+  SETTINGS_KEYS.trustProxy,
 ] as const;
