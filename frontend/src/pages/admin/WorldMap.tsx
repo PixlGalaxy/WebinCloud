@@ -45,7 +45,8 @@ interface CountryStat {
 
 interface Props {
   countries: CountryStat[];
-  geoReady: boolean;
+  /** null while the first snapshot is still loading, so the "not configured" notice doesn't flash. */
+  geoReady: boolean | null;
 }
 
 const WorldMap = ({ countries, geoReady }: Props) => {
@@ -160,7 +161,7 @@ const WorldMap = ({ countries, geoReady }: Props) => {
         </div>
       )}
 
-      {!geoReady && (
+      {geoReady === false && (
         <div className="absolute bottom-2 left-2 flex items-center gap-1.5 rounded-md bg-white/90 px-2 py-1 text-[11px] text-slate-500 shadow-sm dark:bg-slate-900/90 dark:text-slate-400">
           <Info size={12} className="shrink-0" />
           {t('adminDashboard.geoNotConfigured')}

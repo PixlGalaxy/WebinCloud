@@ -118,7 +118,7 @@ The container listens on port 80 and serves the interface at `/` and its API und
 
 - Set `COOKIE_SECURE=true` once you terminate TLS, so the session cookie is marked `Secure`.
 - Disable request buffering and raise the body size limit, or large uploads will fail.
-- Do not buffer responses: the file browser uses an event stream to refresh when a folder changes.
+- Live views (the dashboard, logs and folder refreshes) use event streams. The container marks them with `X-Accel-Buffering: no`, so nginx-based proxies such as Nginx Proxy Manager stream them without extra configuration. For other proxies, turn off response buffering for `/backend/`; if a proxy still holds the stream back, the dashboard falls back to refreshing once a second.
 - Set the trusted proxies so the app sees each visitor's real IP instead of the proxy's (see below).
 
 ### Real client IPs
