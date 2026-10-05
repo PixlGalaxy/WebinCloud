@@ -42,13 +42,38 @@ const DashboardSection = () => {
   const [data, setData] = useState<MetricsSnapshot | null>(null);
 
   // Live for as long as the page is open — a fresh snapshot arrives every
-  // second, so there's nothing to poll, no refresh to remember, and the "since"
-  // durations stay current on their own. A dropped connection reconnects by
-  // itself, same as the logs stream.
+  // second, so there's no refresh to remember, and the "since" durations stay
+  // current on their own. A dropped connection reconnects by itself, same as
+  // the logs stream.
   useEffect(() => {
+    let streaming = false;
+    let poll: number | undefined;
+    const load = () => adminApi.metrics().then(setData).catch(() => undefined);
+
+    // Shown right away, without waiting for the stream's first message.
+    void load();
+
     const source = new EventSource(adminApi.metricsStreamUrl());
-    source.onmessage = (event) => setData(JSON.parse(event.data) as MetricsSnapshot);
-    return () => source.close();
+    source.onmessage = (event) => {
+      streaming = true;
+      if (poll !== undefined) {
+        window.clearInterval(poll);
+        poll = undefined;
+      }
+      setData(JSON.parse(event.data) as MetricsSnapshot);
+    };
+
+    // A reverse proxy that buffers or compresses event streams would leave the
+    // dashboard frozen; poll once a second instead until the stream gets through.
+    const fallback = window.setTimeout(() => {
+      if (!streaming) poll = window.setInterval(() => void load(), 1000);
+    }, 5000);
+
+    return () => {
+      source.close();
+      window.clearTimeout(fallback);
+      if (poll !== undefined) window.clearInterval(poll);
+    };
   }, []);
 
   const tiles: { key: string; icon: LucideIcon; color: string; value: number; labelKey: TranslationKey }[] = [
@@ -77,7 +102,7 @@ const DashboardSection = () => {
       </div>
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-        <WorldMap countries={data?.countries ?? []} geoReady={data?.geoReady ?? false} />
+        <WorldMap countries={data?.countries ?? []} geoReady={data ? data.geoReady : null} />
         <NetworkTrafficCard
           upload={data?.bandwidth.upload ?? []}
           download={data?.bandwidth.download ?? []}
