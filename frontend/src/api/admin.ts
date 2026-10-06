@@ -54,6 +54,7 @@ export interface AdminSettings {
   defaultThemeMode: string;
   defaultThemeSkin: string;
   defaultLanguage: string;
+  showHiddenFiles: boolean;
 }
 
 export interface AdminSettingsPatch {
@@ -73,6 +74,7 @@ export interface AdminSettingsPatch {
   defaultThemeMode?: ThemeMode;
   defaultThemeSkin?: SkinId;
   defaultLanguage?: string;
+  showHiddenFiles?: boolean;
 }
 
 export const settingsApi = {

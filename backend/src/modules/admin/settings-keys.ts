@@ -23,6 +23,8 @@ export const SETTINGS_KEYS = {
   defaultThemeSkin: 'default_theme_skin',
   /** Language shown on signed-out screens (login, public share links) and new accounts' initial language. */
   defaultLanguage: 'default_language',
+  /** Whether file lists show dotfiles/dot-folders for users who haven't picked their own preference. */
+  showHiddenFiles: 'show_hidden_files',
 } as const;
 
 export const RESTART_TIER_KEYS = [
