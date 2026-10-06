@@ -132,6 +132,7 @@ export function createAdminRoutes(
       defaultThemeMode: settings.getString(SETTINGS_KEYS.defaultThemeMode, 'dark'),
       defaultThemeSkin: settings.getString(SETTINGS_KEYS.defaultThemeSkin, 'default'),
       defaultLanguage: settings.getString(SETTINGS_KEYS.defaultLanguage, config.LANGUAGE),
+      showHiddenFiles: settings.getBoolean(SETTINGS_KEYS.showHiddenFiles, false),
     });
   });
 
@@ -211,6 +212,11 @@ export function createAdminRoutes(
         throw badRequest('adminSettings.invalidValue');
       }
       settings.set(SETTINGS_KEYS.defaultLanguage, body.defaultLanguage);
+    }
+
+    if (body.showHiddenFiles !== undefined) {
+      if (typeof body.showHiddenFiles !== 'boolean') throw badRequest('adminSettings.invalidValue');
+      settings.set(SETTINGS_KEYS.showHiddenFiles, String(body.showHiddenFiles));
     }
 
     res.json({ success: true });

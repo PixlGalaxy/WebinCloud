@@ -29,6 +29,8 @@ import { formatSize } from '../files/paths';
 import FileIcon from '../files/FileIcon';
 import PreviewPanel from '../files/PreviewPanel';
 import DotfileNotice from '../../components/DotfileNotice';
+import { useAppConfig } from '../../context/AppConfigContext';
+import { isHiddenName } from '../../hooks/useHiddenFilesPreference';
 
 const CodeEditor = lazy(() => import('../files/CodeEditor'));
 const HtmlPreview = lazy(() => import('../files/HtmlPreview'));
@@ -57,6 +59,11 @@ const PublicSharePage = () => {
   const [htmlView, setHtmlView] = useState<'rendered' | 'raw'>('rendered');
   const [info, setInfo] = useState<PublicShareInfo | null>(null);
   const [entries, setEntries] = useState<PublicEntry[] | null>(null);
+  // Visitors have no preference of their own, so the admin's default decides
+  // whether dotfiles (.env, .git...) show in a shared folder.
+  const { showHiddenFilesDefault } = useAppConfig();
+  const visibleEntries =
+    entries && (showHiddenFilesDefault ? entries : entries.filter((entry) => !isHiddenName(entry.name)));
   const [innerPath, setInnerPath] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
@@ -349,14 +356,14 @@ const PublicSharePage = () => {
 
       {error && <div className={errorBox}>{error}</div>}
 
-      {selecting && entries && (
+      {selecting && visibleEntries && (
         <div className="flex flex-wrap items-center gap-3 rounded-xl border border-[var(--accent-200)] bg-[var(--accent-50)] px-4 py-3 dark:border-[var(--accent-500)]/30 dark:bg-[var(--accent-500)]/10">
           <label className="flex items-center gap-2 text-sm font-medium text-[var(--accent-900)] dark:text-[var(--accent-200)]">
             <input
               type="checkbox"
-              checked={entries.length > 0 && selected.size === entries.length}
+              checked={visibleEntries.length > 0 && selected.size === visibleEntries.length}
               onChange={(e) =>
-                setSelected(e.target.checked ? new Set(entries.map((entry) => entry.path)) : new Set())
+                setSelected(e.target.checked ? new Set(visibleEntries.map((entry) => entry.path)) : new Set())
               }
               className="h-4 w-4 rounded border-slate-300 text-[var(--accent-600)] focus:ring-[var(--accent-500)]"
             />
@@ -501,13 +508,13 @@ const PublicSharePage = () => {
           <Upload className="mx-auto mb-3 text-slate-300 dark:text-slate-600" size={44} />
           <p className="text-slate-500 dark:text-slate-400">{t('share.uploadOnly')}</p>
         </div>
-      ) : entries === null ? (
+      ) : visibleEntries === null ? (
         <div className={`${card} flex justify-center p-12`}>
           <Loader2 className="animate-spin text-[var(--accent-500)]" size={28} />
         </div>
       ) : (
         <div className={`${card} overflow-hidden`}>
-          {entries.length === 0 ? (
+          {visibleEntries.length === 0 ? (
             <p className="p-12 text-center text-slate-500 dark:text-slate-400">{t('files.empty')}</p>
           ) : (
             <table className="w-full text-sm">
@@ -521,7 +528,7 @@ const PublicSharePage = () => {
                 </tr>
               </thead>
               <tbody>
-                {entries.map((entry) => {
+                {visibleEntries.map((entry) => {
                   return (
                     <tr
                       key={entry.path}

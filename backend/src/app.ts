@@ -99,6 +99,9 @@ export function createApp(db: Db, config: EnvConfig): express.Application {
       appTitle: settings.getString(SETTINGS_KEYS.appTitle, config.APP_TITLE),
       defaultThemeMode: settings.getString(SETTINGS_KEYS.defaultThemeMode, 'dark'),
       defaultThemeSkin: settings.getString(SETTINGS_KEYS.defaultThemeSkin, 'default'),
+      // Only a display default: hidden entries are still listed by the API and
+      // reachable by anyone with access; each user can override it in Settings.
+      showHiddenFiles: settings.getBoolean(SETTINGS_KEYS.showHiddenFiles, false),
       // A session dies at SESSION_TTL_HOURS regardless of activity, so an
       // inactivity timeout longer than that would never actually trigger.
       maxAutoSignoutMinutes: config.SESSION_TTL_HOURS * 60,
