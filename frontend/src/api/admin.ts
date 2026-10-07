@@ -41,6 +41,8 @@ export interface AdminSettings {
     shareUnlockRateLimitMax: RestartTierField<number>;
     shareUnlockRateLimitWindowMinutes: RestartTierField<number>;
     archiveAbandonSeconds: RestartTierField<number>;
+    /** Per-file upload cap; 0 means unlimited. */
+    maxUploadMb: RestartTierField<number>;
     /** Comma-separated, as typed — e.g. "uniquelocal, cloudflare". */
     trustProxy: RestartTierField<string>;
   };
@@ -65,6 +67,7 @@ export interface AdminSettingsPatch {
   shareUnlockRateLimitMax?: number;
   shareUnlockRateLimitWindowMinutes?: number;
   archiveAbandonSeconds?: number;
+  maxUploadMb?: number;
   /** Empty string clears it. */
   maxmindLicenseKey?: string;
   /** Empty string means no proxy in front of the container. */

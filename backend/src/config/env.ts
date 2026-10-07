@@ -11,6 +11,10 @@ const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), '../../..');
 export interface EnvConfig {
   NODE_ENV: 'development' | 'production';
   PORT: number;
+  /** Interface to listen on. Loopback in production: only the bundled nginx should reach the API directly. */
+  HOST: string | undefined;
+  /** Largest single file an upload (signed-in or public link) may carry; 0 means no limit. */
+  MAX_UPLOAD_MB: number;
   DATA_ROOT: string;
   APPDATA_ROOT: string;
   TEMP_ROOT: string;
@@ -89,6 +93,10 @@ export function loadEnv(): EnvConfig {
   return {
     NODE_ENV: isProd ? 'production' : 'development',
     PORT: parseInt(env.PORT || '4000', 10),
+    // Unset in development so the Vite proxy reaches it whichever of
+    // 127.0.0.1 / ::1 "localhost" resolves to on the machine.
+    HOST: env.HOST || (isProd ? '127.0.0.1' : undefined),
+    MAX_UPLOAD_MB: Math.max(0, parseInt(env.MAX_UPLOAD_MB || '0', 10) || 0),
     DATA_ROOT,
     APPDATA_ROOT,
     TEMP_ROOT,

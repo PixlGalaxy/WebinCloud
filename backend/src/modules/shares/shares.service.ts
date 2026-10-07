@@ -39,6 +39,21 @@ function isExpired(share: Share): boolean {
   return share.expires_at !== null && new Date(share.expires_at).getTime() <= Date.now();
 }
 
+/** `null` clears the expiry; anything else must be a real date, or the link would never expire. */
+function parseExpiry(value: unknown): string | null {
+  if (value === null || value === undefined || value === '') return null;
+  if (typeof value !== 'string') throw badRequest('shares.invalidExpiry');
+  const time = Date.parse(value);
+  if (Number.isNaN(time)) throw badRequest('shares.invalidExpiry');
+  return new Date(time).toISOString();
+}
+
+function optionalString(value: unknown, key: 'shares.invalidExpiry' | 'files.invalidPath'): string | null {
+  if (value === null || value === undefined) return null;
+  if (typeof value !== 'string') throw badRequest(key);
+  return value;
+}
+
 export class SharesService {
   constructor(
     private db: Db,
@@ -102,9 +117,12 @@ export class SharesService {
     });
 
     const name = basename(targetPath);
-    if (input.pathNameId) {
-      this.assertOwnedAlias(input.pathNameId, user.id);
-      this.assertAliasFree(input.pathNameId, name);
+    const pathNameId = optionalString(input.pathNameId, 'files.invalidPath');
+    const password = optionalString(input.password, 'files.invalidPath');
+    const expiresAt = parseExpiry(input.expiresAt);
+    if (pathNameId) {
+      this.assertOwnedAlias(pathNameId, user.id);
+      this.assertAliasFree(pathNameId, name);
     }
 
     const id = randomBytes(16).toString('hex');
@@ -121,11 +139,11 @@ export class SharesService {
         targetPath,
         stats.isDirectory() ? 'folder' : 'file',
         name,
-        input.pathNameId ?? null,
+        pathNameId,
         input.allowDownload === false ? 0 : 1,
         input.allowUpload ? 1 : 0,
-        input.password ? await this.hash(input.password) : null,
-        input.expiresAt ?? null,
+        password ? await this.hash(password) : null,
+        expiresAt,
       );
 
     logFileAction(
@@ -148,18 +166,16 @@ export class SharesService {
   async update(id: string, user: User, input: UpdateShareInput): Promise<ShareView> {
     const share = this.owned(id, user.id);
 
-    if (input.pathNameId) {
-      this.assertOwnedAlias(input.pathNameId, user.id);
-      this.assertAliasFree(input.pathNameId, share.name, id);
+    const pathNameId = input.pathNameId === undefined ? undefined : optionalString(input.pathNameId, 'files.invalidPath');
+    const password = input.password === undefined ? undefined : optionalString(input.password, 'files.invalidPath');
+    const expiresAt = input.expiresAt === undefined ? share.expires_at : parseExpiry(input.expiresAt);
+    if (pathNameId) {
+      this.assertOwnedAlias(pathNameId, user.id);
+      this.assertAliasFree(pathNameId, share.name, id);
     }
     if (input.allowUpload && !getAccess(this.db, user, share.target_path).write) throw forbidden();
 
-    const passwordHash =
-      input.password === undefined
-        ? share.password_hash
-        : input.password
-          ? await this.hash(input.password)
-          : null;
+    const passwordHash = password === undefined ? share.password_hash : password ? await this.hash(password) : null;
 
     this.db
       .prepare(
@@ -172,8 +188,8 @@ export class SharesService {
         input.allowDownload === undefined ? share.allow_download : Number(input.allowDownload),
         input.allowUpload === undefined ? share.allow_upload : Number(input.allowUpload),
         passwordHash,
-        input.expiresAt === undefined ? share.expires_at : input.expiresAt,
-        input.pathNameId === undefined ? share.path_name_id : input.pathNameId,
+        expiresAt,
+        pathNameId === undefined ? share.path_name_id : pathNameId,
         id,
       );
 
@@ -241,19 +257,32 @@ export class SharesService {
 
   // --- unlock cookies -------------------------------------------------------
 
-  /** Bound to the password hash, so changing the password invalidates old cookies. */
-  unlockToken(share: Share): string {
+  private signUnlock(share: Share, expiresAt: number): string {
     return createHmac('sha256', this.secret)
-      .update(`${share.id}:${share.password_hash ?? ''}`)
+      .update(`${share.id}:${share.password_hash ?? ''}:${expiresAt}`)
       .digest('hex');
+  }
+
+  /**
+   * `<expiry>.<hmac>`. Bound to the password hash, so changing the password
+   * invalidates old cookies, and to an expiry the server checks itself — the
+   * cookie's maxAge is only a hint the browser may ignore.
+   */
+  unlockToken(share: Share): string {
+    const expiresAt = Date.now() + UNLOCK_TTL_MS;
+    return `${expiresAt}.${this.signUnlock(share, expiresAt)}`;
   }
 
   isUnlocked(share: Share, cookieValue: string | undefined): boolean {
     if (share.password_hash === null) return true;
     if (!cookieValue) return false;
 
-    const expected = Buffer.from(this.unlockToken(share));
-    const actual = Buffer.from(cookieValue);
+    const [expiry, signature] = cookieValue.split('.');
+    const expiresAt = Number(expiry);
+    if (!signature || !Number.isFinite(expiresAt) || expiresAt <= Date.now()) return false;
+
+    const expected = Buffer.from(this.signUnlock(share, expiresAt));
+    const actual = Buffer.from(signature);
     return expected.length === actual.length && timingSafeEqual(expected, actual);
   }
 
@@ -264,3 +293,4 @@ export class SharesService {
 }
 
 export const SHARE_COOKIE_PREFIX = 'share_';
+export const UNLOCK_TTL_MS = 12 * 60 * 60 * 1000;

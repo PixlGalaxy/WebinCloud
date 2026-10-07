@@ -31,6 +31,7 @@ import { createAdminRoutes } from './modules/admin/admin.routes.js';
 import { UpdateCheckService } from './modules/admin/update-check.service.js';
 import { IpBansService } from './modules/admin/ip-bans.service.js';
 import { createIpBanMiddleware } from './middleware/ip-ban.js';
+import { rejectCrossSiteWrites } from './middleware/csrf.js';
 import { createIpAccessRoutes } from './modules/admin/ip-access.routes.js';
 
 export function createApp(db: Db, config: EnvConfig): express.Application {
@@ -78,6 +79,7 @@ export function createApp(db: Db, config: EnvConfig): express.Application {
   app.disable('x-powered-by');
   // Before anything else — a banned IP shouldn't get session/cookie handling, let alone a route.
   app.use(createIpBanMiddleware(ipBans));
+  app.use(rejectCrossSiteWrites);
   app.use(requestLogger);
   app.use(express.json({ limit: '10mb' }));
   app.use(cookieParser());

@@ -14,7 +14,8 @@ type NumericKey =
   | 'loginRateLimitWindowMinutes'
   | 'shareUnlockRateLimitMax'
   | 'shareUnlockRateLimitWindowMinutes'
-  | 'archiveAbandonSeconds';
+  | 'archiveAbandonSeconds'
+  | 'maxUploadMb';
 
 const FIELDS: { key: NumericKey; labelKey: TranslationKey; descriptionKey: TranslationKey; min: number; max: number }[] = [
   {
@@ -59,6 +60,13 @@ const FIELDS: { key: NumericKey; labelKey: TranslationKey; descriptionKey: Trans
     min: 5,
     max: 3600,
   },
+  {
+    key: 'maxUploadMb',
+    labelKey: 'adminSettings.maxUploadLabel',
+    descriptionKey: 'adminSettings.maxUploadDescription',
+    min: 0,
+    max: 1024 * 1024,
+  },
 ];
 
 const ServerSecurityCard = () => {
@@ -71,6 +79,7 @@ const ServerSecurityCard = () => {
     shareUnlockRateLimitMax: 10,
     shareUnlockRateLimitWindowMinutes: 15,
     archiveAbandonSeconds: 30,
+    maxUploadMb: 0,
   });
   const [cookieSecure, setCookieSecure] = useState(false);
   const [maxmindKey, setMaxmindKey] = useState('');
@@ -89,6 +98,7 @@ const ServerSecurityCard = () => {
         shareUnlockRateLimitMax: d.server.shareUnlockRateLimitMax.saved,
         shareUnlockRateLimitWindowMinutes: d.server.shareUnlockRateLimitWindowMinutes.saved,
         archiveAbandonSeconds: d.server.archiveAbandonSeconds.saved,
+        maxUploadMb: d.server.maxUploadMb.saved,
       });
       setCookieSecure(d.server.cookieSecure.saved);
       setTrustProxy(d.server.trustProxy.saved);

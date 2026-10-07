@@ -1,9 +1,9 @@
-import { randomUUID } from 'crypto';
+import { randomBytes, randomUUID } from 'crypto';
 import { createReadStream, createWriteStream, existsSync, promises as fs, statSync } from 'fs';
 import { basename, dirname, extname, join, relative, sep } from 'path';
 import type { Db } from '../../db/client.js';
 import type { User } from '../../types/index.js';
-import { badRequest, conflict, forbidden, notFound } from '../../errors.js';
+import { AppError, badRequest, conflict, forbidden, notFound, tooManyRequests } from '../../errors.js';
 import { getAccess, readChecker, requireWrite } from '../permissions/access-check.js';
 import { joinRelPath, normalizeRelPath, resolveSafePath } from '../files/path-safety.js';
 import type { ConflictMode } from '../files/files.service.js';
@@ -49,6 +49,8 @@ export interface TransferJobView {
 /** Stale jobs are swept even if they finished, so the map never grows without bound. */
 const MAX_AGE_MS = 60 * 60 * 1000;
 const MAX_SELECTION = 500;
+/** Running copies one user may hold at once — see the same cap in archives.service.ts. */
+const MAX_ACTIVE_JOBS_PER_OWNER = 5;
 
 export class TransfersService {
   private jobs = new Map<string, TransferJob>();
@@ -120,6 +122,12 @@ export class TransfersService {
 
     const destAbsolute = this.absolute(destinationFolder);
     if (!existsSync(destAbsolute) || !statSync(destAbsolute).isDirectory()) throw notFound();
+
+    let active = 0;
+    for (const job of this.jobs.values()) {
+      if (job.ownerId === user.id && (job.status === 'preparing' || job.status === 'running')) active++;
+    }
+    if (active >= MAX_ACTIVE_JOBS_PER_OWNER) throw tooManyRequests(Math.ceil(this.abandonMs / 1000));
 
     const id = randomUUID();
     const job: TransferJob = {
@@ -237,7 +245,7 @@ export class TransfersService {
         }
 
         await fs.mkdir(dirname(entry.dest), { recursive: true });
-        const part = `${entry.dest}.part`;
+        const part = `${entry.dest}.${randomBytes(6).toString('hex')}.part`;
         currentPart = part;
 
         await new Promise<void>((resolve, reject) => {
@@ -276,7 +284,8 @@ export class TransfersService {
     } catch (err) {
       const cancelled = !this.jobs.has(job.id);
       job.status = 'error';
-      job.error = err instanceof Error ? err.message : String(err);
+      // Only our own error keys reach the client; a raw fs message would carry server paths.
+      job.error = err instanceof AppError ? err.key : undefined;
       job.abort = undefined;
 
       if (cancelled) logger.info(`Transfer ${job.id} cancelled`);

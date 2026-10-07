@@ -4,7 +4,7 @@ import { basename, join, relative, sep } from 'path';
 import { ZipArchive, type ProgressData } from 'archiver';
 import type { Db } from '../../db/client.js';
 import type { User } from '../../types/index.js';
-import { badRequest, forbidden, notFound } from '../../errors.js';
+import { AppError, badRequest, forbidden, notFound, tooManyRequests } from '../../errors.js';
 import { logger } from '../../logger.js';
 import { getAccess, readChecker } from '../permissions/access-check.js';
 import { normalizeRelPath, resolveSafePath } from '../files/path-safety.js';
@@ -66,6 +66,12 @@ export interface ArchiveJobView {
 /** Generated archives are disposable; anything older than this is swept away. */
 const MAX_AGE_MS = 60 * 60 * 1000;
 const MAX_SELECTION = 500;
+/**
+ * Running jobs one owner may hold at once. Without it, anyone with a link —
+ * no account needed — could start ZIPs of a large folder in a loop and fill
+ * the temp volume or pin the CPU before abandonment detection catches up.
+ */
+const MAX_ACTIVE_JOBS_PER_OWNER = 5;
 
 
 export class ArchivesService {
@@ -232,10 +238,17 @@ export class ArchivesService {
     fileName: string,
     canRead: (relPath: string) => boolean,
   ): ArchiveJobView {
+    const key = ownerKey(owner);
+    let active = 0;
+    for (const job of this.jobs.values()) {
+      if (job.ownerKey === key && (job.status === 'preparing' || job.status === 'running')) active++;
+    }
+    if (active >= MAX_ACTIVE_JOBS_PER_OWNER) throw tooManyRequests(Math.ceil(this.abandonMs / 1000));
+
     const id = randomUUID();
     const job: ArchiveJob = {
       id,
-      ownerKey: ownerKey(owner),
+      ownerKey: key,
       status: 'preparing',
       fileName,
       totalBytes: 0,
@@ -333,7 +346,9 @@ export class ArchivesService {
     } catch (err) {
       const cancelled = !this.jobs.has(job.id);
       job.status = 'error';
-      job.error = err instanceof Error ? err.message : String(err);
+      // Only our own error keys reach the client: a raw fs message would carry
+      // the server's absolute paths, and the holder of a public link is a stranger.
+      job.error = err instanceof AppError ? err.key : undefined;
       job.abort = undefined;
 
       if (cancelled) logger.info(`Archive ${job.id} cancelled, partial file removed`);

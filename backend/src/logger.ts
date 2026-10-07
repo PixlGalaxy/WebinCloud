@@ -4,7 +4,10 @@ type Level = LogEntry['level'];
 type Channel = LogEntry['channel'];
 
 // The container prefixes nginx output with [FRONTEND], so `docker logs` reads as one stream.
-function write(channel: Channel, level: Level, message: string, detail?: unknown) {
+function write(channel: Channel, level: Level, rawMessage: string, detail?: unknown) {
+  // Parts of a message come from clients (usernames, paths): strip control
+  // characters so a crafted value cannot forge extra log lines.
+  const message = rawMessage.replace(/[\u0000-\u001f\u007f]+/g, ' ');
   const time = new Date().toISOString();
   const line = `[${channel}] ${time} ${level.padEnd(5)} ${message}`;
   logBuffer.push({

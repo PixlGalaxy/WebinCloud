@@ -1,3 +1,4 @@
+import { randomBytes } from 'crypto';
 import { promises as fs, existsSync, statSync } from 'fs';
 import { basename, extname } from 'path';
 import type { Db } from '../../db/client.js';
@@ -99,14 +100,26 @@ export class FilesService {
     return resolveSafePath(this.dataRoot, relPath);
   }
 
+  /**
+   * For listings: an entry that fails the safety check (a symlink leaving the
+   * data volume) is simply left out, rather than failing the whole folder.
+   */
+  private async listedEntry(base: string, name: string, relPath: string): Promise<DirEntry | null> {
+    let absolute: string;
+    try {
+      absolute = resolveSafePath(base, name);
+    } catch {
+      return null;
+    }
+    return statEntry(absolute, name, relPath, this.canThumbnail);
+  }
+
   /** At the root a non-admin sees their granted folders rather than the real directory. */
   private async listGrantedRoot(user: User): Promise<DirEntry[]> {
     const entries = await Promise.all(
       listGrants(this.db, user.id)
         .filter((grant) => grant.can_read === 1)
-        .map((grant) =>
-          statEntry(this.absolute(grant.folder_path), basename(grant.folder_path), grant.folder_path, this.canThumbnail),
-        ),
+        .map((grant) => this.listedEntry(this.dataRoot, grant.folder_path, grant.folder_path)),
     );
     return sortEntries(entries.filter((entry): entry is DirEntry => entry !== null));
   }
@@ -126,9 +139,7 @@ export class FilesService {
       throw notFound();
     }
 
-    const entries = await Promise.all(
-      names.map((name) => statEntry(resolveSafePath(absolute, name), name, joinRelPath(relPath, name), this.canThumbnail)),
-    );
+    const entries = await Promise.all(names.map((name) => this.listedEntry(absolute, name, joinRelPath(relPath, name))));
 
     return {
       path: relPath,
@@ -400,7 +411,8 @@ export class FilesService {
     if (Buffer.byteLength(content, 'utf8') > MAX_TEXT_BYTES) throw badRequest('files.tooLargeToEdit');
 
     // Write beside the original and swap, so a failed write never truncates it.
-    const partial = `${absolute}.saving`;
+    // The random suffix keeps it from clobbering a real file with that name.
+    const partial = `${absolute}.${randomBytes(6).toString('hex')}.saving`;
     await fs.writeFile(partial, content, 'utf-8');
     await fs.rename(partial, absolute);
     logFileAction(userActor(user), 'edited', 'file', basename(relPath), absolute);

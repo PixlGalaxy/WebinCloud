@@ -51,6 +51,7 @@ async function main() {
       config.SHARE_UNLOCK_RATE_LIMIT_WINDOW_MINUTES,
     ),
     ARCHIVE_ABANDON_SECONDS: settings.getNumber(SETTINGS_KEYS.archiveAbandonSeconds, config.ARCHIVE_ABANDON_SECONDS),
+    MAX_UPLOAD_MB: settings.getNumber(SETTINGS_KEYS.maxUploadMb, config.MAX_UPLOAD_MB),
     MAXMIND_LICENSE_KEY: settings.getOptionalString(SETTINGS_KEYS.maxmindLicenseKey) ?? config.MAXMIND_LICENSE_KEY,
     ...(savedTrustProxy && { TRUST_PROXY: savedTrustProxy.trusted, TRUST_PROXY_SETTING: savedTrustProxy.setting }),
   };
@@ -66,8 +67,8 @@ async function main() {
 
   startFrontendLogTailer();
 
-  createApp(db, config).listen(config.PORT, () => {
-    logger.info(`Listening on port ${config.PORT} (${config.NODE_ENV})`);
+  const onListening = () => {
+    logger.info(`Listening on ${config.HOST ?? 'all interfaces'}:${config.PORT} (${config.NODE_ENV})`);
     logger.info(`Data root: ${config.DATA_ROOT}`);
     logger.info(`App data root: ${config.APPDATA_ROOT}`);
     logger.info(
@@ -75,7 +76,11 @@ async function main() {
         ? `Trusted proxies: loopback, ${config.TRUST_PROXY_SETTING}`
         : 'Trusted proxies: loopback only (set them in Admin Panel -> Settings when running behind another reverse proxy)',
     );
-  });
+    logger.info(config.MAX_UPLOAD_MB > 0 ? `Upload limit: ${config.MAX_UPLOAD_MB} MB per file` : 'Upload limit: none');
+  };
+  const app = createApp(db, config);
+  if (config.HOST) app.listen(config.PORT, config.HOST, onListening);
+  else app.listen(config.PORT, onListening);
 }
 
 main().catch((err) => {

@@ -7,12 +7,13 @@ import type { EnvConfig } from '../../config/env.js';
 import type { Share } from '../../types/index.js';
 import { asyncHandler } from '../../middleware/async-handler.js';
 import { createRateLimiter, type RateLimiter } from '../../middleware/rate-limit.js';
-import { badRequest, forbidden, notFound } from '../../errors.js';
+import { badRequest, forbidden, notFound, payloadTooLarge } from '../../errors.js';
 import { logger } from '../../logger.js';
 import { logFileAction, PUBLIC_ACTOR } from '../../activity.js';
 import { assertValidName, joinRelPath, normalizeRelPath, resolveSafePath } from '../files/path-safety.js';
 import { inlineMimeOf, previewKindOf } from '../files/mime.js';
-import { SHARE_COOKIE_PREFIX, type SharesService } from './shares.service.js';
+import { partialPath, uploadLimit } from '../files/files.routes.js';
+import { SHARE_COOKIE_PREFIX, UNLOCK_TTL_MS, type SharesService } from './shares.service.js';
 import type { ArchiveOwner, ArchivesService } from '../archives/archives.service.js';
 import { routeParam } from '../../route-params.js';
 import { SERVE_OPTIONS } from '../../serve-options.js';
@@ -93,9 +94,11 @@ export function createPublicShareRoutes(
     if (!shares.ownerAccess(share, dataRelPath(share, inner)).read) throw notFound();
   };
 
+  // Both branches go through resolveSafePath, so a symlink leaving the data
+  // volume is refused for file shares too.
   const absoluteInside = (share: Share, inner: string): string => {
     const root = shareRoot(share);
-    return share.target_type === 'file' ? join(root, share.name) : resolveSafePath(root, inner);
+    return share.target_type === 'file' ? resolveSafePath(root, share.name) : resolveSafePath(root, inner);
   };
 
   router.get(
@@ -143,7 +146,7 @@ export function createPublicShareRoutes(
         secure: config.COOKIE_SECURE,
         sameSite: 'lax',
         path: '/',
-        maxAge: 12 * 60 * 60 * 1000,
+        maxAge: UNLOCK_TTL_MS,
       });
       res.json({ unlocked: true });
     }),
@@ -168,7 +171,12 @@ export function createPublicShareRoutes(
 
       const canRead = shares.ownerReadChecker(share);
       const entries = names.flatMap((entryName) => {
-        const full = join(absolute, entryName);
+        let full: string;
+        try {
+          full = resolveSafePath(absolute, entryName); // skips symlinks that leave the volume
+        } catch {
+          return [];
+        }
         if (!existsSync(full)) return [];
         if (!canRead(dataRelPath(share, joinRelPath(inner, entryName)))) return [];
         const stats = statSync(full);
@@ -296,7 +304,7 @@ export function createPublicShareRoutes(
     }
 
     function receive(): void {
-      const parser = busboy({ headers: req.headers });
+      const parser = busboy({ headers: req.headers, limits: { fileSize: uploadLimit(config) } });
       const partials: string[] = [];
       const saved: string[] = [];
       const writes: Promise<void>[] = [];
@@ -323,11 +331,21 @@ export function createPublicShareRoutes(
           return;
         }
 
-        const partial = `${destination}.part`;
+        const partial = partialPath(destination);
         partials.push(partial);
+
+        let truncated = false;
+        stream.on('limit', () => {
+          truncated = true;
+          fail(payloadTooLarge('files.tooLarge'));
+        });
+
         writes.push(
           pipeline(stream, createWriteStream(partial))
-            .then(() => fs.rename(partial, destination))
+            .then(() => {
+              if (truncated) throw failure;
+              return fs.rename(partial, destination);
+            })
             .then(() => {
               saved.push(basename(destination));
               logFileAction(PUBLIC_ACTOR, 'uploaded', 'file', basename(destination), destination);

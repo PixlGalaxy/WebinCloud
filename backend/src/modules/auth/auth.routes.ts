@@ -5,7 +5,7 @@ import type { Translate } from '../../i18n/index.js';
 import { isLanguage } from '../../i18n/index.js';
 import type { AuthenticatedRequest } from './session.middleware.js';
 import { createAuthGuards } from './session.middleware.js';
-import { AuthService, isThemeMode, isThemeSkin, toPublicUser } from './auth.service.js';
+import { AuthService, DEFAULT_PASSWORD, isThemeMode, isThemeSkin, toPublicUser } from './auth.service.js';
 import { logger } from '../../logger.js';
 import { AppError, badRequest } from '../../errors.js';
 import { createRateLimiter, type RateLimiter } from '../../middleware/rate-limit.js';
@@ -21,6 +21,9 @@ export function createAuthRoutes(
   const router = Router();
   const authService = new AuthService(db, config.SESSION_TTL_HOURS);
   const { requireAuth } = createAuthGuards(t);
+
+  authService.pruneExpired();
+  setInterval(() => authService.pruneExpired(), 60 * 60 * 1000).unref();
 
   const loginWindowMs = config.LOGIN_RATE_LIMIT_WINDOW_MINUTES * 60 * 1000;
   // Both must pass: caps one IP hammering many accounts, and a distributed
@@ -42,8 +45,8 @@ export function createAuthRoutes(
   });
 
   router.post('/login', loginIpLimiter.middleware, loginAccountLimiter.middleware, async (req: AuthenticatedRequest, res) => {
-    const { usernameOrEmail, password } = req.body as { usernameOrEmail?: string; password?: string };
-    if (!usernameOrEmail || !password) {
+    const { usernameOrEmail, password } = req.body as { usernameOrEmail?: unknown; password?: unknown };
+    if (typeof usernameOrEmail !== 'string' || typeof password !== 'string' || !usernameOrEmail || !password) {
       return res.status(400).json({ error: t('auth.credentialsRequired') });
     }
 
@@ -88,8 +91,15 @@ export function createAuthRoutes(
     return res.json({ success: true });
   });
 
+  // Same shape as /login, so a page reload restores the forced setup/password
+  // prompt instead of leaving the user in front of an API that refuses them.
   router.get('/me', requireAuth, (req: AuthenticatedRequest, res) => {
-    return res.json(toPublicUser(req.user!));
+    const pending = req.session!.pending_action;
+    return res.json({
+      user: toPublicUser(req.user!),
+      mustChangePassword: pending === 'password',
+      mustCompleteSetup: pending === 'setup',
+    });
   });
 
   router.post('/appearance', requireAuth, (req: AuthenticatedRequest, res) => {
@@ -106,8 +116,8 @@ export function createAuthRoutes(
   });
 
   router.post('/change-password', requireAuth, async (req: AuthenticatedRequest, res) => {
-    const { currentPassword, newPassword } = req.body as { currentPassword?: string; newPassword?: string };
-    if (!currentPassword || !newPassword) {
+    const { currentPassword, newPassword } = req.body as { currentPassword?: unknown; newPassword?: unknown };
+    if (typeof currentPassword !== 'string' || typeof newPassword !== 'string' || !currentPassword || !newPassword) {
       return res.status(400).json({ error: t('auth.passwordsRequired') });
     }
     if (newPassword.length < 8) {
@@ -135,20 +145,31 @@ export function createAuthRoutes(
   // mustCompleteSetup and bootstrap.ts.
   router.post('/complete-setup', requireAuth, async (req: AuthenticatedRequest, res) => {
     const { currentPassword, newUsername, newEmail, newPassword } = req.body as {
-      currentPassword?: string;
-      newUsername?: string;
-      newEmail?: string;
-      newPassword?: string;
+      currentPassword?: unknown;
+      newUsername?: unknown;
+      newEmail?: unknown;
+      newPassword?: unknown;
     };
+    if (
+      typeof currentPassword !== 'string' ||
+      typeof newUsername !== 'string' ||
+      typeof newEmail !== 'string' ||
+      typeof newPassword !== 'string' ||
+      !currentPassword ||
+      !newUsername ||
+      !newEmail ||
+      !newPassword
+    ) {
+      return res.status(400).json({ error: t('auth.setupFieldsRequired') });
+    }
     // Usernames are otherwise immutable after creation (UsersService.update has
     // no username field at all) — this endpoint is a deliberate, narrow
     // exception for exactly the seeded first-run account, not a general
-    // "rename yourself" tool for every user.
-    if (req.user!.username !== 'admin') {
+    // "rename yourself" tool for every user. Both halves of its identity are
+    // required: the name alone would let any later account called "admin"
+    // rename itself; the password is verified against the hash further down.
+    if (req.user!.username !== 'admin' || currentPassword !== DEFAULT_PASSWORD) {
       return res.status(403).json({ error: t('auth.forbidden') });
-    }
-    if (!currentPassword || !newUsername || !newEmail || !newPassword) {
-      return res.status(400).json({ error: t('auth.setupFieldsRequired') });
     }
     if (!USERNAME.test(newUsername)) return res.status(400).json({ error: t('users.invalidUsername') });
     if (!EMAIL.test(newEmail)) return res.status(400).json({ error: t('users.invalidEmail') });

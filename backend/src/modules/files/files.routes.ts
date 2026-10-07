@@ -1,4 +1,5 @@
 import { Router, type NextFunction, type Response } from 'express';
+import { randomBytes } from 'crypto';
 import { createWriteStream, promises as fs, watch } from 'fs';
 import { basename } from 'path';
 import { pipeline } from 'stream/promises';
@@ -9,7 +10,7 @@ import type { Translate } from '../../i18n/index.js';
 import type { AuthenticatedRequest } from '../auth/session.middleware.js';
 import { createAuthGuards } from '../auth/session.middleware.js';
 import { asyncHandler } from '../../middleware/async-handler.js';
-import { badRequest, notFound } from '../../errors.js';
+import { badRequest, notFound, payloadTooLarge } from '../../errors.js';
 import { logger } from '../../logger.js';
 import { logFileAction, userActor } from '../../activity.js';
 import { FilesService, type ConflictMode } from './files.service.js';
@@ -26,6 +27,16 @@ function conflictMode(value: unknown): ConflictMode {
 
 function thumbnailSize(value: unknown): ThumbnailSize {
   return value === 'lg' ? 'lg' : 'sm';
+}
+
+/** busboy's per-file byte cap: the admin's MAX_UPLOAD_MB, or none. Shared with public upload links. */
+export function uploadLimit(config: EnvConfig): number {
+  return config.MAX_UPLOAD_MB > 0 ? config.MAX_UPLOAD_MB * 1024 * 1024 : Infinity;
+}
+
+/** A temp name beside the destination that cannot collide with a real file. */
+export function partialPath(absolute: string): string {
+  return `${absolute}.${randomBytes(6).toString('hex')}.part`;
 }
 
 function queryPath(value: unknown): string {
@@ -240,7 +251,7 @@ export function createFilesRoutes(
     folderPath: string,
     onConflict: ConflictMode,
   ): void {
-    const parser = busboy({ headers: req.headers });
+    const parser = busboy({ headers: req.headers, limits: { fileSize: uploadLimit(config) } });
     const partials: string[] = [];
     const saved: string[] = [];
     const writes: Promise<void>[] = [];
@@ -265,13 +276,25 @@ export function createFilesRoutes(
         return;
       }
 
-      // Write to a .part file so readers never see a half-uploaded file.
-      const partial = `${target.absolute}.part`;
+      // Write to a .part file so readers never see a half-uploaded file. The
+      // random suffix keeps it from silently replacing a real file named "X.part".
+      const partial = partialPath(target.absolute);
       partials.push(partial);
+
+      // busboy cuts the stream at the limit but still ends it "cleanly", so the
+      // truncated file would otherwise be renamed into place as if complete.
+      let truncated = false;
+      stream.on('limit', () => {
+        truncated = true;
+        fail(payloadTooLarge('files.tooLarge'));
+      });
 
       writes.push(
         pipeline(stream, createWriteStream(partial))
-          .then(() => fs.rename(partial, target.absolute))
+          .then(() => {
+            if (truncated) throw failure;
+            return fs.rename(partial, target.absolute);
+          })
           .then(() => {
             saved.push(target.relPath);
             logFileAction(userActor(req.user!), 'uploaded', 'file', basename(target.absolute), target.absolute);

@@ -24,6 +24,13 @@ export interface UpdateUserInput {
   password?: string;
 }
 
+function assertOptionalFields(input: { displayName?: unknown; role?: unknown }): void {
+  if (input.displayName !== undefined && input.displayName !== null && typeof input.displayName !== 'string') {
+    throw badRequest('error.invalidInput');
+  }
+  if (input.role !== undefined && input.role !== 'admin' && input.role !== 'user') throw badRequest('error.invalidInput');
+}
+
 export class UsersService {
   constructor(private db: Db, private metrics: MetricsService) {}
 
@@ -39,9 +46,11 @@ export class UsersService {
   }
 
   async create(input: CreateUserInput): Promise<PublicUser> {
-    if (!EMAIL.test(input.email)) throw badRequest('users.invalidEmail');
-    if (!USERNAME.test(input.username)) throw badRequest('users.invalidUsername');
-    if (input.password.length < 8) throw badRequest('auth.passwordTooShort');
+    // Shape first, so a missing or mistyped field is a 400 rather than a crash.
+    if (typeof input.email !== 'string' || !EMAIL.test(input.email)) throw badRequest('users.invalidEmail');
+    if (typeof input.username !== 'string' || !USERNAME.test(input.username)) throw badRequest('users.invalidUsername');
+    if (typeof input.password !== 'string' || input.password.length < 8) throw badRequest('auth.passwordTooShort');
+    assertOptionalFields(input);
 
     assertUniqueUser(this.db, 'email', input.email);
     assertUniqueUser(this.db, 'username', input.username);
@@ -70,10 +79,14 @@ export class UsersService {
     if (!existing) throw notFound();
 
     if (input.email !== undefined) {
-      if (!EMAIL.test(input.email)) throw badRequest('users.invalidEmail');
+      if (typeof input.email !== 'string' || !EMAIL.test(input.email)) throw badRequest('users.invalidEmail');
       assertUniqueUser(this.db, 'email', input.email, id);
     }
-    if (input.password !== undefined && input.password.length < 8) throw badRequest('auth.passwordTooShort');
+    if (input.password !== undefined && (typeof input.password !== 'string' || input.password.length < 8)) {
+      throw badRequest('auth.passwordTooShort');
+    }
+    if (input.isActive !== undefined && typeof input.isActive !== 'boolean') throw badRequest('error.invalidInput');
+    assertOptionalFields(input);
 
     this.db
       .prepare(

@@ -21,6 +21,13 @@ export interface UpdateGrantInput {
   inherit?: boolean;
 }
 
+/** Flags must be real booleans: Number("yes") would otherwise store NaN as a permission. */
+function assertFlags(input: { canRead?: unknown; canWrite?: unknown; inherit?: unknown; createFolder?: unknown }): void {
+  for (const flag of [input.canRead, input.canWrite, input.inherit, input.createFolder]) {
+    if (flag !== undefined && typeof flag !== 'boolean') throw badRequest('error.invalidInput');
+  }
+}
+
 export class PermissionsService {
   constructor(
     private db: Db,
@@ -40,6 +47,8 @@ export class PermissionsService {
   }
 
   async create(input: CreateGrantInput, createdBy: string): Promise<FolderGrant> {
+    if (typeof input.userId !== 'string' || !input.userId) throw badRequest('permissions.userIdRequired');
+    assertFlags(input);
     const folderPath = normalizeRelPath(input.folderPath);
     if (folderPath === '') throw badRequest('permissions.rootNotAllowed');
 
@@ -81,6 +90,7 @@ export class PermissionsService {
   }
 
   update(id: string, input: UpdateGrantInput): FolderGrant {
+    assertFlags(input);
     const grant = this.get(id);
 
     this.db

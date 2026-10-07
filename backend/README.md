@@ -49,7 +49,9 @@ All settings are environment variables; `.env.example` at the repository root li
 | Variable | Default | Purpose |
 | --- | --- | --- |
 | `PORT` | `4000` | Port the API listens on |
+| `HOST` | *(all interfaces; `127.0.0.1` in production)* | Interface the API listens on. Loopback in the container, so only the bundled nginx reaches it |
 | `NODE_ENV` | `development` | `production` uses the container paths and disables the test accounts |
+| `MAX_UPLOAD_MB` | `0` (no limit) | Largest single file an upload may carry, for users and public upload links. Also editable in Admin → Settings |
 | `DATA_ROOT` | `../data` (`/data` in production) | Files users browse |
 | `APPDATA_ROOT` | `../appdata` (`/appdata` in production) | SQLite database, avatars, branding, GeoIP cache |
 | `TEMP_ROOT` | `../temp` (`/temp` in production) | Generated ZIPs and thumbnails |

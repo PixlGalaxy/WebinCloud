@@ -110,6 +110,10 @@ export function createAdminRoutes(
         active: config.ARCHIVE_ABANDON_SECONDS,
         saved: settings.getNumber(SETTINGS_KEYS.archiveAbandonSeconds, config.ARCHIVE_ABANDON_SECONDS),
       },
+      maxUploadMb: {
+        active: config.MAX_UPLOAD_MB,
+        saved: settings.getNumber(SETTINGS_KEYS.maxUploadMb, config.MAX_UPLOAD_MB),
+      },
       trustProxy: {
         active: config.TRUST_PROXY_SETTING,
         saved: settings.getString(SETTINGS_KEYS.trustProxy, config.TRUST_PROXY_SETTING),
@@ -167,6 +171,10 @@ export function createAdminRoutes(
 
     const archiveAbandonSeconds = numberField(body, 'archiveAbandonSeconds', 5, 3600);
     if (archiveAbandonSeconds !== undefined) settings.set(SETTINGS_KEYS.archiveAbandonSeconds, String(archiveAbandonSeconds));
+
+    // 0 = unlimited; the ceiling is 1 TB, well past any single file this serves.
+    const maxUploadMb = numberField(body, 'maxUploadMb', 0, 1024 * 1024);
+    if (maxUploadMb !== undefined) settings.set(SETTINGS_KEYS.maxUploadMb, String(maxUploadMb));
 
     if (body.trustProxy !== undefined) {
       if (typeof body.trustProxy !== 'string' || body.trustProxy.length > 1000) {

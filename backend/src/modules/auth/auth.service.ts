@@ -1,6 +1,6 @@
 import { randomBytes, createHash } from 'crypto';
 import type { Db } from '../../db/client.js';
-import type { User, Session, PublicUser, ThemeMode, ThemeSkin } from '../../types/index.js';
+import type { User, Session, PublicUser, PendingAction, ThemeMode, ThemeSkin } from '../../types/index.js';
 import { THEME_MODES, THEME_SKINS } from '../../types/index.js';
 import { hashPassword, verifyPassword } from './password.js';
 
@@ -51,23 +51,35 @@ export class AuthService {
     }
     if (!(await verifyPassword(password, user.password_hash))) return null;
 
-    const sessionToken = randomBytes(32).toString('hex');
-    this.db
-      .prepare(
-        `INSERT INTO sessions (id, user_id, user_agent, ip_address, expires_at)
-         VALUES (?, ?, ?, ?, datetime('now', ?))`,
-      )
-      .run(hashToken(sessionToken), user.id, meta.userAgent ?? null, meta.ip ?? null, `+${this.sessionTtlHours} hours`);
-
     // The seeded first-run account needs a full setup (username+email+password),
     // not just a password change — see bootstrap.ts and /auth/complete-setup.
     const mustCompleteSetup = user.username === 'admin' && password === DEFAULT_PASSWORD;
-    return {
-      user,
-      sessionToken,
-      mustChangePassword: !mustCompleteSetup && password === DEFAULT_PASSWORD,
-      mustCompleteSetup,
-    };
+    const mustChangePassword = !mustCompleteSetup && password === DEFAULT_PASSWORD;
+    // Recorded on the session so the restriction holds server-side (requireAuth),
+    // not just in the frontend's modal.
+    const pendingAction: PendingAction | null = mustCompleteSetup ? 'setup' : mustChangePassword ? 'password' : null;
+
+    const sessionToken = randomBytes(32).toString('hex');
+    this.db
+      .prepare(
+        `INSERT INTO sessions (id, user_id, user_agent, ip_address, expires_at, pending_action)
+         VALUES (?, ?, ?, ?, datetime('now', ?), ?)`,
+      )
+      .run(
+        hashToken(sessionToken),
+        user.id,
+        meta.userAgent ?? null,
+        meta.ip ?? null,
+        `+${this.sessionTtlHours} hours`,
+        pendingAction,
+      );
+
+    return { user, sessionToken, mustChangePassword, mustCompleteSetup };
+  }
+
+  /** Expired rows are useless but would otherwise accumulate forever. */
+  pruneExpired(): void {
+    this.db.prepare("DELETE FROM sessions WHERE expires_at <= datetime('now')").run();
   }
 
   getSessionByToken(token: string): { user: User; session: Session } | null {

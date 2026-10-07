@@ -19,6 +19,12 @@ interface AuthContextValue {
   clearMustCompleteSetup: () => void;
 }
 
+interface SessionInfo {
+  user: User;
+  mustChangePassword: boolean;
+  mustCompleteSetup: boolean;
+}
+
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
@@ -28,9 +34,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [mustCompleteSetup, setMustCompleteSetup] = useState(false);
 
   useEffect(() => {
+    // Same shape as /login: the forced setup/password prompt survives a reload,
+    // which matters because the server refuses everything else until it's done.
     api
-      .get<User>('/auth/me')
-      .then(setUser)
+      .get<SessionInfo>('/auth/me')
+      .then(({ user, mustChangePassword, mustCompleteSetup }) => {
+        setUser(user);
+        setMustChangePassword(mustChangePassword);
+        setMustCompleteSetup(mustCompleteSetup);
+      })
       .catch((err) => {
         if (!(err instanceof ApiError && err.status === 401)) console.error(err);
       })
@@ -38,11 +50,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const login = async (usernameOrEmail: string, password: string) => {
-    const { user, mustChangePassword, mustCompleteSetup } = await api.post<{
-      user: User;
-      mustChangePassword: boolean;
-      mustCompleteSetup: boolean;
-    }>('/auth/login', { usernameOrEmail, password });
+    const { user, mustChangePassword, mustCompleteSetup } = await api.post<SessionInfo>('/auth/login', {
+      usernameOrEmail,
+      password,
+    });
     setUser(user);
     setMustChangePassword(mustChangePassword);
     setMustCompleteSetup(mustCompleteSetup);

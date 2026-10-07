@@ -13,6 +13,7 @@ export const SETTINGS_KEYS = {
   shareUnlockRateLimitMax: 'share_unlock_rate_limit_max',
   shareUnlockRateLimitWindowMinutes: 'share_unlock_rate_limit_window_minutes',
   archiveAbandonSeconds: 'archive_abandon_seconds',
+  maxUploadMb: 'max_upload_mb',
   maxmindLicenseKey: 'maxmind_license_key',
   trustProxy: 'trust_proxy',
 
@@ -35,6 +36,7 @@ export const RESTART_TIER_KEYS = [
   SETTINGS_KEYS.shareUnlockRateLimitMax,
   SETTINGS_KEYS.shareUnlockRateLimitWindowMinutes,
   SETTINGS_KEYS.archiveAbandonSeconds,
+  SETTINGS_KEYS.maxUploadMb,
   SETTINGS_KEYS.maxmindLicenseKey,
   SETTINGS_KEYS.trustProxy,
 ] as const;

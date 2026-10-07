@@ -17,10 +17,14 @@ const BACKEND_KEYS = [
   'auth.invalidTheme',
   'auth.invalidLanguage',
   'auth.setupFieldsRequired',
+  'auth.setupRequired',
+  'auth.passwordChangeRequired',
   'error.internal',
   'error.notFound',
   'error.tooManyRequests',
   'error.ipBanned',
+  'error.crossSiteRequest',
+  'error.invalidInput',
   'files.invalidPath',
   'files.invalidName',
   'files.alreadyExists',
@@ -28,6 +32,7 @@ const BACKEND_KEYS = [
   'files.noFilesUploaded',
   'files.notPreviewable',
   'files.tooLargeToEdit',
+  'files.tooLarge',
   'files.invalidContent',
   'files.searchQueryRequired',
   'archives.nothingSelected',
@@ -67,6 +72,7 @@ const BACKEND_KEYS = [
   'shares.expired',
   'shares.passwordRequired',
   'shares.wrongPassword',
+  'shares.invalidExpiry',
 ] as const;
 
 export type TranslationKey = (typeof BACKEND_KEYS)[number];

@@ -50,6 +50,9 @@ export interface User {
 
 export type PublicUser = Omit<User, 'password_hash'>;
 
+/** What a session must do before it may use the rest of the API — see requireAuth. */
+export type PendingAction = 'setup' | 'password';
+
 export interface Session {
   id: string;
   user_id: string;
@@ -58,6 +61,7 @@ export interface Session {
   created_at: string;
   last_seen_at: string;
   expires_at: string;
+  pending_action: PendingAction | null;
 }
 
 export interface FolderGrant {
