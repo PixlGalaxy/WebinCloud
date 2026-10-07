@@ -1,6 +1,6 @@
 import { useState, type FormEvent } from 'react';
 import { Navigate } from 'react-router-dom';
-import { Lock, User as UserIcon, Loader2 } from 'lucide-react';
+import { Eye, EyeOff, Lock, User as UserIcon, Loader2 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useI18n } from '../i18n/I18nContext';
 import { ApiError } from '../api/client';
@@ -17,6 +17,7 @@ const LoginPage = () => {
   const { t } = useI18n();
   const [usernameOrEmail, setUsernameOrEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
@@ -87,13 +88,23 @@ const LoginPage = () => {
                 <Lock className={iconClass} size={20} />
                 <input
                   id="password"
-                  type="password"
+                  type={showPassword ? 'text' : 'password'}
                   autoComplete="current-password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className={inputClass}
+                  className={`${inputClass} pr-12`}
                   disabled={submitting}
                 />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword((show) => !show)}
+                  title={t(showPassword ? 'login.hidePassword' : 'login.showPassword')}
+                  aria-label={t(showPassword ? 'login.hidePassword' : 'login.showPassword')}
+                  aria-pressed={showPassword}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 rounded-lg p-1.5 text-slate-400 transition hover:text-slate-700 dark:text-slate-500 dark:hover:text-slate-200"
+                >
+                  {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+                </button>
               </div>
             </div>
 

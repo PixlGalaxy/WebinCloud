@@ -33,6 +33,7 @@ import { btn, card, errorBox, input, label } from '../../components/ui/styles';
 import Avatar from '../../components/ui/Avatar';
 import Toast from '../../components/ui/Toast';
 import ThemePicker from '../../components/ThemePicker';
+import AvatarCropModal from '../../components/AvatarCropModal';
 
 type Section = 'account' | 'sharing' | 'appearance' | 'preferences';
 
@@ -60,6 +61,7 @@ const AccountSection = () => {
 
   const [avatarError, setAvatarError] = useState('');
   const [savingAvatar, setSavingAvatar] = useState(false);
+  const [cropping, setCropping] = useState<File | null>(null);
   const avatarInput = useRef<HTMLInputElement>(null);
 
   const changeAvatar = async (file: File) => {
@@ -116,6 +118,17 @@ const AccountSection = () => {
 
   return (
     <div className="space-y-6">
+      {cropping && (
+        <AvatarCropModal
+          file={cropping}
+          onCancel={() => setCropping(null)}
+          onConfirm={async (cropped) => {
+            setCropping(null);
+            await changeAvatar(cropped);
+          }}
+        />
+      )}
+
       <section className={`${card} p-6`}>
         <h2 className="mb-1 font-semibold text-slate-900 dark:text-slate-100">{t('account.details')}</h2>
 
@@ -153,7 +166,11 @@ const AccountSection = () => {
                 hidden
                 onChange={(e) => {
                   const file = e.target.files?.[0];
-                  if (file) void changeAvatar(file);
+                  // GIFs skip the cropper: drawing them to a canvas would drop the animation.
+                  if (file) {
+                    if (file.type === 'image/gif') void changeAvatar(file);
+                    else setCropping(file);
+                  }
                   e.target.value = '';
                 }}
               />
