@@ -14,6 +14,7 @@ export const SETTINGS_KEYS = {
   shareUnlockRateLimitWindowMinutes: 'share_unlock_rate_limit_window_minutes',
   archiveAbandonSeconds: 'archive_abandon_seconds',
   maxmindLicenseKey: 'maxmind_license_key',
+  trustProxy: 'trust_proxy',
 
   // Live-tier: read fresh on every `/api/config` request, no restart needed.
   appTitle: 'app_title',
@@ -22,6 +23,8 @@ export const SETTINGS_KEYS = {
   defaultThemeSkin: 'default_theme_skin',
   /** Language shown on signed-out screens (login, public share links) and new accounts' initial language. */
   defaultLanguage: 'default_language',
+  /** Whether file lists show dotfiles/dot-folders for users who haven't picked their own preference. */
+  showHiddenFiles: 'show_hidden_files',
 } as const;
 
 export const RESTART_TIER_KEYS = [
@@ -33,4 +36,5 @@ export const RESTART_TIER_KEYS = [
   SETTINGS_KEYS.shareUnlockRateLimitWindowMinutes,
   SETTINGS_KEYS.archiveAbandonSeconds,
   SETTINGS_KEYS.maxmindLicenseKey,
+  SETTINGS_KEYS.trustProxy,
 ] as const;

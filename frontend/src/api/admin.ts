@@ -41,15 +41,20 @@ export interface AdminSettings {
     shareUnlockRateLimitMax: RestartTierField<number>;
     shareUnlockRateLimitWindowMinutes: RestartTierField<number>;
     archiveAbandonSeconds: RestartTierField<number>;
+    /** Comma-separated, as typed — e.g. "uniquelocal, cloudflare". */
+    trustProxy: RestartTierField<string>;
   };
   maxmindLicenseKeyActive: boolean;
   maxmindLicenseKeySaved: boolean;
   restartRequired: boolean;
+  /** The client IP as the backend resolves it for this request. */
+  yourIp: string | null;
   appTitle: string;
   appName: string;
   defaultThemeMode: string;
   defaultThemeSkin: string;
   defaultLanguage: string;
+  showHiddenFiles: boolean;
 }
 
 export interface AdminSettingsPatch {
@@ -62,11 +67,14 @@ export interface AdminSettingsPatch {
   archiveAbandonSeconds?: number;
   /** Empty string clears it. */
   maxmindLicenseKey?: string;
+  /** Empty string means no proxy in front of the container. */
+  trustProxy?: string;
   appTitle?: string;
   appName?: string;
   defaultThemeMode?: ThemeMode;
   defaultThemeSkin?: SkinId;
   defaultLanguage?: string;
+  showHiddenFiles?: boolean;
 }
 
 export const settingsApi = {

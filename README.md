@@ -118,7 +118,22 @@ The container listens on port 80 and serves the interface at `/` and its API und
 
 - Set `COOKIE_SECURE=true` once you terminate TLS, so the session cookie is marked `Secure`.
 - Disable request buffering and raise the body size limit, or large uploads will fail.
-- Do not buffer responses: the file browser uses an event stream to refresh when a folder changes.
+- Live views (the dashboard, logs and folder refreshes) use event streams. The container marks them with `X-Accel-Buffering: no`, so nginx-based proxies such as Nginx Proxy Manager stream them without extra configuration. For other proxies, turn off response buffering for `/backend/`; if a proxy still holds the stream back, the dashboard falls back to refreshing once a second.
+- Set the trusted proxies so the app sees each visitor's real IP instead of the proxy's (see below).
+
+### Real client IPs
+
+Behind another proxy, every request reaches the container from that proxy, so the admin dashboard, the login rate limit and IP bans would all see the proxy's address (for example `192.168.x.x`). Fix it in **Admin Panel → Settings → Trusted proxies**, listing the proxies allowed to report the real client IP through the `X-Forwarded-For` header, then restart the backend from **Services**. The field also shows the IP the server currently sees for you, so you can check the result.
+
+| Setup | Value |
+| --- | --- |
+| Nginx Proxy Manager, Traefik, Caddy, etc. on the same host or LAN | `uniquelocal` |
+| The same, with the domain proxied through Cloudflare (orange cloud) | `uniquelocal, cloudflare` |
+| A specific proxy address or range | `192.168.69.10` or `192.168.69.0/24` |
+
+`uniquelocal` covers the private ranges (`10.0.0.0/8`, `172.16.0.0/12`, `192.168.0.0/16`, `fc00::/7`), which includes Docker networks. Entries are comma-separated, and the bundled nginx is always trusted. Only list proxies you control: a trusted address can claim to be any client. The backend logs the trusted proxies at startup.
+
+For a first boot, the same value can be given as the `TRUST_PROXY` environment variable (`TRUST_PROXY: uniquelocal`). Once it is saved in the panel, the panel's value wins.
 
 ## Notes
 

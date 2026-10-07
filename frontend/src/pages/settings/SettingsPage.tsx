@@ -26,6 +26,7 @@ import { useI18n } from '../../i18n/I18nContext';
 import { useTheme, type ThemeMode } from '../../context/ThemeContext';
 import { useAutoplayVideos } from '../../hooks/useAutoplayVideos';
 import { useThumbnailsPreference } from '../../hooks/useThumbnailsPreference';
+import { useHiddenFilesPreference } from '../../hooks/useHiddenFilesPreference';
 import { useAutoSignOut } from '../../context/AutoSignOutContext';
 import type { SkinId } from '../../theme/themes';
 import { SUPPORTED_LANGUAGES, LANGUAGE_NAMES, type Language, type TranslationKey } from '../../i18n/translations';
@@ -506,6 +507,7 @@ const PreferencesSection = () => {
   const { t, language, setLanguage } = useI18n();
   const { autoplay, setAutoplay } = useAutoplayVideos();
   const { thumbnails, setThumbnails } = useThumbnailsPreference();
+  const { showHidden, setShowHidden } = useHiddenFilesPreference();
   const { enabled, minutes, maxMinutes, setEnabled, setMinutes } = useAutoSignOut();
   const [savingLanguage, setSavingLanguage] = useState<Language | null>(null);
   const [languageError, setLanguageError] = useState('');
@@ -590,6 +592,19 @@ const PreferencesSection = () => {
         <span className="max-w-xl">
           <span className="font-medium">{t('settings.alwaysShowThumbnails')}</span>
           <p className="mt-0.5 text-slate-500 dark:text-slate-400">{t('settings.alwaysShowThumbnailsHint')}</p>
+        </span>
+      </label>
+
+      <label className="flex items-start gap-3 text-sm text-slate-700 dark:text-slate-200">
+        <input
+          type="checkbox"
+          checked={showHidden}
+          onChange={(e) => setShowHidden(e.target.checked)}
+          className={checkboxClass}
+        />
+        <span className="max-w-xl">
+          <span className="font-medium">{t('settings.showHiddenFiles')}</span>
+          <p className="mt-0.5 text-slate-500 dark:text-slate-400">{t('settings.showHiddenFilesHint')}</p>
         </span>
       </label>
 

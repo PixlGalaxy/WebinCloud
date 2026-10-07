@@ -8,6 +8,8 @@ export interface RuntimeConfig {
   defaultThemeMode: string;
   defaultThemeSkin: string;
   maxAutoSignoutMinutes: number;
+  /** Admin-set default for showing dotfiles in file lists; each browser can override it. */
+  showHiddenFiles: boolean;
 }
 
 let pending: Promise<RuntimeConfig> | null = null;

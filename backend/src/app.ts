@@ -72,7 +72,9 @@ export function createApp(db: Db, config: EnvConfig): express.Application {
   const updateCheck = new UpdateCheckService(config.IMAGE_REVISION, config.UPDATE_CHECK_ENABLED);
   const ipBans = new IpBansService(db);
 
-  app.set('trust proxy', 'loopback');
+  // The bundled nginx (loopback) plus any outer proxies from TRUST_PROXY, so
+  // req.ip is the visitor's address rather than the proxy's.
+  app.set('trust proxy', config.TRUST_PROXY);
   app.disable('x-powered-by');
   // Before anything else — a banned IP shouldn't get session/cookie handling, let alone a route.
   app.use(createIpBanMiddleware(ipBans));
@@ -97,6 +99,9 @@ export function createApp(db: Db, config: EnvConfig): express.Application {
       appTitle: settings.getString(SETTINGS_KEYS.appTitle, config.APP_TITLE),
       defaultThemeMode: settings.getString(SETTINGS_KEYS.defaultThemeMode, 'dark'),
       defaultThemeSkin: settings.getString(SETTINGS_KEYS.defaultThemeSkin, 'default'),
+      // Only a display default: hidden entries are still listed by the API and
+      // reachable by anyone with access; each user can override it in Settings.
+      showHiddenFiles: settings.getBoolean(SETTINGS_KEYS.showHiddenFiles, false),
       // A session dies at SESSION_TTL_HOURS regardless of activity, so an
       // inactivity timeout longer than that would never actually trigger.
       maxAutoSignoutMinutes: config.SESSION_TTL_HOURS * 60,

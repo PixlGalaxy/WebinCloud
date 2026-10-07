@@ -1,5 +1,6 @@
 import AppearanceDefaultsCard from './AppearanceDefaultsCard';
 import BrandingCard from './BrandingCard';
+import FilesDefaultsCard from './FilesDefaultsCard';
 import ServerSecurityCard from './ServerSecurityCard';
 import ServicesCard from './ServicesCard';
 
@@ -7,6 +8,7 @@ import ServicesCard from './ServicesCard';
 const SettingsAdminSection = () => (
   <div className="space-y-6">
     <AppearanceDefaultsCard />
+    <FilesDefaultsCard />
     <BrandingCard />
     <ServerSecurityCard />
     <ServicesCard />

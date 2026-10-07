@@ -21,6 +21,7 @@ import {
   Eye,
   X,
   MoreVertical,
+  EyeOff,
 } from 'lucide-react';
 import {
   filesApi,
@@ -50,6 +51,7 @@ import DotfileNotice from '../../components/DotfileNotice';
 import { useFolderWatch } from './useFolderWatch';
 import { formatSize, toFilesUrl } from './paths';
 import { useThumbnailsPreference } from '../../hooks/useThumbnailsPreference';
+import { isHiddenName, isHiddenPath, useHiddenFilesPreference } from '../../hooks/useHiddenFilesPreference';
 
 const FileExplorerPage = () => {
   const path = useParams()['*'] ?? '';
@@ -100,6 +102,7 @@ const FileExplorerPage = () => {
 
   const { thumbnails, setThumbnails } = useThumbnailsPreference();
   const toggleThumbnails = () => setThumbnails(!thumbnails);
+  const { showHidden, setShowHidden } = useHiddenFilesPreference();
 
   /** Small icon normally; a larger tile (thumbnail or icon) when previews are on. */
   const entryIcon = (entry: DirEntry, iconClass: string) =>
@@ -249,8 +252,16 @@ const FileExplorerPage = () => {
 
   const canWrite = listing?.canWrite ?? false;
 
-  // The table renders either the folder listing or the search hits.
-  const rows = search ? search.results.map((result) => result.entry) : (listing?.entries ?? []);
+  // The table renders either the folder listing or the search hits. Hidden
+  // entries are left out unless shown; for search hits that also covers matches
+  // inside a hidden folder (".git/config"), counted from the folder searched.
+  const allRows = search ? search.results.map((result) => result.entry) : (listing?.entries ?? []);
+  const isHiddenRow = (entry: DirEntry) => {
+    if (!search) return isHiddenName(entry.name);
+    const base = search.path;
+    return isHiddenPath(base && entry.path.startsWith(`${base}/`) ? entry.path.slice(base.length + 1) : entry.path);
+  };
+  const rows = showHidden ? allRows : allRows.filter((entry) => !isHiddenRow(entry));
   const parentByPath = new Map(
     search ? search.results.map((result) => [result.entry.path, result.parentPath]) : [],
   );
@@ -277,7 +288,7 @@ const FileExplorerPage = () => {
             onClick={toggleThumbnails}
             title={t(thumbnails ? 'files.thumbnailsHide' : 'files.thumbnailsShow')}
             aria-pressed={thumbnails}
-            className={`${thumbnails ? btn.primary : btn.secondary} flex-1 sm:flex-none`}
+            className={`${thumbnails ? btn.primary : btn.secondary} flex-1 max-sm:px-2 sm:flex-none`}
           >
             <ImageIcon size={16} />
           </button>
@@ -315,9 +326,19 @@ const FileExplorerPage = () => {
               selecting
                 ? 'inline-flex items-center justify-center gap-2 rounded-lg bg-[var(--accent-600)] px-4 py-2 text-sm font-medium text-white transition hover:bg-[var(--accent-700)]'
                 : btn.info
-            } flex-1 sm:flex-none`}
+            } flex-1 max-sm:px-2 sm:flex-none`}
           >
             <SquareCheck size={16} /> <span className="hidden sm:inline">{t('files.select')}</span>
+          </button>
+
+          <button
+            onClick={() => setShowHidden(!showHidden)}
+            aria-pressed={showHidden}
+            title={t('files.showHidden')}
+            className={`${showHidden ? btn.primary : btn.secondary} flex-1 max-sm:px-2 sm:flex-none`}
+          >
+            {showHidden ? <Eye size={16} /> : <EyeOff size={16} />}
+            <span className="hidden sm:inline">{t('files.showHidden')}</span>
           </button>
 
           {canWrite && (
@@ -327,25 +348,25 @@ const FileExplorerPage = () => {
                   onClick={() => void handlePaste()}
                   disabled={pasteHereDisabled}
                   title={pasteHereDisabled ? t('files.pasteDisabledSameFolder') : t('files.clipboardReady', { count: clip.entries.length })}
-                  className={`${btn.success} flex-1 sm:flex-none disabled:opacity-40`}
+                  className={`${btn.success} flex-1 max-sm:px-2 sm:flex-none disabled:opacity-40`}
                 >
                   <ClipboardPaste size={16} /> <span className="hidden sm:inline">{t('files.paste')}</span>
                 </button>
               )}
-              <button onClick={() => setNewFolder('')} title={t('files.newFolder')} className={`${btn.warning} flex-1 sm:flex-none`}>
+              <button onClick={() => setNewFolder('')} title={t('files.newFolder')} className={`${btn.warning} flex-1 max-sm:px-2 sm:flex-none`}>
                 <FolderPlus size={16} /> <span className="hidden sm:inline">{t('files.newFolder')}</span>
               </button>
               <button
                 onClick={() => uploads.pickFolder({ kind: 'user' }, path)}
                 title={t('files.uploadFolder')}
-                className={`${btn.success} flex-1 sm:flex-none`}
+                className={`${btn.success} flex-1 max-sm:px-2 sm:flex-none`}
               >
                 <FolderUp size={16} /> <span className="hidden sm:inline">{t('files.uploadFolder')}</span>
               </button>
               <button
                 onClick={() => uploads.pickFiles({ kind: 'user' }, path)}
                 title={t('files.uploadFiles')}
-                className={`${btn.primary} flex-1 sm:flex-none`}
+                className={`${btn.primary} flex-1 max-sm:px-2 sm:flex-none`}
               >
                 <Upload size={16} /> <span className="hidden sm:inline">{t('files.uploadFiles')}</span>
               </button>
@@ -353,7 +374,7 @@ const FileExplorerPage = () => {
           )}
           <button
             onClick={() => void refreshNow()}
-            className={`${btn.secondary} flex-1 sm:flex-none`}
+            className={`${btn.secondary} flex-1 max-sm:px-2 sm:flex-none`}
             title={t('files.refresh')}
             disabled={refreshing}
           >
