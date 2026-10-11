@@ -6,7 +6,7 @@ import { hashPassword } from '../auth/password.js';
 import { toPublicUser } from '../auth/auth.service.js';
 import { PathNamesService } from '../path-names/path-names.service.js';
 import type { MetricsService } from '../admin/metrics.service.js';
-import { EMAIL, USERNAME, assertUniqueUser } from './validation.js';
+import { EMAIL, MAX_PASSWORD_LENGTH, USERNAME, assertUniqueUser } from './validation.js';
 
 export interface CreateUserInput {
   email: string;
@@ -50,6 +50,7 @@ export class UsersService {
     if (typeof input.email !== 'string' || !EMAIL.test(input.email)) throw badRequest('users.invalidEmail');
     if (typeof input.username !== 'string' || !USERNAME.test(input.username)) throw badRequest('users.invalidUsername');
     if (typeof input.password !== 'string' || input.password.length < 8) throw badRequest('auth.passwordTooShort');
+    if (input.password.length > MAX_PASSWORD_LENGTH) throw badRequest('auth.passwordTooLong');
     assertOptionalFields(input);
 
     assertUniqueUser(this.db, 'email', input.email);
@@ -84,6 +85,9 @@ export class UsersService {
     }
     if (input.password !== undefined && (typeof input.password !== 'string' || input.password.length < 8)) {
       throw badRequest('auth.passwordTooShort');
+    }
+    if (input.password !== undefined && input.password.length > MAX_PASSWORD_LENGTH) {
+      throw badRequest('auth.passwordTooLong');
     }
     if (input.isActive !== undefined && typeof input.isActive !== 'boolean') throw badRequest('error.invalidInput');
     assertOptionalFields(input);

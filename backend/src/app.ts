@@ -81,7 +81,11 @@ export function createApp(db: Db, config: EnvConfig): express.Application {
   app.use(createIpBanMiddleware(ipBans));
   app.use(rejectCrossSiteWrites);
   app.use(requestLogger);
-  app.use(express.json({ limit: '10mb' }));
+  // Only the text editor's save needs a big body (files up to 2 MB, more once
+  // JSON-escaped); everything else, including anonymous login and unlock, gets 1 MB.
+  const largeJson = express.json({ limit: '10mb' });
+  const smallJson = express.json({ limit: '1mb' });
+  app.use((req, res, next) => (req.path === '/api/files/content' ? largeJson : smallJson)(req, res, next));
   app.use(cookieParser());
   app.use(createSessionMiddleware(db, config.SESSION_TTL_HOURS));
   // After the session middleware so req.user/req.session are already resolved.

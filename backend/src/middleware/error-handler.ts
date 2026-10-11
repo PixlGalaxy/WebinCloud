@@ -3,6 +3,16 @@ import type { Translate } from '../i18n/index.js';
 import { AppError } from '../errors.js';
 import { logger } from '../logger.js';
 
+const BODY_PARSER_ERRORS = new Set([
+  'entity.parse.failed',
+  'entity.too.large',
+  'entity.verify.failed',
+  'encoding.unsupported',
+  'charset.unsupported',
+  'request.aborted',
+  'request.size.invalid',
+]);
+
 export function createErrorHandler(t: Translate) {
   return (err: Error, _req: Request, res: Response, _next: NextFunction) => {
     if (err instanceof AppError) {
@@ -10,6 +20,15 @@ export function createErrorHandler(t: Translate) {
         for (const [name, value] of Object.entries(err.headers)) res.setHeader(name, value);
       }
       return res.status(err.status).json({ error: t(err.key) });
+    }
+
+    // express.json() rejections (malformed or oversized body) are the client's
+    // fault, not a server crash: answer 400/413 and skip the stack trace.
+    const bodyError = err as Error & { type?: unknown; status?: unknown };
+    if (typeof bodyError.type === 'string' && BODY_PARSER_ERRORS.has(bodyError.type)) {
+      const tooLarge = bodyError.status === 413;
+      logger.warn(`Rejected request body: ${bodyError.type}`);
+      return res.status(tooLarge ? 413 : 400).json({ error: t(tooLarge ? 'error.payloadTooLarge' : 'error.invalidInput') });
     }
 
     logger.error('Unhandled request error', err);

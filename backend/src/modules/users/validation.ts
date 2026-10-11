@@ -5,6 +5,9 @@ import { conflict } from '../../errors.js';
 // "admin@localhost", which a TLD-requiring pattern would reject.
 export const EMAIL = /^[^\s@]+@[^\s@]+$/;
 export const USERNAME = /^[a-zA-Z0-9._-]{3,32}$/;
+// argon2 accepts any length, so cap it: a multi-megabyte "password" would
+// otherwise be hashed in full on every login or unlock attempt.
+export const MAX_PASSWORD_LENGTH = 256;
 
 /** Shared by admin user management and the first-run "complete setup" flow. */
 export function assertUniqueUser(db: Db, field: 'email' | 'username', value: string, exceptId?: string): void {

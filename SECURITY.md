@@ -19,11 +19,25 @@ Only the latest published image (`ghcr.io/pixlgalaxy/webincloud:latest`) and the
 
 | | |
 | --- | --- |
-| Last review | 2026-10-06 |
+| Last review | 2026-10-11 |
 | Scope | Backend (`backend/src`, every route), frontend previewers, `nginx.conf`, `Dockerfile`, `entrypoint.sh` |
 | Dependency audit | `npm audit --omit=dev`: 0 known vulnerabilities in backend and frontend |
 | Open critical / high findings | **None** |
 | Open medium findings | 1 (see [Open findings](#open-findings)) |
+
+### Fixed in the 2026-10-11 review
+
+| Severity | Issue | Fix |
+| --- | --- | --- |
+| Low | **No maximum password length.** Login, share unlock, password change, first-run setup, user management and share passwords accepted any length, and every JSON body could be up to 10 MB, so an anonymous client could make argon2 hash a multi-megabyte "password" on each attempt. | Passwords are capped at 256 characters (`MAX_PASSWORD_LENGTH`). Login and share unlock answer a longer one like a wrong guess, without running argon2. The other endpoints return a clear 400. |
+| Low | **10 MB JSON limit on every route.** Only the text editor's save needs a large body. | JSON bodies are limited to 1 MB, except `PUT /api/files/content` (10 MB, for text files up to 2 MB once JSON-escaped). |
+| Low | **Malformed or oversized JSON returned 500** and logged a stack trace as an unhandled error, adding noise to the admin log viewer. | Body-parser rejections now return **400** (malformed) or **413** (too large) and log a single warning line. |
+
+Each fix was checked by an end-to-end script against a real backend (temporary
+database and data folder): 24 checks covering the cap at 256/257 characters on
+every endpoint, a 900 KB password rejected in milliseconds, malformed and 2 MB
+bodies, a 1.9 MB text-file save, and the normal login, user, password-change and
+share flows.
 
 ### Fixed in the 2026-10-06 review
 
@@ -68,7 +82,7 @@ on the fixed code.
 
 Verified during the review:
 
-- **Passwords**: argon2id for both account passwords and share-link passwords. Minimum length 8.
+- **Passwords**: argon2id for both account passwords and share-link passwords. Account passwords need 8 to 256 characters, and share passwords at most 256.
 - **Sessions**: 256-bit random token in an `HttpOnly`, `SameSite=Lax` cookie. Only its SHA-256 hash is stored. Sessions expire server-side (`SESSION_TTL_HOURS`, expired rows pruned hourly) and are revoked on logout, password change, deactivation and role change. A session opened with default credentials is restricted server-side to the endpoint that fixes them.
 - **CSRF**: `SameSite=Lax` plus a `Sec-Fetch-Site` check that refuses state-changing requests initiated from another site or a sibling subdomain.
 - **Authorization**: every `/api/*` router applies `requireAuth`, and the admin routers (`users`, `permissions`, `logs`, `admin`, `admin/ip-access`, branding writes) also apply `requireAdmin`. File access goes through `requireRead` / `requireWrite` against folder grants. Jobs (archives, transfers), shares and path names are checked for ownership.
@@ -77,7 +91,7 @@ Verified during the review:
 - **Content served inline**: the MIME types allowed inline never include `text/html` or `image/svg+xml`, so text, HTML and SVG files are served as `text/plain`, always with `nosniff`. The HTML preview runs in an `<iframe sandbox="allow-scripts">` with no `allow-same-origin`, so it gets an opaque origin.
 - **Uploads**: avatars accept PNG, JPEG, WebP or GIF up to 5 MB. Branding files are checked by magic bytes and limited to 5 MB. File uploads (signed-in and public) honour `MAX_UPLOAD_MB` per file. Files are written to a randomly named `.part` first and renamed when complete. Public uploads never overwrite existing files.
 - **Subprocesses**: ffmpeg runs through `execFile`, with no shell, a fixed argument list, an absolute input path and a timeout.
-- **Abuse limits**: login is rate-limited per IP and per account, and share unlocking per IP and per share. Archive and copy jobs are capped at 5 running per owner. Banned IPs are rejected before any other middleware. Restarting services from the admin panel is throttled through the database. Behind another reverse proxy, **Trusted proxies** (Admin → Settings, or `TRUST_PROXY`) must list that proxy so these limits see each visitor's real IP; only the listed proxies (plus the bundled nginx) are believed in `X-Forwarded-For`, so a client cannot forge its address.
+- **Abuse limits**: login is rate-limited per IP and per account, and share unlocking per IP and per share. Archive and copy jobs are capped at 5 running per owner. JSON bodies are limited to 1 MB (10 MB for the text editor's save). Banned IPs are rejected before any other middleware. Restarting services from the admin panel is throttled through the database. Behind another reverse proxy, **Trusted proxies** (Admin → Settings, or `TRUST_PROXY`) must list that proxy so these limits see each visitor's real IP; only the listed proxies (plus the bundled nginx) are believed in `X-Forwarded-For`, so a client cannot forge its address.
 - **Misc**: `x-powered-by` is disabled and `server_tokens` is off. The share-unlock cookie is an HMAC tied to the password hash and to a server-checked expiry, so changing the password or waiting 12 h invalidates it. It is compared in constant time. The backend listens on loopback only inside the container.
 
 ## Endpoint inventory

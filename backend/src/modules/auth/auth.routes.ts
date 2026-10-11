@@ -10,7 +10,7 @@ import { logger } from '../../logger.js';
 import { AppError, badRequest } from '../../errors.js';
 import { createRateLimiter, type RateLimiter } from '../../middleware/rate-limit.js';
 import type { MetricsService } from '../admin/metrics.service.js';
-import { EMAIL, USERNAME, assertUniqueUser } from '../users/validation.js';
+import { EMAIL, MAX_PASSWORD_LENGTH, USERNAME, assertUniqueUser } from '../users/validation.js';
 
 export function createAuthRoutes(
   db: Db,
@@ -48,6 +48,11 @@ export function createAuthRoutes(
     const { usernameOrEmail, password } = req.body as { usernameOrEmail?: unknown; password?: unknown };
     if (typeof usernameOrEmail !== 'string' || typeof password !== 'string' || !usernameOrEmail || !password) {
       return res.status(400).json({ error: t('auth.credentialsRequired') });
+    }
+    // No account can have a longer password, so skip argon2 and answer like any wrong guess.
+    if (password.length > MAX_PASSWORD_LENGTH) {
+      logger.auth.warn(`Login as "${usernameOrEmail}" from ${req.ip} failed: invalid credentials`);
+      return res.status(401).json({ error: t('auth.invalidCredentials') });
     }
 
     try {
@@ -123,6 +128,9 @@ export function createAuthRoutes(
     if (newPassword.length < 8) {
       return res.status(400).json({ error: t('auth.passwordTooShort') });
     }
+    if (newPassword.length > MAX_PASSWORD_LENGTH || currentPassword.length > MAX_PASSWORD_LENGTH) {
+      return res.status(400).json({ error: t('auth.passwordTooLong') });
+    }
 
     try {
       const ok = await authService.changePassword(req.user!.id, currentPassword, newPassword);
@@ -174,6 +182,7 @@ export function createAuthRoutes(
     if (!USERNAME.test(newUsername)) return res.status(400).json({ error: t('users.invalidUsername') });
     if (!EMAIL.test(newEmail)) return res.status(400).json({ error: t('users.invalidEmail') });
     if (newPassword.length < 8) return res.status(400).json({ error: t('auth.passwordTooShort') });
+    if (newPassword.length > MAX_PASSWORD_LENGTH) return res.status(400).json({ error: t('auth.passwordTooLong') });
 
     try {
       assertUniqueUser(db, 'username', newUsername, req.user!.id);

@@ -6,6 +6,7 @@ import type { Share, User } from '../../types/index.js';
 import { badRequest, conflict, forbidden, notFound } from '../../errors.js';
 import { getAccess, readChecker, type Access } from '../permissions/access-check.js';
 import { normalizeRelPath, resolveSafePath } from '../files/path-safety.js';
+import { MAX_PASSWORD_LENGTH } from '../users/validation.js';
 import type { PathName } from '../path-names/path-names.service.js';
 import { logFileAction, userActor } from '../../activity.js';
 
@@ -52,6 +53,12 @@ function optionalString(value: unknown, key: 'shares.invalidExpiry' | 'files.inv
   if (value === null || value === undefined) return null;
   if (typeof value !== 'string') throw badRequest(key);
   return value;
+}
+
+function optionalPassword(value: unknown): string | null {
+  const password = optionalString(value, 'files.invalidPath');
+  if (password && password.length > MAX_PASSWORD_LENGTH) throw badRequest('auth.passwordTooLong');
+  return password;
 }
 
 export class SharesService {
@@ -118,7 +125,7 @@ export class SharesService {
 
     const name = basename(targetPath);
     const pathNameId = optionalString(input.pathNameId, 'files.invalidPath');
-    const password = optionalString(input.password, 'files.invalidPath');
+    const password = optionalPassword(input.password);
     const expiresAt = parseExpiry(input.expiresAt);
     if (pathNameId) {
       this.assertOwnedAlias(pathNameId, user.id);
@@ -167,7 +174,7 @@ export class SharesService {
     const share = this.owned(id, user.id);
 
     const pathNameId = input.pathNameId === undefined ? undefined : optionalString(input.pathNameId, 'files.invalidPath');
-    const password = input.password === undefined ? undefined : optionalString(input.password, 'files.invalidPath');
+    const password = input.password === undefined ? undefined : optionalPassword(input.password);
     const expiresAt = input.expiresAt === undefined ? share.expires_at : parseExpiry(input.expiresAt);
     if (pathNameId) {
       this.assertOwnedAlias(pathNameId, user.id);
@@ -288,6 +295,8 @@ export class SharesService {
 
   checkPassword(share: Share, password: string): Promise<boolean> {
     if (share.password_hash === null) return Promise.resolve(true);
+    // No share password can be longer, so a longer guess is wrong without running argon2.
+    if (password.length > MAX_PASSWORD_LENGTH) return Promise.resolve(false);
     return this.verify(password, share.password_hash);
   }
 }
