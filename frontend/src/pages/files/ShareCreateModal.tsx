@@ -78,7 +78,7 @@ const ShareCreateModal = ({ entry, onClose }: Props) => {
 
   if (created) {
     return (
-      <Modal title={t('share.created')} onClose={onClose}>
+      <Modal title={t('share.created')} onClose={onClose} size="lg">
         <div className="space-y-4">
           <p className="text-sm text-slate-600 dark:text-slate-300">{t('share.createdHint')}</p>
 
@@ -105,7 +105,7 @@ const ShareCreateModal = ({ entry, onClose }: Props) => {
 
   if (existing === null) {
     return (
-      <Modal title={t('share.title', { name: entry.name })} onClose={onClose}>
+      <Modal title={t('share.title', { name: entry.name })} onClose={onClose} size="lg">
         <div className="flex justify-center py-8">
           <Loader2 className="animate-spin text-[var(--accent-500)]" size={28} />
         </div>
@@ -115,7 +115,7 @@ const ShareCreateModal = ({ entry, onClose }: Props) => {
 
   if (existing.length > 0 && !forceNew) {
     return (
-      <Modal title={t('share.alreadyShared')} onClose={onClose}>
+      <Modal title={t('share.alreadyShared')} onClose={onClose} size="lg">
         <div className="space-y-5">
           <div className="flex items-start gap-3 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-200">
             <AlertCircle size={18} className="mt-0.5 shrink-0" />
@@ -157,7 +157,7 @@ const ShareCreateModal = ({ entry, onClose }: Props) => {
   }
 
   return (
-    <Modal title={t('share.title', { name: entry.name })} onClose={onClose}>
+    <Modal title={t('share.title', { name: entry.name })} onClose={onClose} size="lg">
       <form onSubmit={submit} className="space-y-5">
         {error && <div className={errorBox}>{error}</div>}
 
@@ -217,7 +217,7 @@ const ShareCreateModal = ({ entry, onClose }: Props) => {
             </div>
           ) : null}
 
-          <p className="mt-2 font-mono text-xs text-slate-500 dark:text-slate-400">
+          <p className="mt-2 break-all font-mono text-xs text-slate-500 dark:text-slate-400">
             /public/
             {useAbsolute ? (pathNames.find((p) => p.id === pathNameId)?.name ?? '…') : t('share.randomToken')}/
             {useAbsolute ? entry.path : entry.name}
