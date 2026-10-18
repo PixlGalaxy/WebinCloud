@@ -7,13 +7,16 @@ import {
   ExternalLink,
   File as FileIcon,
   Folder,
+  FolderOpen,
   Loader2,
   Lock,
+  Search,
   Server,
   Share2,
   Trash2,
   Unlock,
   Upload,
+  X,
 } from 'lucide-react';
 import { publicShareApi, sharesApi, type PathName, type Share } from '../../api/shares';
 import { ApiError } from '../../api/client';
@@ -22,6 +25,18 @@ import { useI18n } from '../../i18n/I18nContext';
 import Modal from '../../components/ui/Modal';
 import Toast from '../../components/ui/Toast';
 import { btn, card, errorBox, input, label } from '../../components/ui/styles';
+
+/** Case- and accent-insensitive form for matching the search box. */
+const foldText = (value: string) =>
+  value
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[̀-ͯ]/g, '');
+
+const parentFolder = (path: string) => {
+  const index = path.lastIndexOf('/');
+  return index === -1 ? '' : path.slice(0, index);
+};
 
 const ShareManagerPage = () => {
   const { t, language } = useI18n();
@@ -32,6 +47,7 @@ const ShareManagerPage = () => {
   const [toast, setToast] = useState<string | null>(null);
   const [editing, setEditing] = useState<Share | null>(null);
   const [deleting, setDeleting] = useState<Share | null>(null);
+  const [query, setQuery] = useState('');
   const [searchParams] = useSearchParams();
   const highlighted = searchParams.get('path');
   const highlightedRef = useRef<HTMLLIElement>(null);
@@ -54,23 +70,42 @@ const ShareManagerPage = () => {
   const formatDate = (iso: string) =>
     new Intl.DateTimeFormat(language, { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(iso));
 
-  // Every link to the same item shares one card, so duplicates are obvious.
-  const groups = useMemo(() => {
+  // Every link to the same item shares one entry, so duplicates are obvious, and
+  // items sit together under the folder that holds them. Folders are sorted by
+  // path, so a subfolder lands right after its parent.
+  const folders = useMemo(() => {
+    const needle = foldText(query.trim());
     const byPath = new Map<string, Share[]>();
     for (const share of shares ?? []) {
+      if (needle && ![share.name, share.target_path, share.url_name, share.pathName ?? ''].some((value) => foldText(value).includes(needle))) {
+        continue;
+      }
       const existing = byPath.get(share.target_path);
       if (existing) existing.push(share);
       else byPath.set(share.target_path, [share]);
     }
-    return [...byPath.entries()].map(([targetPath, links]) => ({ targetPath, links }));
-  }, [shares]);
 
-  // Arriving from "this is already shared" scrolls to and outlines the card.
+    const byFolder = new Map<string, { targetPath: string; links: Share[] }[]>();
+    for (const [targetPath, links] of byPath) {
+      const folder = parentFolder(targetPath);
+      const items = byFolder.get(folder);
+      if (items) items.push({ targetPath, links });
+      else byFolder.set(folder, [{ targetPath, links }]);
+    }
+    return [...byFolder.entries()]
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([folder, items]) => ({
+        folder,
+        items: items.sort((a, b) => a.links[0].name.localeCompare(b.links[0].name)),
+      }));
+  }, [shares, query]);
+
+  // Arriving from "this is already shared" scrolls to and outlines the item.
   useEffect(() => {
     if (highlighted && highlightedRef.current) {
       highlightedRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
     }
-  }, [highlighted, groups]);
+  }, [highlighted, folders]);
 
   const copy = async (key: string, path: string, kind: string) => {
     const url = `${window.location.origin}${path}`;
@@ -89,7 +124,30 @@ const ShareManagerPage = () => {
 
   return (
     <div className="space-y-4">
-      <h1 className="text-xl font-semibold text-slate-900 dark:text-slate-100">{t('page.shared')}</h1>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <h1 className="text-xl font-semibold text-slate-900 dark:text-slate-100">{t('page.shared')}</h1>
+        {shares !== null && shares.length > 0 && (
+          <div className="relative w-full sm:w-64">
+            <Search className="absolute left-3 top-2.5 text-slate-400 dark:text-slate-500" size={16} />
+            <input
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder={t('share.searchPlaceholder')}
+              className={`${input} pl-9 ${query ? 'pr-9' : ''}`}
+            />
+            {query && (
+              <button
+                type="button"
+                onClick={() => setQuery('')}
+                title={t('files.clearSearch')}
+                className="absolute right-2 top-2 rounded p-0.5 text-slate-400 hover:bg-slate-100 hover:text-slate-700 dark:hover:bg-slate-700"
+              >
+                <X size={15} />
+              </button>
+            )}
+          </div>
+        )}
+      </div>
 
       {error && <div className={errorBox}>{error}</div>}
 
@@ -102,140 +160,157 @@ const ShareManagerPage = () => {
           <Share2 className="mx-auto mb-3 text-slate-300 dark:text-slate-600" size={44} />
           <p className="text-slate-500 dark:text-slate-400">{t('share.none')}</p>
         </div>
+      ) : folders.length === 0 ? (
+        <div className={`${card} p-8 text-center text-sm text-slate-500 dark:text-slate-400`}>
+          {t('share.searchEmpty', { query: query.trim() })}
+        </div>
       ) : (
-        <ul className="space-y-3">
-          {groups.map((group) => (
-            <li
-              key={group.targetPath}
-              ref={group.targetPath === highlighted ? highlightedRef : undefined}
-              className={`${card} p-4 transition ${
-                group.targetPath === highlighted ? 'ring-2 ring-[var(--accent-500)]' : ''
-              }`}
-            >
-              <div className="flex items-start gap-3">
-                {group.links[0].target_type === 'folder' ? (
-                  <Folder size={20} className="mt-0.5 shrink-0 text-[var(--accent-500)]" />
-                ) : (
-                  <FileIcon size={20} className="mt-0.5 shrink-0 text-slate-400" />
-                )}
-                <div className="min-w-0 flex-1">
-                  <p className="truncate font-medium text-slate-900 dark:text-slate-100">
-                    {group.links[0].name}
-                  </p>
-                  <p className="truncate text-xs text-slate-500 dark:text-slate-400">{group.targetPath}</p>
-                </div>
-                {group.links.length > 1 && (
-                  <span className="shrink-0 rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-600 dark:bg-slate-800 dark:text-slate-300">
-                    {t('share.linkCount', { count: group.links.length })}
-                  </span>
-                )}
+        <div className="space-y-6">
+          {folders.map(({ folder, items }) => (
+            <section key={folder || '/'}>
+              <div className="mb-2 flex min-w-0 items-center gap-2 px-1 text-xs text-slate-500 dark:text-slate-400">
+                <FolderOpen size={14} className="shrink-0 text-[var(--accent-500)]" />
+                <span className={`truncate font-medium text-slate-700 dark:text-slate-300 ${folder ? 'font-mono' : ''}`}>
+                  {folder ? `/${folder}` : t('share.rootFolder')}
+                </span>
+                <span className="shrink-0">· {t('share.itemCount', { count: items.length })}</span>
               </div>
 
-              <ul className="mt-3 divide-y divide-slate-200 border-t border-slate-200 dark:divide-slate-700 dark:border-slate-700">
-                {group.links.map((share) => (
-                  <li key={share.id} className="flex flex-wrap items-start gap-3 pt-3 first:pt-3">
-                    <div className="min-w-0 flex-1 basis-full sm:basis-auto">
-                      <code className="block truncate font-mono text-xs text-[var(--accent-600)] dark:text-[var(--accent-400)]">
-                        {share.url}
-                      </code>
-
-                      <div className="mt-2 flex flex-wrap items-center gap-2 text-xs">
-                    {share.pathName ? (
-                      <span className="rounded-full bg-[var(--accent-50)] px-2 py-0.5 font-medium text-[var(--accent-700)] dark:bg-[var(--accent-500)]/15 dark:text-[var(--accent-300)]">
-                        {share.pathName}
-                      </span>
-                    ) : (
-                      <span className="rounded-full bg-slate-100 px-2 py-0.5 text-slate-600 dark:bg-slate-800 dark:text-slate-300">
-                        {t('share.randomToken')}
-                      </span>
-                    )}
-
-                    {share.allow_upload === 1 && (
-                      <span className="flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-0.5 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300">
-                        <Upload size={11} /> {t('share.allowUpload')}
-                      </span>
-                    )}
-
-                    <span
-                      className={`flex items-center gap-1 rounded-full px-2 py-0.5 ${
-                        share.hasPassword
-                          ? 'bg-amber-50 text-amber-700 dark:bg-amber-500/15 dark:text-amber-300'
-                          : 'bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400'
-                      }`}
-                    >
-                      {share.hasPassword ? <Lock size={11} /> : <Unlock size={11} />}
-                      {share.hasPassword ? t('share.hasPassword') : t('share.noPassword')}
-                    </span>
-
-                    <span
-                      className={`flex items-center gap-1 rounded-full px-2 py-0.5 ${
-                        share.expired
-                          ? 'bg-rose-50 text-rose-700 dark:bg-rose-500/15 dark:text-rose-300'
-                          : 'bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400'
-                      }`}
-                    >
-                      <Calendar size={11} />
-                      {share.expires_at
-                        ? `${share.expired ? t('share.expired') : t('share.expiresOn')} ${formatDate(share.expires_at)}`
-                        : t('share.neverExpires')}
-                    </span>
-                  </div>
-                </div>
-
-                <div className="flex flex-wrap items-center gap-1">
-                  <a
-                    href={share.url}
-                    target="_blank"
-                    rel="noreferrer"
-                    className={btn.iconGhost}
-                    title={t('share.openPage')}
+              <ul className={`${card} divide-y divide-slate-200 dark:divide-slate-800`}>
+                {items.map((group) => (
+                  <li
+                    key={group.targetPath}
+                    ref={group.targetPath === highlighted ? highlightedRef : undefined}
+                    className={`p-4 transition first:rounded-t-xl last:rounded-b-xl ${
+                      group.targetPath === highlighted ? 'ring-2 ring-inset ring-[var(--accent-500)]' : ''
+                    }`}
                   >
-                    <ExternalLink size={16} />
-                  </a>
-
-                  <button
-                    onClick={() => void copy(`${share.id}:front`, share.url, t('share.openFrontend'))}
-                    title={t('share.copyFrontendHint')}
-                    className="inline-flex items-center gap-1.5 rounded-lg bg-sky-500 px-3 py-2 text-sm font-medium text-white transition hover:bg-sky-600"
-                  >
-                    {copied === `${share.id}:front` ? <Check size={16} /> : <AppWindow size={16} />}
-                    {t('share.openFrontend')}
-                  </button>
-
-                  {share.target_type === 'file' && (
-                    <button
-                      onClick={() =>
-                        void copy(
-                          `${share.id}:back`,
-                          publicShareApi.rawUrl(share.segment, share.url_name),
-                          t('share.openBackend'),
-                        )
-                      }
-                      title={t('share.copyBackendHint')}
-                      className="inline-flex items-center gap-1.5 rounded-lg bg-orange-500 px-3 py-2 text-sm font-medium text-white transition hover:bg-orange-600"
-                    >
-                      {copied === `${share.id}:back` ? <Check size={16} /> : <Server size={16} />}
-                      {t('share.openBackend')}
-                    </button>
-                  )}
-
-                  <button onClick={() => setEditing(share)} className={btn.secondary}>
-                    {t('share.edit')}
-                  </button>
-                  <button
-                    onClick={() => setDeleting(share)}
-                    className={btn.iconDanger}
-                    title={t('common.delete')}
-                  >
-                    <Trash2 size={16} />
-                  </button>
+                    <div className="flex items-start gap-3">
+                      {group.links[0].target_type === 'folder' ? (
+                        <Folder size={20} className="mt-0.5 shrink-0 text-[var(--accent-500)]" />
+                      ) : (
+                        <FileIcon size={20} className="mt-0.5 shrink-0 text-slate-400" />
+                      )}
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate font-medium text-slate-900 dark:text-slate-100" title={group.targetPath}>
+                          {group.links[0].name}
+                        </p>
+                      </div>
+                      {group.links.length > 1 && (
+                        <span className="shrink-0 rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-600 dark:bg-slate-800 dark:text-slate-300">
+                          {t('share.linkCount', { count: group.links.length })}
+                        </span>
+                      )}
                     </div>
+
+                    <ul className="mt-3 divide-y divide-slate-200 border-t border-slate-200 dark:divide-slate-700 dark:border-slate-700">
+                      {group.links.map((share) => (
+                        <li key={share.id} className="flex flex-wrap items-start gap-3 pt-3 first:pt-3">
+                          <div className="min-w-0 flex-1 basis-full sm:basis-auto">
+                            <code className="block truncate font-mono text-xs text-[var(--accent-600)] dark:text-[var(--accent-400)]">
+                              {share.url}
+                            </code>
+
+                            <div className="mt-2 flex flex-wrap items-center gap-2 text-xs">
+                          {share.pathName ? (
+                            <span className="rounded-full bg-[var(--accent-50)] px-2 py-0.5 font-medium text-[var(--accent-700)] dark:bg-[var(--accent-500)]/15 dark:text-[var(--accent-300)]">
+                              {share.pathName}
+                            </span>
+                          ) : (
+                            <span className="rounded-full bg-slate-100 px-2 py-0.5 text-slate-600 dark:bg-slate-800 dark:text-slate-300">
+                              {t('share.randomToken')}
+                            </span>
+                          )}
+
+                          {share.allow_upload === 1 && (
+                            <span className="flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-0.5 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300">
+                              <Upload size={11} /> {t('share.allowUpload')}
+                            </span>
+                          )}
+
+                          <span
+                            className={`flex items-center gap-1 rounded-full px-2 py-0.5 ${
+                              share.hasPassword
+                                ? 'bg-amber-50 text-amber-700 dark:bg-amber-500/15 dark:text-amber-300'
+                                : 'bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400'
+                            }`}
+                          >
+                            {share.hasPassword ? <Lock size={11} /> : <Unlock size={11} />}
+                            {share.hasPassword ? t('share.hasPassword') : t('share.noPassword')}
+                          </span>
+
+                          <span
+                            className={`flex items-center gap-1 rounded-full px-2 py-0.5 ${
+                              share.expired
+                                ? 'bg-rose-50 text-rose-700 dark:bg-rose-500/15 dark:text-rose-300'
+                                : 'bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400'
+                            }`}
+                          >
+                            <Calendar size={11} />
+                            {share.expires_at
+                              ? `${share.expired ? t('share.expired') : t('share.expiresOn')} ${formatDate(share.expires_at)}`
+                              : t('share.neverExpires')}
+                          </span>
+                        </div>
+                      </div>
+
+                      <div className="flex flex-wrap items-center gap-1">
+                        <a
+                          href={share.url}
+                          target="_blank"
+                          rel="noreferrer"
+                          className={btn.iconGhost}
+                          title={t('share.openPage')}
+                        >
+                          <ExternalLink size={16} />
+                        </a>
+
+                        <button
+                          onClick={() => void copy(`${share.id}:front`, share.url, t('share.openFrontend'))}
+                          title={t('share.copyFrontendHint')}
+                          className="inline-flex items-center gap-1.5 rounded-lg bg-sky-500 px-3 py-2 text-sm font-medium text-white transition hover:bg-sky-600"
+                        >
+                          {copied === `${share.id}:front` ? <Check size={16} /> : <AppWindow size={16} />}
+                          {t('share.openFrontend')}
+                        </button>
+
+                        {share.target_type === 'file' && (
+                          <button
+                            onClick={() =>
+                              void copy(
+                                `${share.id}:back`,
+                                publicShareApi.rawUrl(share.segment, share.url_name),
+                                t('share.openBackend'),
+                              )
+                            }
+                            title={t('share.copyBackendHint')}
+                            className="inline-flex items-center gap-1.5 rounded-lg bg-orange-500 px-3 py-2 text-sm font-medium text-white transition hover:bg-orange-600"
+                          >
+                            {copied === `${share.id}:back` ? <Check size={16} /> : <Server size={16} />}
+                            {t('share.openBackend')}
+                          </button>
+                        )}
+
+                        <button onClick={() => setEditing(share)} className={btn.secondary}>
+                          {t('share.edit')}
+                        </button>
+                        <button
+                          onClick={() => setDeleting(share)}
+                          className={btn.iconDanger}
+                          title={t('common.delete')}
+                        >
+                          <Trash2 size={16} />
+                        </button>
+                          </div>
+                        </li>
+                      ))}
+                    </ul>
                   </li>
                 ))}
               </ul>
-            </li>
+            </section>
           ))}
-        </ul>
+        </div>
       )}
 
       {toast && <Toast message={toast} />}
