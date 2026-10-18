@@ -317,7 +317,7 @@
   "shareSettings.intro": "Los path names son alias amigables para los enlaces públicos que compartes, así la URL se lee como una palabra que elegiste en vez de un token aleatorio.",
   "shareSettings.howItWorksTitle": "Cómo funciona",
   "shareSettings.howItWorks1": "Todo enlace compartido necesita una URL pública. Sin un path name usa un token aleatorio — único e imposible de adivinar, pero difícil de recordar: /public/8f3ac1e2/informe.pdf.",
-  "shareSettings.howItWorks2": "Un path name reemplaza ese token por una palabra que tú eliges: /public/acme/informe.pdf. Solo cambia la dirección — quien lo visite sigue viendo exactamente lo que compartiste, nada más.",
+  "shareSettings.howItWorks2": "Un path name reemplaza ese token por una palabra que tú eliges: /public/acme/informe.pdf. Solo cambia la dirección — quien lo visite sigue viendo exactamente lo que compartiste, nada más. La dirección sigue las carpetas del elemento desde la raíz de datos (/public/acme/informes/2026/informe.pdf), así que archivos con el mismo nombre en carpetas distintas no chocan.",
   "shareSettings.howItWorks3": "Un path name es tuyo, no pertenece a un solo enlace. Créalo una vez y reutilízalo para cada archivo o carpeta que compartas de ahora en adelante, así todos tus enlaces siguen el mismo patrón.",
   "shareSettings.howItWorks4": "Si renombras un path name, todos los enlaces ya publicados con él se actualizan automáticamente — nunca tienes que volver a compartir nada.",
   "shareSettings.howItWorks5": "Los nombres se reservan para todo el servidor, por orden de llegada, ya que aparecen directamente en la URL pública.",

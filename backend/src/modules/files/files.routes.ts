@@ -269,7 +269,8 @@ export function createFilesRoutes(
 
       let target: { absolute: string; relPath: string };
       try {
-        target = files.uploadTarget(req.user!, folderPath, info.filename, onConflict);
+        // A part without a filename gets "", which uploadTarget rejects as an invalid name.
+        target = files.uploadTarget(req.user!, folderPath, info.filename ?? '', onConflict);
       } catch (err) {
         fail(err);
         stream.resume();

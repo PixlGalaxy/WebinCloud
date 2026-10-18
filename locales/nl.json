@@ -317,7 +317,7 @@
   "shareSettings.intro": "Path names zijn vriendelijke alias voor de openbare link die je deelt, zodat de URL leest als een woord dat je hebt gekozen in plaats van een willekeurig token.",
   "shareSettings.howItWorksTitle": "Hoe het werkt",
   "shareSettings.howItWorks1": "Elke gedeelde link heeft een openbare URL nodig. Zonder een path name gebruikt hij een willekeurig token — uniek en onraden, maar niet memorabel: /public/8f3ac1e2/report.pdf.",
-  "shareSettings.howItWorks2": "Een path name vervangt dat token door een woord van jouw keuze: /public/acme/report.pdf. Het verandert alleen het adres — bezoekers zien precies wat je deelde, niets meer.",
+  "shareSettings.howItWorks2": "Een path name vervangt dat token door een woord van jouw keuze: /public/acme/report.pdf. Het verandert alleen het adres — bezoekers zien precies wat je deelde, niets meer. Het adres volgt de mappen van het item vanaf de datamap (/public/acme/rapporten/2026/report.pdf), dus bestanden met dezelfde naam in verschillende mappen botsen nooit.",
   "shareSettings.howItWorks3": "Een path name is van jou, niet gekoppeld aan één link. Maak er een en hergebruik het voor elk bestand of map dat je vanaf nu deelt, zodat al je links hetzelfde patroon volgen.",
   "shareSettings.howItWorks4": "Hernoem een path name en elke reeds gepubliceerde link onder die naam wordt automatisch bijgewerkt — je hoeft nooit iets te herpubliceren.",
   "shareSettings.howItWorks5": "Namen zijn gereserveerd voor de hele server, first come first served, omdat ze direct in de openbare URL worden weergegeven.",

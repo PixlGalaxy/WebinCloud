@@ -1,4 +1,4 @@
-import { Router } from 'express';
+import { Router, type NextFunction, type Request, type Response } from 'express';
 import { createWriteStream, existsSync, promises as fs, statSync } from 'fs';
 import { basename, extname, join } from 'path';
 import { pipeline } from 'stream/promises';
@@ -20,6 +20,39 @@ import { SERVE_OPTIONS } from '../../serve-options.js';
 
 interface PublicRequest extends Express.Request {
   share?: Share;
+}
+
+const PUBLIC_PREFIX = '/api/public/';
+
+/**
+ * Path-name links can span several segments (/public/<alias>/apps/app.exe),
+ * which a single :name param cannot match. This rewrites such a request to the
+ * link's token form (/api/public/<id>/<name>/...) before the router runs, so
+ * every sub-route keeps working unchanged. Mount it ahead of the router.
+ */
+export function createPublicPathResolver(shares: SharesService) {
+  return (req: Request, _res: Response, next: NextFunction) => {
+    if (!req.path.startsWith(PUBLIC_PREFIX)) return next();
+    const parts = req.path.slice(PUBLIC_PREFIX.length).split('/');
+    if (parts.length < 3) return next();
+
+    let decoded: string[];
+    try {
+      decoded = parts.map((part) => decodeURIComponent(part));
+    } catch {
+      return next();
+    }
+    const match = shares.findPublicByPath(decoded[0], decoded.slice(1));
+    if (!match) return next();
+
+    const rest = parts.slice(1 + match.consumed);
+    const queryIndex = req.url.indexOf('?');
+    const query = queryIndex === -1 ? '' : req.url.slice(queryIndex);
+    req.url =
+      `${PUBLIC_PREFIX}${encodeURIComponent(match.share.id)}/${encodeURIComponent(match.share.name)}` +
+      `${rest.length > 0 ? `/${rest.join('/')}` : ''}${query}`;
+    next();
+  };
 }
 
 export function createPublicShareRoutes(
@@ -321,10 +354,12 @@ export function createPublicShareRoutes(
 
         let destination: string;
         try {
-          assertValidName(info.filename);
+          // A part without a filename gets "", which assertValidName rejects.
+          const filename = info.filename ?? '';
+          assertValidName(filename);
           // Public uploads never replace an existing file: a link holder must not
           // be able to destroy content, only add to it.
-          destination = freeName(folderAbsolute, info.filename);
+          destination = freeName(folderAbsolute, filename);
         } catch (err) {
           fail(err);
           stream.resume();

@@ -36,6 +36,23 @@ export interface UpdateShareInput {
   pathNameId?: string | null;
 }
 
+/** First segments of the sub-routes in public-shares.routes.ts (/list, /download, /archive/:id...). */
+const PUBLIC_ACTIONS = new Set(['unlock', 'list', 'download', 'archive', 'upload']);
+
+/** Encodes each segment but keeps the "/" between them, so the URL mirrors the folder path. */
+export function encodeUrlPath(path: string): string {
+  return path.split('/').map(encodeURIComponent).join('/');
+}
+
+/**
+ * Path-name links mirror the item's path from the data root, so "apps/app.exe"
+ * and "app.exe" can both be published under the same alias. Token links are
+ * already unique and keep the short form.
+ */
+function urlNameFor(pathNameId: string | null, targetPath: string, name: string): string {
+  return pathNameId ? targetPath : name;
+}
+
 function isExpired(share: Share): boolean {
   return share.expires_at !== null && new Date(share.expires_at).getTime() <= Date.now();
 }
@@ -83,7 +100,7 @@ export class SharesService {
       ...share,
       pathName: pathName?.name ?? null,
       segment,
-      url: `/public/${encodeURIComponent(segment)}/${encodeURIComponent(share.name)}`,
+      url: `/public/${encodeURIComponent(segment)}/${encodeUrlPath(share.url_name)}`,
       hasPassword: share.password_hash !== null,
       expired: isExpired(share),
     };
@@ -104,11 +121,27 @@ export class SharesService {
     if (alias.user_id !== userId) throw forbidden();
   }
 
-  private assertAliasFree(pathNameId: string, name: string, exceptShareId?: string): void {
-    const clash = this.db
-      .prepare('SELECT id FROM shares WHERE path_name_id = ? AND name = ? AND id IS NOT ?')
-      .get(pathNameId, name, exceptShareId ?? null);
-    if (clash) throw conflict('shares.nameTaken');
+  private assertAliasFree(pathNameId: string, urlName: string, exceptShareId?: string): void {
+    const taken = new Set(
+      (
+        this.db
+          .prepare('SELECT url_name FROM shares WHERE path_name_id = ? AND id IS NOT ?')
+          .all(pathNameId, exceptShareId ?? null) as Pick<Share, 'url_name'>[]
+      ).map((row) => row.url_name),
+    );
+    if (taken.has(urlName)) throw conflict('shares.nameTaken');
+
+    // A link one level below another must not land on one of its sub-routes:
+    // with "apps" shared, "apps/list" would answer /public/<alias>/apps/list.
+    const parts = urlName.split('/');
+    for (let i = 1; i < parts.length; i++) {
+      if (PUBLIC_ACTIONS.has(parts[i]) && taken.has(parts.slice(0, i).join('/'))) throw conflict('shares.nameTaken');
+    }
+    for (const other of taken) {
+      if (other.startsWith(`${urlName}/`) && PUBLIC_ACTIONS.has(other.slice(urlName.length + 1).split('/')[0])) {
+        throw conflict('shares.nameTaken');
+      }
+    }
   }
 
   async create(user: User, input: CreateShareInput): Promise<ShareView> {
@@ -127,18 +160,19 @@ export class SharesService {
     const pathNameId = optionalString(input.pathNameId, 'files.invalidPath');
     const password = optionalPassword(input.password);
     const expiresAt = parseExpiry(input.expiresAt);
+    const urlName = urlNameFor(pathNameId, targetPath, name);
     if (pathNameId) {
       this.assertOwnedAlias(pathNameId, user.id);
-      this.assertAliasFree(pathNameId, name);
+      this.assertAliasFree(pathNameId, urlName);
     }
 
     const id = randomBytes(16).toString('hex');
     this.db
       .prepare(
         `INSERT INTO shares
-           (id, owner_user_id, target_path, target_type, name, path_name_id,
+           (id, owner_user_id, target_path, target_type, name, url_name, path_name_id,
             allow_download, allow_upload, password_hash, expires_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       )
       .run(
         id,
@@ -146,6 +180,7 @@ export class SharesService {
         targetPath,
         stats.isDirectory() ? 'folder' : 'file',
         name,
+        urlName,
         pathNameId,
         input.allowDownload === false ? 0 : 1,
         input.allowUpload ? 1 : 0,
@@ -178,8 +213,12 @@ export class SharesService {
     const expiresAt = input.expiresAt === undefined ? share.expires_at : parseExpiry(input.expiresAt);
     if (pathNameId) {
       this.assertOwnedAlias(pathNameId, user.id);
-      this.assertAliasFree(pathNameId, share.name, id);
     }
+    // Only a change of alias moves the link; resaving the same one keeps its URL,
+    // so links published before url_name mirrored the full path stay valid.
+    const aliasChanged = pathNameId !== undefined && pathNameId !== share.path_name_id;
+    const urlName = aliasChanged ? urlNameFor(pathNameId, share.target_path, share.name) : share.url_name;
+    if (pathNameId && aliasChanged) this.assertAliasFree(pathNameId, urlName, id);
     if (input.allowUpload && !getAccess(this.db, user, share.target_path).write) throw forbidden();
 
     const passwordHash = password === undefined ? share.password_hash : password ? await this.hash(password) : null;
@@ -188,7 +227,7 @@ export class SharesService {
       .prepare(
         `UPDATE shares SET
            allow_download = ?, allow_upload = ?, password_hash = ?, expires_at = ?,
-           path_name_id = ?, updated_at = datetime('now')
+           path_name_id = ?, url_name = ?, updated_at = datetime('now')
          WHERE id = ?`,
       )
       .run(
@@ -197,6 +236,7 @@ export class SharesService {
         passwordHash,
         expiresAt,
         pathNameId === undefined ? share.path_name_id : pathNameId,
+        urlName,
         id,
       );
 
@@ -229,9 +269,36 @@ export class SharesService {
 
     return (
       (this.db
-        .prepare('SELECT * FROM shares WHERE path_name_id = ? AND name = ?')
+        .prepare('SELECT * FROM shares WHERE path_name_id = ? AND url_name = ?')
         .get(alias.id, name) as Share | undefined) ?? null
     );
+  }
+
+  /**
+   * For /public/<alias>/<a>/<b>/... : the alias link whose url_name is the
+   * longest prefix of `parts` (at least two segments; one-segment names go
+   * through findPublic), plus how many parts it used. The rest is the sub-route.
+   */
+  findPublicByPath(segment: string, parts: string[]): { share: Share; consumed: number } | null {
+    if (parts.length < 2) return null;
+    // A token link wins, as in findPublic.
+    if (this.db.prepare('SELECT 1 FROM shares WHERE id = ?').get(segment)) return null;
+
+    const alias = this.db.prepare('SELECT * FROM path_names WHERE name = ? COLLATE NOCASE').get(segment) as
+      | PathName
+      | undefined;
+    if (!alias) return null;
+
+    const candidates = this.db
+      .prepare("SELECT * FROM shares WHERE path_name_id = ? AND instr(url_name, '/') > 0")
+      .all(alias.id) as Share[];
+    const byUrlName = new Map(candidates.map((share) => [share.url_name, share]));
+    const deepest = Math.max(0, ...candidates.map((share) => share.url_name.split('/').length));
+    for (let consumed = Math.min(parts.length, deepest); consumed >= 2; consumed--) {
+      const share = byUrlName.get(parts.slice(0, consumed).join('/'));
+      if (share) return { share, consumed };
+    }
+    return null;
   }
 
   assertUsable(share: Share): void {

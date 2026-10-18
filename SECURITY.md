@@ -117,6 +117,7 @@ a share link (plus password cookie if the share has one).
 | `/api/avatars/me` | `POST`, `DELETE` | Auth | |
 | `/api/public/:segment/:name` | `GET /`, `POST /unlock` | Public / Link | Unlock is rate-limited |
 | `/api/public/:segment/:name` | `/list`, `/download`, `/archive*`, `/upload` | Link | Expiry, password, download/upload flags and the owner's current access are all checked |
+| `/api/public/<alias>/<folder>/.../<name>` | same as above | Public / Link | Path-name links span several segments; a resolver rewrites them to the token form (`/api/public/<id>/<name>/...`) before the router, so the same checks apply |
 | `/api/users`, `/api/permissions`, `/api/logs`, `/api/admin/*`, `/api/admin/ip-access/*` | all | Admin | |
 
 ## Open findings
@@ -131,7 +132,7 @@ design decision or is mitigated by how the app is deployed.
 ### Low / informational
 
 - **Account lockout:** the per-account login limit (10 per 15 min by default) lets anyone who knows a username block that user's logins temporarily. This is an accepted trade-off against password guessing.
-- **Guessable link URLs with path names:** each user gets a default path name equal to their username, so `/public/<username>/<file name>` can be guessed. Use the random-token URL, or a password, for anything sensitive.
+- **Guessable link URLs with path names:** each user gets a default path name equal to their username, so `/public/<username>/<file name>` can be guessed. Path-name links also show the item's folder path from the data root (`/public/<alias>/clients/acme/contract.pdf`) to anyone holding the link. Use the random-token URL, or a password, for anything sensitive.
 - **Upload limit is per file, not a quota:** `MAX_UPLOAD_MB` caps each file; there is still no per-user or per-link total, nor a rate limit on public uploads. Give upload links an expiry and a password, and watch free space.
 - **CSRF guard depends on `Sec-Fetch-Site`:** clients that omit the header (very old browsers, non-browser tools) fall back to `SameSite=Lax` alone, which does not cover sibling subdomains. Every current browser sends it.
 - **Container runs as root** (the Node process and the nginx master). Running Node as an unprivileged user would reduce the impact of a compromise, but bind-mounted volumes owned by the host user make this a breaking change for existing installs.

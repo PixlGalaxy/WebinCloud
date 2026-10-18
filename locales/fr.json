@@ -317,7 +317,7 @@
   "shareSettings.intro": "Les noms de chemin sont des alias conviviaux pour les liens publics que vous partagez, de sorte que l'URL affiche un mot choisi par vous au lieu d'un jeton aléatoire.",
   "shareSettings.howItWorksTitle": "Comment ça marche",
   "shareSettings.howItWorks1": "Chaque lien partagé a besoin d'une URL publique. Sans nom de chemin, il utilise un jeton aléatoire — unique et imprévisible, mais pas mémorable : /public/8f3ac1e2/report.pdf.",
-  "shareSettings.howItWorks2": "Un nom de chemin remplace ce jeton par un mot de votre choix : /public/acme/report.pdf. Cela ne change que l'adresse — les visiteurs voient exactement ce que vous avez partagé, rien de plus.",
+  "shareSettings.howItWorks2": "Un nom de chemin remplace ce jeton par un mot de votre choix : /public/acme/report.pdf. Cela ne change que l'adresse — les visiteurs voient exactement ce que vous avez partagé, rien de plus. L’adresse reprend les dossiers de l’élément depuis la racine des données (/public/acme/rapports/2026/report.pdf), donc des fichiers de même nom dans des dossiers différents ne se gênent jamais.",
   "shareSettings.howItWorks3": "Un nom de chemin est à vous, lié à aucun lien en particulier. Créez-le une fois et réutilisez-le pour chaque fichier ou dossier que vous partagez dorénavant, afin que tous vos liens suivent le même modèle.",
   "shareSettings.howItWorks4": "Renommez un nom de chemin et tous les liens déjà publiés à son adresse sont mis à jour automatiquement — vous n'avez jamais besoin de partager à nouveau quoi que ce soit.",
   "shareSettings.howItWorks5": "Les noms sont réservés pour tout le serveur, sur la base du premier arrivé premier servi, puisqu'ils apparaissent directement dans l'URL publique.",

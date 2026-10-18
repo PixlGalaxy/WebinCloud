@@ -207,7 +207,7 @@ const ShareManagerPage = () => {
                       onClick={() =>
                         void copy(
                           `${share.id}:back`,
-                          publicShareApi.rawUrl(share.segment, share.name),
+                          publicShareApi.rawUrl(share.segment, share.url_name),
                           t('share.openBackend'),
                         )
                       }

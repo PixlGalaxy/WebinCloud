@@ -14,6 +14,8 @@ export interface Share {
   target_path: string;
   target_type: 'file' | 'folder';
   name: string;
+  /** What follows the segment in the public URL; with a path name, the full path ("apps/app.exe"). */
+  url_name: string;
   path_name_id: string | null;
   pathName: string | null;
   segment: string;
@@ -78,8 +80,9 @@ export interface PublicEntry {
   previewKind: PreviewKind;
 }
 
+/** `name` may span folders ("apps/app.exe"): each part is encoded, the "/" between them kept. */
 const publicBase = (segment: string, name: string) =>
-  `/public/${encodeURIComponent(segment)}/${encodeURIComponent(name)}`;
+  `/public/${encodeURIComponent(segment)}/${name.split('/').map(encodeURIComponent).join('/')}`;
 
 export const publicShareApi = {
   info: (segment: string, name: string) => api.get<PublicShareInfo>(publicBase(segment, name)),

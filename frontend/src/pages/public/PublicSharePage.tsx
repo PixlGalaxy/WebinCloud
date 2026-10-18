@@ -46,7 +46,8 @@ const opensInBrowser = (kind: string) => !['none', 'spreadsheet', 'document'].in
 const PublicSharePage = () => {
   const params = useParams();
   const segment = params.segment ?? '';
-  const shareName = params.name ?? '';
+  // Everything after the segment: a path-name link mirrors the folder path ("apps/app.exe").
+  const shareName = params['*'] ?? '';
   const { t, language } = useI18n();
   const { mode } = useTheme();
   const { createShareArchive } = useArchives();

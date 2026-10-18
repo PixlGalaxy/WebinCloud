@@ -22,7 +22,7 @@ import { createTransfersRoutes } from './modules/transfers/transfers.routes.js';
 import { createBrandingRoutes, seedBranding } from './modules/branding/branding.routes.js';
 import { SharesService } from './modules/shares/shares.service.js';
 import { createSharesRoutes } from './modules/shares/shares.routes.js';
-import { createPublicShareRoutes } from './modules/shares/public-shares.routes.js';
+import { createPublicPathResolver, createPublicShareRoutes } from './modules/shares/public-shares.routes.js';
 import { createErrorHandler, createNotFoundHandler } from './middleware/error-handler.js';
 import { GeoipService } from './modules/admin/geoip.service.js';
 import { MetricsService } from './modules/admin/metrics.service.js';
@@ -116,6 +116,7 @@ export function createApp(db: Db, config: EnvConfig): express.Application {
 
   // Anonymous: everything below is reachable with just the link.
   const { router: publicShareRoutes, unlockIpLimiter } = createPublicShareRoutes(config, shares, archives);
+  app.use(createPublicPathResolver(shares));
   app.use('/api/public/:segment/:name', publicShareRoutes);
 
   const { router: authRoutes, loginIpLimiter } = createAuthRoutes(db, config, t, metrics);

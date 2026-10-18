@@ -80,8 +80,10 @@ export interface Share {
   owner_user_id: string;
   target_path: string;
   target_type: 'file' | 'folder';
-  /** Last segment of the public URL. */
+  /** Name of the shared file or folder; also the token URL's last segment. */
   name: string;
+  /** Path after the alias in /public/<alias>/<url_name>: may contain "/". Equals `name` for token links. */
+  url_name: string;
   /** NULL means the link is published under the random token instead of an alias. */
   path_name_id: string | null;
   allow_download: number;

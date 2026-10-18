@@ -34,7 +34,7 @@ const App = () => (
                 <Routes>
                   <Route path="/login" element={<LoginPage />} />
                   {/* Anonymous: reachable by anyone holding the link. */}
-                  <Route path="/public/:segment/:name" element={<PublicSharePage />} />
+                  <Route path="/public/:segment/*" element={<PublicSharePage />} />
 
                   <Route element={<ProtectedRoute />}>
                     <Route path="/" element={<Navigate to="/files" replace />} />

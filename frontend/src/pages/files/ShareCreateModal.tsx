@@ -220,7 +220,7 @@ const ShareCreateModal = ({ entry, onClose }: Props) => {
           <p className="mt-2 font-mono text-xs text-slate-500 dark:text-slate-400">
             /public/
             {useAbsolute ? (pathNames.find((p) => p.id === pathNameId)?.name ?? '…') : t('share.randomToken')}/
-            {entry.name}
+            {useAbsolute ? entry.path : entry.name}
           </p>
         </div>
 

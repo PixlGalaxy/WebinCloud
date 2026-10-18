@@ -317,7 +317,7 @@
   "shareSettings.intro": "Path names are friendly aliases for the public links you share, so the URL reads like a word you picked instead of a random token.",
   "shareSettings.howItWorksTitle": "How it works",
   "shareSettings.howItWorks1": "Every share link needs a public URL. Without a path name it uses a random token — unique and unguessable, but not memorable: /public/8f3ac1e2/report.pdf.",
-  "shareSettings.howItWorks2": "A path name replaces that token with a word of your choice: /public/acme/report.pdf. It only changes the address — visitors still see exactly what you shared, nothing more.",
+  "shareSettings.howItWorks2": "A path name replaces that token with a word of your choice: /public/acme/report.pdf. It only changes the address — visitors still see exactly what you shared, nothing more. The address follows the item’s folders from the data root (/public/acme/reports/2026/report.pdf), so files with the same name in different folders never clash.",
   "shareSettings.howItWorks3": "A path name is yours, not tied to a single link. Create one and reuse it for every file or folder you share from now on, so all your links follow the same pattern.",
   "shareSettings.howItWorks4": "Rename a path name and every link already published under it updates automatically — you never have to reshare anything.",
   "shareSettings.howItWorks5": "Names are reserved across the whole server, first come first served, since they appear directly in the public URL.",
