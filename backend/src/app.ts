@@ -119,7 +119,7 @@ export function createApp(db: Db, config: EnvConfig): express.Application {
   app.use(createPublicPathResolver(shares));
   app.use('/api/public/:segment/:name', publicShareRoutes);
 
-  const { router: authRoutes, loginIpLimiter } = createAuthRoutes(db, config, t, metrics);
+  const { router: authRoutes, loginIpLimiter, loginAccountLimiter } = createAuthRoutes(db, config, t, metrics);
   app.use('/api/auth', authRoutes);
   app.use('/api/users', createUsersRoutes(db, t, metrics));
   app.use('/api/logs', createLogsRoutes(t));
@@ -136,7 +136,7 @@ export function createApp(db: Db, config: EnvConfig): express.Application {
   app.use('/api/shares', createSharesRoutes(db, config, t, shares));
 
   app.use('/api/admin', createAdminRoutes(t, metrics, settings, config, backendStartedAt, updateCheck));
-  app.use('/api/admin/ip-access', createIpAccessRoutes(t, loginIpLimiter, unlockIpLimiter, ipBans));
+  app.use('/api/admin/ip-access', createIpAccessRoutes(t, loginIpLimiter, loginAccountLimiter, unlockIpLimiter, ipBans));
 
   app.use(createNotFoundHandler(t));
   app.use(createErrorHandler(t));

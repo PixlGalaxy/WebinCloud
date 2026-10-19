@@ -16,6 +16,7 @@ function formatDuration(seconds: number): string {
 
 const SOURCE_LABEL: Record<RateLimitSource, TranslationKey> = {
   login: 'ipAccess.sourceLogin',
+  loginAccount: 'ipAccess.sourceLoginAccount',
   shareUnlock: 'ipAccess.sourceShareUnlock',
 };
 

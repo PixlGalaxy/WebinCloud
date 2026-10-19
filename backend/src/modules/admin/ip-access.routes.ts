@@ -6,28 +6,41 @@ import type { AuthenticatedRequest } from '../auth/session.middleware.js';
 import type { RateLimiter } from '../../middleware/rate-limit.js';
 import type { IpBansService } from './ip-bans.service.js';
 
-type RateLimitSource = 'login' | 'shareUnlock';
+type RateLimitSource = 'login' | 'loginAccount' | 'shareUnlock';
+
+/**
+ * How each limiter keys its buckets. `loginAccount` counts attempts against
+ * one account from anywhere, so it can lock an account while its owner's IP
+ * is clear; listing it here lets the admin see and lift that too.
+ */
+const KEY_PREFIX: Record<RateLimitSource, string> = { login: 'ip:', loginAccount: 'account:', shareUnlock: 'ip:' };
 
 function isSource(value: string): value is RateLimitSource {
-  return value === 'login' || value === 'shareUnlock';
+  return value in KEY_PREFIX;
 }
 
 export function createIpAccessRoutes(
   t: Translate,
   loginIpLimiter: RateLimiter,
+  loginAccountLimiter: RateLimiter,
   unlockIpLimiter: RateLimiter,
   ipBans: IpBansService,
 ): Router {
   const router = Router();
   const { requireAuth, requireAdmin } = createAuthGuards(t);
-  const limiters: Record<RateLimitSource, RateLimiter> = { login: loginIpLimiter, shareUnlock: unlockIpLimiter };
+  const limiters: Record<RateLimitSource, RateLimiter> = {
+    login: loginIpLimiter,
+    loginAccount: loginAccountLimiter,
+    shareUnlock: unlockIpLimiter,
+  };
 
   router.use(requireAuth, requireAdmin);
 
   router.get('/', (_req, res) => {
     const rateLimited = (Object.keys(limiters) as RateLimitSource[]).flatMap((source) =>
       limiters[source].listBlocked().map((entry) => ({
-        ip: entry.key.replace(/^ip:/, ''),
+        // An IP, or the account name for loginAccount.
+        ip: entry.key.slice(KEY_PREFIX[source].length),
         source,
         hits: entry.hits,
         retryAfterSeconds: entry.retryAfterSeconds,
@@ -39,7 +52,7 @@ export function createIpAccessRoutes(
   router.delete('/rate-limit/:source/:ip', (req, res) => {
     const { source, ip } = req.params;
     if (!isSource(source)) throw notFound('ipAccess.unknownSource');
-    limiters[source].clear(`ip:${ip}`);
+    limiters[source].clear(`${KEY_PREFIX[source]}${ip}`);
     res.json({ success: true });
   });
 

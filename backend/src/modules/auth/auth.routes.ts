@@ -18,7 +18,7 @@ export function createAuthRoutes(
   config: EnvConfig,
   t: Translate,
   metrics: MetricsService,
-): { router: Router; loginIpLimiter: RateLimiter } {
+): { router: Router; loginIpLimiter: RateLimiter; loginAccountLimiter: RateLimiter } {
   const router = Router();
   const authService = new AuthService(db, config.SESSION_TTL_HOURS);
   const { requireAuth } = createAuthGuards(t);
@@ -221,5 +221,5 @@ export function createAuthRoutes(
     }
   });
 
-  return { router, loginIpLimiter };
+  return { router, loginIpLimiter, loginAccountLimiter };
 }
