@@ -65,7 +65,9 @@ export interface EnvConfig {
 
 export function loadEnv(): EnvConfig {
   const env = process.env;
-  const isProd = env.NODE_ENV === 'production';
+  // Production unless asked otherwise: a missing or mistyped NODE_ENV must
+  // never turn on the development seed or listen on every interface.
+  const isProd = env.NODE_ENV !== 'development' && env.NODE_ENV !== 'dev';
 
   // Mounted volumes in production; folders at the repo root in development.
   const DATA_ROOT = resolve(env.DATA_ROOT || (isProd ? '/data' : join(repoRoot, 'data')));

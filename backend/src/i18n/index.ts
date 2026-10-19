@@ -11,6 +11,7 @@ const BACKEND_KEYS = [
   'auth.invalidCredentials',
   'auth.notAuthenticated',
   'auth.forbidden',
+  'auth.defaultPasswordLocalOnly',
   'auth.passwordsRequired',
   'auth.passwordTooShort',
   'auth.passwordTooLong',

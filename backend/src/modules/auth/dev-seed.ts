@@ -15,7 +15,7 @@ const DEV_USERS = [
  * boot so the credentials always work; never runs in production.
  */
 export async function seedDevUsers(db: Db, config: EnvConfig): Promise<void> {
-  if (config.NODE_ENV === 'production') return;
+  if (config.NODE_ENV !== 'development') return;
 
   for (const { username, password, email, role } of DEV_USERS) {
     const hash = await hashPassword(password);

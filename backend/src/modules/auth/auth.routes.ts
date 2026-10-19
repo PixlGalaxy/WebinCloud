@@ -5,6 +5,7 @@ import type { Translate } from '../../i18n/index.js';
 import { isLanguage } from '../../i18n/index.js';
 import type { AuthenticatedRequest } from './session.middleware.js';
 import { createAuthGuards } from './session.middleware.js';
+import { isFromLocalNetwork } from './local-network.js';
 import { AuthService, DEFAULT_PASSWORD, isThemeMode, isThemeSkin, toPublicUser } from './auth.service.js';
 import { logger } from '../../logger.js';
 import { AppError, badRequest } from '../../errors.js';
@@ -48,6 +49,12 @@ export function createAuthRoutes(
     const { usernameOrEmail, password } = req.body as { usernameOrEmail?: unknown; password?: unknown };
     if (typeof usernameOrEmail !== 'string' || typeof password !== 'string' || !usernameOrEmail || !password) {
       return res.status(400).json({ error: t('auth.credentialsRequired') });
+    }
+    // The default password is public, so whoever reaches a fresh install from
+    // the internet first could claim it: it only works from the local network.
+    if (password === DEFAULT_PASSWORD && !isFromLocalNetwork(req)) {
+      logger.auth.warn(`Login as "${usernameOrEmail}" from ${req.ip} refused: the default password only works from the local network`);
+      return res.status(403).json({ error: t('auth.defaultPasswordLocalOnly') });
     }
     // No account can have a longer password, so skip argon2 and answer like any wrong guess.
     if (password.length > MAX_PASSWORD_LENGTH) {
@@ -178,6 +185,10 @@ export function createAuthRoutes(
     // rename itself; the password is verified against the hash further down.
     if (req.user!.username !== 'admin' || currentPassword !== DEFAULT_PASSWORD) {
       return res.status(403).json({ error: t('auth.forbidden') });
+    }
+    if (!isFromLocalNetwork(req)) {
+      logger.auth.warn(`Setup completion for "${req.user!.username}" from ${req.ip} refused: not from the local network`);
+      return res.status(403).json({ error: t('auth.defaultPasswordLocalOnly') });
     }
     if (!USERNAME.test(newUsername)) return res.status(400).json({ error: t('users.invalidUsername') });
     if (!EMAIL.test(newEmail)) return res.status(400).json({ error: t('users.invalidEmail') });

@@ -123,6 +123,8 @@ Translations live in `locales/*.json`. English and Spanish are written and maint
 
 There's no `ADMIN_EMAIL`/`ADMIN_USERNAME`/`ADMIN_PASSWORD` — a real password has no business sitting in plaintext in an env var. The first boot always seeds `admin` / `changeme`, and that exact pair only ever works once. After that, you must complete the setup flow and pick a new username, email and password.
 
+Because that password is public, it is only accepted from the server's local network (private and loopback addresses), so nobody on the internet can claim a fresh install before you do. Behind a reverse proxy this holds even before the trusted proxies are set: every address the request carries must be local. Do the first sign-in from a device on the same network.
+
 For local development, the app may also seed `admin` / `admin` and `user` / `user` intentionally so you can log in quickly in a test environment. Those are development-only credentials and do not affect production deployments.
 
 | Variable | Default | Purpose |

@@ -18,16 +18,16 @@ npm install
 npm run dev
 ```
 
-`npm run dev` starts the server with `tsx` in watch mode on `http://localhost:4000`. It reads `../.env` if one exists and restarts when the source, the locales or `.env` change.
+`npm run dev` starts the server with `tsx` in watch mode on `http://localhost:4000`. It reads `dev.env`, which sets `NODE_ENV=development`, then `../.env` if one exists, and restarts when the source, the locales or `.env` change.
 
-Outside production, the data folders live at the repository root (`data/`, `appdata/`, `temp/`) and two test accounts are seeded on every boot:
+In development, the data folders live at the repository root (`data/`, `appdata/`, `temp/`) and two test accounts are seeded on every boot:
 
 | Username | Password | Role |
 | --- | --- | --- |
 | `admin` | `admin` | admin |
 | `user` | `user` | user |
 
-These accounts never exist when `NODE_ENV=production`.
+These accounts only exist when `NODE_ENV` is `development` (or `dev`). Any other value, or none at all, means production, so `npm start` on its own never creates them.
 
 Run the frontend's dev server at the same time (see [frontend/README.md](../frontend/README.md)); it proxies `/backend` to this server.
 
@@ -50,7 +50,7 @@ All settings are environment variables; `.env.example` at the repository root li
 | --- | --- | --- |
 | `PORT` | `4000` | Port the API listens on |
 | `HOST` | *(all interfaces; `127.0.0.1` in production)* | Interface the API listens on. Loopback in the container, so only the bundled nginx reaches it |
-| `NODE_ENV` | `development` | `production` uses the container paths and disables the test accounts |
+| `NODE_ENV` | `production` (`development` under `npm run dev`) | Only `development` or `dev` uses the repository folders and seeds the test accounts; anything else is production |
 | `MAX_UPLOAD_MB` | `0` (no limit) | Largest single file an upload may carry, for users and public upload links. Also editable in Admin → Settings |
 | `DATA_ROOT` | `../data` (`/data` in production) | Files users browse |
 | `APPDATA_ROOT` | `../appdata` (`/appdata` in production) | SQLite database, avatars, branding, GeoIP cache |

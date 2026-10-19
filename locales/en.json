@@ -3,6 +3,7 @@
   "auth.invalidCredentials": "Invalid credentials",
   "auth.notAuthenticated": "Not authenticated",
   "auth.forbidden": "Forbidden",
+  "auth.defaultPasswordLocalOnly": "For security, the default password only works from the server's local network. Open Webin Cloud from a device on the same network to finish the setup.",
   "auth.passwordsRequired": "Current and new password are required",
   "auth.passwordTooShort": "New password must be at least 8 characters long",
   "auth.passwordTooLong": "Password must be at most 256 characters long",

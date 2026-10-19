@@ -3,10 +3,10 @@
   "version": "1.0.0",
   "type": "module",
   "scripts": {
-    "dev": "tsx watch --env-file-if-exists=../.env --include ../locales/*.json --include ../.env src/index.ts",
+    "dev": "tsx watch --env-file=dev.env --env-file-if-exists=../.env --include ../locales/*.json --include ../.env src/index.ts",
     "build": "tsc && node scripts/copy-assets.mjs",
     "start": "node dist/index.js",
-    "migrate": "tsx src/db/migrate.ts"
+    "migrate": "tsx --env-file=dev.env --env-file-if-exists=../.env src/db/migrate.ts"
   },
   "dependencies": {
     "archiver": "^8.0.0",

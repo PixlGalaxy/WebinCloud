@@ -3,6 +3,7 @@
   "auth.invalidCredentials": "Credenciales inválidas",
   "auth.notAuthenticated": "No has iniciado sesión",
   "auth.forbidden": "Acceso denegado",
+  "auth.defaultPasswordLocalOnly": "Por seguridad, la contraseña por defecto solo funciona desde la red local del servidor. Abre Webin Cloud desde un dispositivo de la misma red para terminar la configuración.",
   "auth.passwordsRequired": "La contraseña actual y la nueva son obligatorias",
   "auth.passwordTooShort": "La nueva contraseña debe tener al menos 8 caracteres",
   "auth.passwordTooLong": "La contraseña debe tener como máximo 256 caracteres",

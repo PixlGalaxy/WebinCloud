@@ -1,4 +1,5 @@
 import { promises as fs } from 'fs';
+import { extname } from 'path';
 import { previewKindOf } from '../files/mime.js';
 import { runFfmpeg } from './ffmpeg.js';
 
@@ -30,8 +31,31 @@ export interface ThumbnailProvider {
 
 const scale = (pixels: number) => `scale=w=${pixels}:h=${pixels}:force_original_aspect_ratio=decrease`;
 
-/** Options that keep a crafted file from reaching the network or hogging the CPU. */
-const SAFE_INPUT = ['-hide_banner', '-loglevel', 'error', '-nostdin', '-threads', '1', '-protocol_whitelist', 'file'];
+/**
+ * The only demuxers ffmpeg may open, nested ones included. ffmpeg picks the
+ * demuxer from the file's content, not its name, so without this an upload
+ * called "x.png" holding a concat list or an HLS playlist makes ffmpeg read
+ * other files on the server into the thumbnail. image2 is left out too: it
+ * reads "%d" in a name as a pattern, which reaches the file's neighbours.
+ */
+const DEMUXERS = 'png_pipe,jpeg_pipe,gif,webp_pipe,bmp_pipe,mov,matroska,ogg';
+
+/** Options that keep a crafted file from reaching the network, other files, or hogging the CPU. */
+const SAFE_INPUT = [
+  '-hide_banner',
+  '-loglevel',
+  'error',
+  '-nostdin',
+  '-threads',
+  '1',
+  '-protocol_whitelist',
+  'file',
+  '-format_whitelist',
+  DEMUXERS,
+];
+
+/** ffmpeg would hand these to image2 by their extension, so they are steered to the JPEG demuxer. */
+const FORCED_DEMUXER: Record<string, string> = { '.jpg': 'jpeg_pipe', '.jpeg': 'jpeg_pipe' };
 
 const encode = (output: string, pixels: number) => [
   '-frames:v',
@@ -58,8 +82,17 @@ async function frame(ffmpeg: string, args: string[], output: string): Promise<vo
 const image: ThumbnailProvider = {
   id: 'image',
   supports: (name) => previewKindOf(name) === 'image',
-  generate: ({ ffmpeg, input, output, pixels }) =>
-    frame(ffmpeg, [...SAFE_INPUT, '-i', input, ...encode(output, pixels)], output),
+  async generate({ ffmpeg, input, output, pixels }) {
+    const forced = FORCED_DEMUXER[extname(input).toLowerCase()];
+    if (forced) {
+      try {
+        return await frame(ffmpeg, [...SAFE_INPUT, '-f', forced, '-i', input, ...encode(output, pixels)], output);
+      } catch {
+        // Not a JPEG after all (a WebP saved as .jpg, say): let ffmpeg detect it among the allowed demuxers.
+      }
+    }
+    await frame(ffmpeg, [...SAFE_INPUT, '-i', input, ...encode(output, pixels)], output);
+  },
 };
 
 const video: ThumbnailProvider = {

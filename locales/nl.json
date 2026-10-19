@@ -3,6 +3,7 @@
   "auth.invalidCredentials": "Ongeldige inloggegevens",
   "auth.notAuthenticated": "Niet ingelogd",
   "auth.forbidden": "Verboden",
+  "auth.defaultPasswordLocalOnly": "Om veiligheidsredenen werkt het standaardwachtwoord alleen vanaf het lokale netwerk van de server. Open Webin Cloud vanaf een apparaat in hetzelfde netwerk om de installatie af te ronden.",
   "auth.passwordsRequired": "Huidig en nieuw wachtwoord zijn verplicht",
   "auth.passwordTooShort": "Nieuw wachtwoord moet minimaal 8 tekens lang zijn",
   "auth.passwordTooLong": "Wachtwoord mag maximaal 256 tekens lang zijn",
