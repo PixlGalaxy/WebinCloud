@@ -72,6 +72,13 @@ const MAX_SELECTION = 500;
  * the temp volume or pin the CPU before abandonment detection catches up.
  */
 const MAX_ACTIVE_JOBS_PER_OWNER = 5;
+/**
+ * Finished archives one owner keeps on disk. Starting another drops the
+ * oldest, so a loop of "zip, wait, repeat" cannot pile up copies of a folder
+ * in the temp volume for the hour they would otherwise stay. The browser
+ * downloads each one as soon as it is ready, so only the newest matter.
+ */
+const MAX_FINISHED_JOBS_PER_OWNER = 5;
 
 
 export class ArchivesService {
@@ -244,6 +251,14 @@ export class ArchivesService {
       if (job.ownerKey === key && (job.status === 'preparing' || job.status === 'running')) active++;
     }
     if (active >= MAX_ACTIVE_JOBS_PER_OWNER) throw tooManyRequests(Math.ceil(this.abandonMs / 1000));
+
+    const finished = [...this.jobs.values()]
+      .filter((job) => job.ownerKey === key && (job.status === 'done' || job.status === 'error'))
+      .sort((a, b) => a.createdAt - b.createdAt);
+    for (const old of finished.slice(0, Math.max(0, finished.length - MAX_FINISHED_JOBS_PER_OWNER + 1))) {
+      this.jobs.delete(old.id);
+      void this.discard(old.id);
+    }
 
     const id = randomUUID();
     const job: ArchiveJob = {
