@@ -5,6 +5,7 @@ import type { Db } from '../../db/client.js';
 import type { User } from '../../types/index.js';
 import { badRequest, conflict, notFound } from '../../errors.js';
 import { accessFrom, getAccess, listGrants, requireRead, requireWrite } from '../permissions/access-check.js';
+import { requireTreeWrite } from '../permissions/tree-access.js';
 import { assertValidName, joinRelPath, parentOf, resolveSafePath } from './path-safety.js';
 import { inlineMimeOf, isTextFile, previewKindOf, type PreviewKind } from './mime.js';
 import { logFileAction, userActor } from '../../activity.js';
@@ -304,6 +305,8 @@ export class FilesService {
       const stats = await fs.stat(from).catch(() => {
         throw notFound();
       });
+      // Moving a folder takes all of it, so all of it must be the user's to move.
+      if (stats.isDirectory()) await requireTreeWrite(this.db, user, this.dataRoot, relPath);
 
       let finalName = basename(relPath);
       let to = this.absolute(joinRelPath(destinationFolder, finalName));
@@ -319,6 +322,7 @@ export class FilesService {
           to = this.absolute(joinRelPath(destinationFolder, finalName));
         } else {
           // 'overwrite' replaces the destination outright; this app has no folder-merge semantics.
+          await requireTreeWrite(this.db, user, this.dataRoot, joinRelPath(destinationFolder, finalName));
           await fs.rm(to, { recursive: true, force: true });
         }
       }
@@ -342,11 +346,14 @@ export class FilesService {
 
   async remove(user: User, relPath: string): Promise<void> {
     if (relPath === '') throw notFound();
+    // Like rename and move: taking an item away from a folder changes that folder too.
     requireWrite(this.db, user, relPath);
+    requireWrite(this.db, user, parentOf(relPath));
 
     const absolute = this.absolute(relPath);
     const stats = await fs.stat(absolute).catch(() => null);
     const kind = stats?.isDirectory() ? 'folder' : 'file';
+    if (stats?.isDirectory()) await requireTreeWrite(this.db, user, this.dataRoot, relPath);
     try {
       await fs.rm(absolute, { recursive: true, force: false });
     } catch (err) {
@@ -465,7 +472,8 @@ export class FilesService {
       if (onConflict === 'fail') throw conflict('files.alreadyExists');
       if (onConflict === 'keepBoth') finalName = this.freeName(folderPath, name);
       // 'overwrite' keeps the name: the .part rename replaces the old file only
-      // once the new one is fully written.
+      // once the new one is fully written. That file must be the user's to replace.
+      if (onConflict === 'overwrite') requireWrite(this.db, user, joinRelPath(folderPath, name));
     }
 
     const relPath = joinRelPath(folderPath, finalName);

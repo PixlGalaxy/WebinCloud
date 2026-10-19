@@ -5,6 +5,7 @@ import type { Db } from '../../db/client.js';
 import type { User } from '../../types/index.js';
 import { AppError, badRequest, conflict, forbidden, notFound, tooManyRequests } from '../../errors.js';
 import { getAccess, readChecker, requireWrite } from '../permissions/access-check.js';
+import { requireTreeWrite } from '../permissions/tree-access.js';
 import { joinRelPath, normalizeRelPath, resolveSafePath } from '../files/path-safety.js';
 import type { ConflictMode } from '../files/files.service.js';
 import { logFileAction, userActor } from '../../activity.js';
@@ -213,6 +214,7 @@ export class TransfersService {
             dest = join(destAbsolute, finalName);
           } else {
             // 'overwrite' replaces the destination outright; no folder-merge semantics.
+            await requireTreeWrite(this.db, user, this.dataRoot, joinRelPath(destinationFolder, finalName));
             await fs.rm(dest, { recursive: true, force: true });
           }
         }
