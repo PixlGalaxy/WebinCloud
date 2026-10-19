@@ -78,11 +78,17 @@ export function createPublicShareRoutes(
     describe: (req) => `share unlock attempts against ${req.params.segment}/${req.params.name}`,
   });
 
+  /**
+   * The item's current name. `share.name` is the one in the URL, which stays
+   * put when the item is renamed or moved so the link keeps working.
+   */
+  const itemName = (share: Share) => basename(share.target_path);
+
   /** Root of the shared subtree; nothing outside it is reachable. */
   const shareRoot = (share: Share) =>
     share.target_type === 'folder'
       ? resolveSafePath(config.DATA_ROOT, share.target_path)
-      : resolveSafePath(config.DATA_ROOT, share.target_path.slice(0, -share.name.length) || '.');
+      : resolveSafePath(config.DATA_ROOT, share.target_path.slice(0, -itemName(share).length) || '.');
 
   const load = (req: any, _res: any, next: any) => {
     const share = shares.findPublic(req.params.segment, req.params.name);
@@ -131,7 +137,7 @@ export function createPublicShareRoutes(
   // volume is refused for file shares too.
   const absoluteInside = (share: Share, inner: string): string => {
     const root = shareRoot(share);
-    return share.target_type === 'file' ? resolveSafePath(root, share.name) : resolveSafePath(root, inner);
+    return share.target_type === 'file' ? resolveSafePath(root, itemName(share)) : resolveSafePath(root, inner);
   };
 
   router.get(
@@ -148,13 +154,13 @@ export function createPublicShareRoutes(
           : undefined;
 
       res.json({
-        name: share.name,
+        name: itemName(share),
         type: share.target_type,
         allowDownload: share.allow_download === 1,
         allowUpload: share.allow_upload === 1,
         requiresPassword: share.password_hash !== null,
         unlocked: shares.isUnlocked(share, req.cookies?.[SHARE_COOKIE_PREFIX + share.id]),
-        previewKind: share.target_type === 'file' ? previewKindOf(share.name) : 'none',
+        previewKind: share.target_type === 'file' ? previewKindOf(itemName(share)) : 'none',
         size,
       });
     }),
@@ -285,10 +291,10 @@ export function createPublicShareRoutes(
     const sources = inner.map((raw) => {
       const relative = innerPath(share, raw);
       const absolute = resolveSafePath(shareRoot(share), relative);
-      return { absolute, nameInZip: relative === '' ? share.name : basename(relative) };
+      return { absolute, nameInZip: relative === '' ? itemName(share) : basename(relative) };
     });
 
-    res.status(202).json(archives.startForShare(share.id, sources, share.name, shares.ownerReadChecker(share)));
+    res.status(202).json(archives.startForShare(share.id, sources, itemName(share), shares.ownerReadChecker(share)));
   });
 
   router.get('/archive/:id', load, requireUnlocked, (req: any, res) => {

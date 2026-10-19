@@ -10,7 +10,7 @@ import { MAX_PASSWORD_LENGTH } from '../users/validation.js';
 import type { PathName } from '../path-names/path-names.service.js';
 import { logFileAction, userActor } from '../../activity.js';
 
-export interface ShareView extends Share {
+export interface ShareView extends Omit<Share, 'password_hash'> {
   pathName: string | null;
   segment: string;
   url: string;
@@ -95,9 +95,11 @@ export class SharesService {
   toView(share: Share): ShareView {
     const pathName = this.pathNameOf(share);
     const segment = pathName?.name ?? share.id;
+    // The hash never leaves the server, not even to the link's owner: hasPassword says all the UI needs.
+    const { password_hash: _passwordHash, ...rest } = share;
 
     return {
-      ...share,
+      ...rest,
       pathName: pathName?.name ?? null,
       segment,
       url: `/public/${encodeURIComponent(segment)}/${encodeUrlPath(share.url_name)}`,

@@ -6,6 +6,7 @@ import type { User } from '../../types/index.js';
 import { badRequest, conflict, notFound } from '../../errors.js';
 import { accessFrom, getAccess, listGrants, requireRead, requireWrite } from '../permissions/access-check.js';
 import { requireTreeWrite } from '../permissions/tree-access.js';
+import { forgetSharesUnder, moveSharesUnder } from '../shares/share-paths.js';
 import { assertValidName, joinRelPath, parentOf, resolveSafePath } from './path-safety.js';
 import { inlineMimeOf, isTextFile, previewKindOf, type PreviewKind } from './mime.js';
 import { logFileAction, userActor } from '../../activity.js';
@@ -270,6 +271,7 @@ export class FilesService {
     const previousStats = await fs.stat(from).catch(() => null);
 
     await fs.rename(from, to);
+    moveSharesUnder(this.db, relPath, target);
     if (previousStats && !previousStats.isDirectory()) void this.thumbnails.evict(from, previousStats);
 
     const renamed = (await statEntry(to, newName, target, this.canThumbnail))!;
@@ -331,6 +333,7 @@ export class FilesService {
       if (!stats.isDirectory()) void this.thumbnails.evict(from, stats);
 
       const target = joinRelPath(destinationFolder, finalName);
+      moveSharesUnder(this.db, relPath, target);
       moved.push(target);
       logFileAction(
         userActor(user),
@@ -360,6 +363,7 @@ export class FilesService {
       if ((err as NodeJS.ErrnoException).code === 'ENOENT') throw notFound();
       throw err;
     }
+    forgetSharesUnder(this.db, relPath);
     if (stats && !stats.isDirectory()) void this.thumbnails.evict(absolute, stats);
 
     logFileAction(userActor(user), 'deleted', kind, basename(relPath), absolute);
