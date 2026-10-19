@@ -1,4 +1,4 @@
-import { readFileSync } from 'fs';
+import { readFileSync, writeFileSync } from 'fs';
 import { logger } from '../../logger.js';
 import type { SettingsService } from '../../db/settings.js';
 
@@ -11,6 +11,8 @@ export interface ServiceStatus {
 }
 
 const NGINX_PID_FILE = '/run/nginx.pid';
+// Watched by entrypoint.sh, which restarts nginx when this appears.
+const FRONTEND_RESTART_REQUEST = '/run/webincloud/restart-frontend';
 // Linux clock ticks per second, used to convert /proc/<pid>/stat's starttime field into seconds.
 const CLK_TCK = 100;
 
@@ -23,13 +25,14 @@ function readNginxPid(): number | null {
   }
 }
 
-/** A signal-0 probe: doesn't actually signal the process, just checks it exists and is ours to touch. */
+/** A signal-0 probe: doesn't actually signal the process, just checks it exists. */
 function isAlive(pid: number): boolean {
   try {
     process.kill(pid, 0);
     return true;
-  } catch {
-    return false;
+  } catch (err) {
+    // EPERM: it exists but belongs to root, as nginx does when the backend runs as PUID.
+    return (err as NodeJS.ErrnoException).code === 'EPERM';
   }
 }
 
@@ -94,18 +97,24 @@ export function restartBackend(): void {
 }
 
 /**
- * Signals nginx's master process to stop; `entrypoint.sh`'s respawn loop
- * relaunches it the same way it would after a crash. No IPC needed — just the
- * pidfile nginx already writes (see `pid` in nginx.conf).
+ * Stops nginx's master process; `entrypoint.sh`'s respawn loop relaunches it
+ * the same way it would after a crash. A backend running as root signals it
+ * directly; one running as PUID can't, so it leaves a request file the loop
+ * acts on within a couple of seconds.
  */
 export function restartNginx(): boolean {
   const pid = readNginxPid();
   if (pid === null) return false;
   try {
     process.kill(pid, 'SIGTERM');
-    logger.warn('Frontend (nginx) restart requested from the admin panel');
-    return true;
-  } catch {
-    return false;
+  } catch (err) {
+    if ((err as NodeJS.ErrnoException).code !== 'EPERM') return false;
+    try {
+      writeFileSync(FRONTEND_RESTART_REQUEST, '');
+    } catch {
+      return false;
+    }
   }
+  logger.warn('Frontend (nginx) restart requested from the admin panel');
+  return true;
 }

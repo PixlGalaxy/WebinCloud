@@ -57,6 +57,9 @@ services:
       - "8080:80"
     environment:
       LANGUAGE: en
+      PUID: 99
+      PGID: 100
+      UMASK: "002"
     volumes:
       - WebinCloud_Data:/data
       - WebinCloud_AppData:/appdata
@@ -85,6 +88,22 @@ Inside the container:
   branding/               logo.png, icon.png, favicon.ico
 /temp                     generated archives, disposable
 ```
+
+## File ownership
+
+The backend runs as an unprivileged user, never as root, so everything it creates in `/data` belongs to a user your host knows. That matters when the same folders are also reached another way, such as an SMB share on a NAS.
+
+| Variable | Default | Purpose |
+| --- | --- | --- |
+| `PUID` | `99` | User id that owns the files the app creates |
+| `PGID` | `100` | Group id that owns them |
+| `UMASK` | `002` | Permissions for new files: `002` gives `rw` to the owner and the group (folders `775`, files `664`) |
+
+The defaults are `nobody:users`, what Unraid uses for its shares, so on Unraid nothing needs changing: every Unraid user is in the `users` group and can edit what the app writes over SMB. Elsewhere, set them to your own user, which `id` prints (often `1000`). Set `UMASK` to `000` if users outside the group must write too, and `PUID=0` to go back to running as root.
+
+`/appdata` and `/temp` are handed to that user on every start. `/data` is your content and is never changed, except an empty folder, which is simply taken over. If it is not writable, the container log says so at startup.
+
+**Upgrading from a version that ran as root:** files the app already created belong to root, and it can no longer modify them. Give them to `PUID:PGID` once on the host: on Unraid, **Tools → Docker Safe New Permissions** on the share; elsewhere, `chown -R 99:100 /path/to/files && chmod -R u+rwX,g+rwX /path/to/files`.
 
 ## Configuration
 

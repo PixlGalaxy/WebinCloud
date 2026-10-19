@@ -38,7 +38,7 @@ LABEL org.opencontainers.image.source="https://github.com/PixlGalaxy/WebinCloud"
       org.opencontainers.image.description="Self-hosted web server for your files: accounts, per-folder permissions, in-browser previews and public share links." \
       org.opencontainers.image.licenses="MIT"
 
-RUN apk add --no-cache nginx tini ffmpeg tar
+RUN apk add --no-cache nginx tini ffmpeg tar su-exec
 
 COPY --from=build-frontend /app/frontend/dist /usr/share/nginx/html
 COPY --from=build-backend /app/backend/dist /app/backend/dist
@@ -59,10 +59,15 @@ ENV NODE_ENV=production \
     TEMP_ROOT=/temp \
     LOCALES_DIR=/app/locales \
     DEFAULT_BRANDING_DIR=/app/branding \
-    LANGUAGE=en
+    LANGUAGE=en \
+    PUID=99 \
+    PGID=100 \
+    UMASK=002
 
 # WebinCloud_Data holds user files, WebinCloud_AppData the database and avatars,
-# and WebinCloud_Temp the generated archives, which are disposable.
+# and WebinCloud_Temp the generated archives, which are disposable. A new named
+# volume copies these folders' owner, so it starts out writable by the default PUID:PGID.
+RUN mkdir -p /data /appdata /temp && chown 99:100 /data /appdata /temp
 VOLUME ["/data", "/appdata", "/temp"]
 EXPOSE 80
 
