@@ -1,4 +1,4 @@
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import type { ConflictMode } from '../../api/files';
 
 /** Where a file goes: the signed-in API, or a public share link. */
@@ -46,6 +46,13 @@ export function useUploadQueue({ send, confirm, onFinished }: Options) {
   const [running, setRunning] = useState(false);
   const nextId = useRef(1);
   const controller = useRef<AbortController | null>(null);
+  // Mirrors of the state, read when a run ends to pick up what was added meanwhile.
+  const latest = useRef(items);
+  const busy = useRef(false);
+
+  useEffect(() => {
+    latest.current = items;
+  }, [items]);
 
   const patch = useCallback((id: number, changes: Partial<UploadItem>) => {
     setItems((current) => current.map((item) => (item.id === id ? { ...item, ...changes } : item)));
@@ -72,8 +79,17 @@ export function useUploadQueue({ send, confirm, onFinished }: Options) {
 
   /** `onBegin` runs once the upload is really going, after any question was answered. */
   const start = async (onBegin?: () => void) => {
-    if (running) return;
-    const todo = items.filter((item) => item.status !== 'done' && item.status !== 'uploading');
+    if (busy.current) return;
+    busy.current = true;
+    await run(
+      latest.current.filter((item) => item.status !== 'done' && item.status !== 'uploading'),
+      onBegin,
+    );
+    busy.current = false;
+  };
+
+  /** Uploads `todo`, then carries on with whatever was queued while it ran. */
+  const run = async (todo: UploadItem[], onBegin?: () => void): Promise<void> => {
     if (todo.length === 0) return;
 
     let mode: ConflictMode = 'fail';
@@ -126,6 +142,11 @@ export function useUploadQueue({ send, confirm, onFinished }: Options) {
     controller.current = null;
     setRunning(false);
     onFinished?.();
+
+    // Files dropped or picked during the run join it, unless the run was cancelled.
+    if (abort.signal.aborted) return;
+    const added = latest.current.filter((item) => item.status === 'queued' && !ids.has(item.id));
+    await run(added);
   };
 
   const cancel = () => controller.current?.abort();

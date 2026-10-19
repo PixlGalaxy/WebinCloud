@@ -23,7 +23,7 @@ import { useTheme } from '../../context/ThemeContext';
 import { useArchives } from '../../context/ArchiveContext';
 import Navbar from '../../components/Navbar';
 import Footer from '../../components/Footer';
-import { useUploads, useUploadsFinished } from '../../context/UploadContext';
+import { useUploadDropTarget, useUploads, useUploadsFinished } from '../../context/UploadContext';
 import { btn, card, errorBox, input } from '../../components/ui/styles';
 import { formatSize } from '../files/paths';
 import FileIcon from '../files/FileIcon';
@@ -127,6 +127,7 @@ const PublicSharePage = () => {
 
   const uploads = useUploads();
   const shareScope = { kind: 'share', segment, name: shareName } as const;
+  useUploadDropTarget(shareScope, innerPath, !!info?.unlocked && !!info.allowUpload);
   useUploadsFinished(() => {
     if (info?.allowDownload) void loadEntries(innerPath);
   });

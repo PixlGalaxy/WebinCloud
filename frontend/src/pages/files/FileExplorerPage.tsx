@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState, type DragEvent } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import {
   ClipboardPaste,
@@ -37,8 +37,7 @@ import { useArchives } from '../../context/ArchiveContext';
 import { useClipboard } from '../../context/ClipboardContext';
 import { useTransfers } from '../../context/TransferContext';
 import Modal from '../../components/ui/Modal';
-import { pickedFromDrop } from '../../components/upload/useUploadQueue';
-import { useUploads, useUploadsFinished } from '../../context/UploadContext';
+import { useUploadDropTarget, useUploads, useUploadsFinished } from '../../context/UploadContext';
 import { btn, card, errorBox, input, label } from '../../components/ui/styles';
 import Breadcrumbs from './Breadcrumbs';
 import ConflictModal from './ConflictModal';
@@ -64,7 +63,6 @@ const FileExplorerPage = () => {
   const [listing, setListing] = useState<Listing | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [dragging, setDragging] = useState(false);
   const [newFolder, setNewFolder] = useState<string | null>(null);
   const [renaming, setRenaming] = useState<{ entry: DirEntry; value: string } | null>(null);
   const [deleting, setDeleting] = useState<DirEntry | null>(null);
@@ -239,18 +237,11 @@ const FileExplorerPage = () => {
     }
   };
 
-  const onDrop = (e: DragEvent) => {
-    e.preventDefault();
-    setDragging(false);
-    if (listing?.canWrite) {
-      void pickedFromDrop(e.dataTransfer).then((picked) => uploads.addPicked(picked, { kind: 'user' }, path));
-    }
-  };
-
   const formatDate = (iso: string) =>
     new Intl.DateTimeFormat(language, { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(iso));
 
   const canWrite = listing?.canWrite ?? false;
+  useUploadDropTarget({ kind: 'user' }, path, canWrite);
 
   // The table renders either the folder listing or the search hits. Hidden
   // entries are left out unless shown; for search hits that also covers matches
@@ -271,15 +262,7 @@ const FileExplorerPage = () => {
   const cutPaths = clip?.mode === 'cut' ? new Set(clip.entries.map((e) => e.path)) : null;
 
   return (
-    <div
-      onDragOver={(e) => {
-        e.preventDefault();
-        if (canWrite) setDragging(true);
-      }}
-      onDragLeave={() => setDragging(false)}
-      onDrop={onDrop}
-      className="space-y-4"
-    >
+    <div className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <Breadcrumbs path={path} rootLabel={t('files.root')} />
 
@@ -463,7 +446,7 @@ const FileExplorerPage = () => {
         </div>
       )}
 
-      <div className={`${card} overflow-hidden ${dragging ? 'ring-2 ring-[var(--accent-500)]' : ''}`}>
+      <div className={`${card} overflow-hidden`}>
         {loading || searching ? (
           <div className="flex justify-center p-12">
             <Loader2 className="animate-spin text-[var(--accent-500)]" size={28} />
