@@ -92,4 +92,8 @@ export interface Share {
   expires_at: string | null;
   created_at: string;
   updated_at: string;
+  /** Last time anyone used the link, ISO; NULL if never. */
+  last_accessed_at: string | null;
+  /** Since when the shared item has been gone, ISO; NULL while it exists. */
+  missing_since: string | null;
 }

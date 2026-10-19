@@ -1,5 +1,5 @@
 import { randomBytes, createHmac, timingSafeEqual } from 'crypto';
-import { promises as fs } from 'fs';
+import { promises as fs, existsSync, readdirSync } from 'fs';
 import { basename } from 'path';
 import type { Db } from '../../db/client.js';
 import type { Share, User } from '../../types/index.js';
@@ -9,8 +9,11 @@ import { normalizeRelPath, resolveSafePath } from '../files/path-safety.js';
 import { MAX_PASSWORD_LENGTH } from '../users/validation.js';
 import type { PathName } from '../path-names/path-names.service.js';
 import { logFileAction, userActor } from '../../activity.js';
+import { logger } from '../../logger.js';
 
 export interface ShareView extends Omit<Share, 'password_hash'> {
+  /** When the link goes away unless its item comes back; null while it exists. */
+  removesAt: string | null;
   pathName: string | null;
   segment: string;
   url: string;
@@ -35,6 +38,12 @@ export interface UpdateShareInput {
   expiresAt?: string | null;
   pathNameId?: string | null;
 }
+
+/** How long a link outlives its deleted item, in case it is uploaded again. */
+export const MISSING_GRACE_MS = 48 * 60 * 60 * 1000;
+
+/** Uses closer together than this share one database write; apps may poll a link every few seconds. */
+const TOUCH_INTERVAL_MS = 60 * 1000;
 
 /** First segments of the sub-routes in public-shares.routes.ts (/list, /download, /archive/:id...). */
 const PUBLIC_ACTIONS = new Set(['unlock', 'list', 'download', 'archive', 'upload']);
@@ -79,6 +88,8 @@ function optionalPassword(value: unknown): string | null {
 }
 
 export class SharesService {
+  private lastTouched = new Map<string, number>();
+
   constructor(
     private db: Db,
     private dataRoot: string,
@@ -105,6 +116,9 @@ export class SharesService {
       url: `/public/${encodeURIComponent(segment)}/${encodeUrlPath(share.url_name)}`,
       hasPassword: share.password_hash !== null,
       expired: isExpired(share),
+      removesAt: share.missing_since
+        ? new Date(new Date(share.missing_since).getTime() + MISSING_GRACE_MS).toISOString()
+        : null,
     };
   }
 
@@ -112,7 +126,65 @@ export class SharesService {
     const rows = this.db
       .prepare('SELECT * FROM shares WHERE owner_user_id = ? ORDER BY created_at DESC')
       .all(userId) as Share[];
-    return rows.map((row) => this.toView(row));
+    // Checked here too, so a file deleted over SMB shows its warning right away.
+    return this.reconcile(rows).map((row) => this.toView(row));
+  }
+
+  /** Records a use of the link, at most once a minute per link. */
+  touch(share: Share): void {
+    const now = Date.now();
+    if (now - (this.lastTouched.get(share.id) ?? 0) < TOUCH_INTERVAL_MS) return;
+    this.lastTouched.set(share.id, now);
+    this.db.prepare('UPDATE shares SET last_accessed_at = ? WHERE id = ?').run(new Date(now).toISOString(), share.id);
+  }
+
+  /** Every link checked against the disk; run periodically. */
+  sweepMissing(): void {
+    this.reconcile(this.db.prepare('SELECT * FROM shares').all() as Share[]);
+  }
+
+  /**
+   * Notes which links lost their item and which got it back, and removes those
+   * gone longer than MISSING_GRACE_MS. Returns the links that remain.
+   */
+  private reconcile(rows: Share[]): Share[] {
+    // An unmounted or emptied volume (a stopped Unraid array, say) would make
+    // every item look deleted; that is never a reason to drop every link.
+    let volumeUp = false;
+    try {
+      volumeUp = readdirSync(this.dataRoot).length > 0;
+    } catch {
+      volumeUp = false;
+    }
+    if (!volumeUp) return rows;
+
+    const now = Date.now();
+    const kept: Share[] = [];
+    for (const share of rows) {
+      let exists = false;
+      try {
+        exists = existsSync(resolveSafePath(this.dataRoot, share.target_path));
+      } catch {
+        exists = false;
+      }
+
+      if (exists) {
+        if (share.missing_since !== null) {
+          this.db.prepare('UPDATE shares SET missing_since = NULL WHERE id = ?').run(share.id);
+          share.missing_since = null;
+        }
+      } else if (share.missing_since === null) {
+        share.missing_since = new Date(now).toISOString();
+        this.db.prepare('UPDATE shares SET missing_since = ? WHERE id = ?').run(share.missing_since, share.id);
+      } else if (now - new Date(share.missing_since).getTime() >= MISSING_GRACE_MS) {
+        this.db.prepare('DELETE FROM shares WHERE id = ?').run(share.id);
+        this.lastTouched.delete(share.id);
+        logger.info(`Removed the link to ${share.target_path}: it has been missing for 48 hours`);
+        continue;
+      }
+      kept.push(share);
+    }
+    return kept;
   }
 
   private assertOwnedAlias(pathNameId: string, userId: string): void {

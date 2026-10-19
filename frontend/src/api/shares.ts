@@ -26,6 +26,12 @@ export interface Share {
   expires_at: string | null;
   expired: boolean;
   created_at: string;
+  /** Last time anyone used the link; null if never. */
+  last_accessed_at: string | null;
+  /** Since when the file or folder has been gone; null while it exists. */
+  missing_since: string | null;
+  /** When the server removes the link unless the item comes back. */
+  removesAt: string | null;
 }
 
 export interface CreateShareInput {

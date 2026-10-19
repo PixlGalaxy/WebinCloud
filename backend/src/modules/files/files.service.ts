@@ -6,7 +6,7 @@ import type { User } from '../../types/index.js';
 import { badRequest, conflict, notFound } from '../../errors.js';
 import { accessFrom, getAccess, listGrants, requireRead, requireWrite } from '../permissions/access-check.js';
 import { requireTreeWrite } from '../permissions/tree-access.js';
-import { forgetSharesUnder, moveSharesUnder } from '../shares/share-paths.js';
+import { markSharesMissing, moveSharesUnder } from '../shares/share-paths.js';
 import { assertValidName, joinRelPath, parentOf, resolveSafePath } from './path-safety.js';
 import { inlineMimeOf, isTextFile, previewKindOf, type PreviewKind } from './mime.js';
 import { logFileAction, userActor } from '../../activity.js';
@@ -363,7 +363,7 @@ export class FilesService {
       if ((err as NodeJS.ErrnoException).code === 'ENOENT') throw notFound();
       throw err;
     }
-    forgetSharesUnder(this.db, relPath);
+    markSharesMissing(this.db, relPath);
     if (stats && !stats.isDirectory()) void this.thumbnails.evict(absolute, stats);
 
     logFileAction(userActor(user), 'deleted', kind, basename(relPath), absolute);

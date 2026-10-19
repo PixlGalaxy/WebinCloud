@@ -130,6 +130,9 @@ export function createApp(db: Db, config: EnvConfig): express.Application {
 
   // Keeps the temp volume from growing without bound on a long-lived server.
   setInterval(() => void archives.sweep(), 15 * 60 * 1000).unref();
+  // Links whose file or folder is gone: flagged, then removed after 48 hours.
+  shares.sweepMissing();
+  setInterval(() => shares.sweepMissing(), 15 * 60 * 1000).unref();
   app.use('/api/archives', createArchivesRoutes(t, archives));
   app.use('/api/transfers', createTransfersRoutes(t, transfers));
 

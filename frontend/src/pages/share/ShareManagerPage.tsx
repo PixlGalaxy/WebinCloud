@@ -1,8 +1,10 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import {
+  AlertTriangle,
   AppWindow,
   Calendar,
+  Clock,
   Check,
   ExternalLink,
   File as FileIcon,
@@ -192,9 +194,18 @@ const ShareManagerPage = () => {
                         <FileIcon size={20} className="mt-0.5 shrink-0 text-slate-400" />
                       )}
                       <div className="min-w-0 flex-1">
+                        {/* The item's current name: a link keeps its URL when the item is renamed. */}
                         <p className="truncate font-medium text-slate-900 dark:text-slate-100" title={group.targetPath}>
-                          {group.links[0].name}
+                          {group.targetPath.slice(group.targetPath.lastIndexOf('/') + 1)}
                         </p>
+                        {group.links[0].removesAt && (
+                          <p className="mt-1 flex items-start gap-1.5 text-xs text-rose-600 dark:text-rose-400">
+                            <AlertTriangle size={13} className="mt-px shrink-0" />
+                            {t(group.links[0].target_type === 'folder' ? 'share.missingFolder' : 'share.missingFile', {
+                              date: formatDate(group.links[0].removesAt),
+                            })}
+                          </p>
+                        )}
                       </div>
                       {group.links.length > 1 && (
                         <span className="shrink-0 rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-600 dark:bg-slate-800 dark:text-slate-300">
@@ -250,6 +261,13 @@ const ShareManagerPage = () => {
                             {share.expires_at
                               ? `${share.expired ? t('share.expired') : t('share.expiresOn')} ${formatDate(share.expires_at)}`
                               : t('share.neverExpires')}
+                          </span>
+
+                          <span className="flex items-center gap-1 rounded-full bg-slate-100 px-2 py-0.5 text-slate-500 dark:bg-slate-800 dark:text-slate-400">
+                            <Clock size={11} />
+                            {share.last_accessed_at
+                              ? t('share.lastAccessed', { date: formatDate(share.last_accessed_at) })
+                              : t('share.neverAccessed')}
                           </span>
                         </div>
                       </div>

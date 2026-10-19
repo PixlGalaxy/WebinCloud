@@ -4,12 +4,17 @@ import type { Db } from '../../db/client.js';
 const UNDER = `(target_path = ? OR substr(target_path, 1, length(?) + 1) = ? || '/')`;
 
 /**
- * Links point at a path, so they are kept in step with what the app does to
- * it: a deleted item takes its links with it, instead of a later upload with
- * the same name being served under the old link.
+ * Flags the links to a deleted item at once, so their owner sees the warning
+ * without waiting for the next check. They stay for MISSING_GRACE_MS: an item
+ * uploaded again under the same name in that time is served by the old link.
  */
-export function forgetSharesUnder(db: Db, path: string): void {
-  db.prepare(`DELETE FROM shares WHERE ${UNDER}`).run(path, path, path);
+export function markSharesMissing(db: Db, path: string): void {
+  db.prepare(`UPDATE shares SET missing_since = ? WHERE missing_since IS NULL AND ${UNDER}`).run(
+    new Date().toISOString(),
+    path,
+    path,
+    path,
+  );
 }
 
 /**

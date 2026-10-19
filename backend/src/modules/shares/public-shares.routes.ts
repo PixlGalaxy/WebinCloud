@@ -100,6 +100,7 @@ export function createPublicShareRoutes(
     }
     // The owner lost access (grant revoked, account deactivated): the link is dead too.
     if (!shares.ownerAccess(share, share.target_path).read) return next(notFound());
+    shares.touch(share);
     (req as PublicRequest).share = share;
     next();
   };
