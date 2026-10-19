@@ -17,12 +17,19 @@ export interface RateLimiter {
   listBlocked(): { key: string; hits: number; retryAfterSeconds: number }[];
   /** Clears a key's counter early — the admin panel's "unblock" action. Returns false if it wasn't tracked. */
   clear(key: string): boolean;
+  /**
+   * Gives back the attempt this request used, once it turned out to be right,
+   * so signing in and out repeatedly never locks anyone out. Only that one
+   * attempt: failures already counted stay, or a valid login to one account
+   * would reset the count of guesses at another.
+   */
+  refund(req: Request): void;
 }
 
 /**
- * Fixed-window request counter kept in memory, per key. Counts every request
- * regardless of outcome, so it caps guessing attempts even before a handler
- * decides success or failure. A restart clears every counter, which is fine
+ * Fixed-window request counter kept in memory, per key. Every request counts
+ * when it arrives, so guesses are capped even before a handler decides the
+ * outcome; a handler refunds the ones that succeed. A restart clears every counter, which is fine
  * for a single-process, self-hosted server.
  */
 export function createRateLimiter(options: RateLimiterOptions): RateLimiter {
@@ -69,5 +76,13 @@ export function createRateLimiter(options: RateLimiterOptions): RateLimiter {
     return blocked;
   };
 
-  return { middleware, listBlocked, clear: (key) => hits.delete(key) };
+  const refund: RateLimiter['refund'] = (req) => {
+    const key = options.keyFn(req);
+    const timestamps = key === null ? undefined : hits.get(key);
+    if (!timestamps || timestamps.length === 0) return;
+    timestamps.pop();
+    if (timestamps.length === 0) hits.delete(key!);
+  };
+
+  return { middleware, listBlocked, clear: (key) => hits.delete(key), refund };
 }

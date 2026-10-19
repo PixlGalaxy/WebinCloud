@@ -173,6 +173,8 @@ export function createPublicShareRoutes(
       if (!(await shares.checkPassword(share, password))) {
         throw forbidden('shares.wrongPassword');
       }
+      unlockIpLimiter.refund(req);
+      unlockShareLimiter.refund(req);
 
       res.cookie(SHARE_COOKIE_PREFIX + share.id, shares.unlockToken(share), {
         httpOnly: true,

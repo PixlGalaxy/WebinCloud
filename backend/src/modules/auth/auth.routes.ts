@@ -72,6 +72,8 @@ export function createAuthRoutes(
         return res.status(401).json({ error: t('auth.invalidCredentials') });
       }
 
+      loginIpLimiter.refund(req);
+      loginAccountLimiter.refund(req);
       logger.auth.info(`Login as "${result.user.username}" from ${req.ip} succeeded`);
       if (result.mustChangePassword) {
         logger.auth.warn(`"${result.user.username}" is still using the default password and must change it`);
