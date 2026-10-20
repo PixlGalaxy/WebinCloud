@@ -36,11 +36,8 @@ function getDummyHash(): Promise<string> {
 export class AuthService {
   constructor(private db: Db, private sessionTtlHours: number) {}
 
-  async login(
-    usernameOrEmail: string,
-    password: string,
-    meta: { userAgent?: string; ip?: string },
-  ): Promise<{ user: User; sessionToken: string; mustChangePassword: boolean; mustCompleteSetup: boolean } | null> {
+  /** The active account these credentials belong to, or null; the same work either way. */
+  async verifyCredentials(usernameOrEmail: string, password: string): Promise<User | null> {
     const user = this.db
       .prepare('SELECT * FROM users WHERE (email = ? OR username = ?) AND is_active = 1')
       .get(usernameOrEmail, usernameOrEmail) as User | undefined;
@@ -49,7 +46,16 @@ export class AuthService {
       await verifyPassword(password, await getDummyHash());
       return null;
     }
-    if (!(await verifyPassword(password, user.password_hash))) return null;
+    return (await verifyPassword(password, user.password_hash)) ? user : null;
+  }
+
+  async login(
+    usernameOrEmail: string,
+    password: string,
+    meta: { userAgent?: string; ip?: string },
+  ): Promise<{ user: User; sessionToken: string; mustChangePassword: boolean; mustCompleteSetup: boolean } | null> {
+    const user = await this.verifyCredentials(usernameOrEmail, password);
+    if (!user) return null;
 
     // The seeded first-run account needs a full setup (username+email+password),
     // not just a password change — see bootstrap.ts and /auth/complete-setup.
@@ -110,6 +116,7 @@ export class AuthService {
     const newHash = await hashPassword(newPassword);
     this.db.prepare("UPDATE users SET password_hash = ?, updated_at = datetime('now') WHERE id = ?").run(newHash, userId);
     this.db.prepare('DELETE FROM sessions WHERE user_id = ?').run(userId);
+    this.db.prepare('DELETE FROM devices WHERE user_id = ?').run(userId);
     return true;
   }
 
@@ -131,6 +138,7 @@ export class AuthService {
       )
       .run(updates.username, updates.email, newHash, userId);
     this.db.prepare('DELETE FROM sessions WHERE user_id = ?').run(userId);
+    this.db.prepare('DELETE FROM devices WHERE user_id = ?').run(userId);
     return true;
   }
 

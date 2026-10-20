@@ -1,4 +1,4 @@
-import { Navigate, Outlet } from 'react-router-dom';
+import { Navigate, Outlet, useLocation } from 'react-router-dom';
 import { Loader2 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import Navbar from './Navbar';
@@ -16,9 +16,14 @@ function Spinner() {
 
 export function ProtectedRoute() {
   const { user, isLoading, mustChangePassword, mustCompleteSetup } = useAuth();
+  const location = useLocation();
 
   if (isLoading) return <Spinner />;
-  if (!user) return <Navigate to="/login" replace />;
+  if (!user) {
+    // A desktop app's approval page must survive signing in, or the app would wait forever.
+    const next = location.pathname === '/connect' ? `?next=${encodeURIComponent(location.pathname + location.search)}` : '';
+    return <Navigate to={`/login${next}`} replace />;
+  }
 
   return (
     <div className="min-h-screen flex flex-col bg-slate-50 dark:bg-slate-950">

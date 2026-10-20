@@ -6,6 +6,7 @@ import {
   Eye,
   EyeOff,
   Info,
+  Laptop,
   Link2,
   Loader2,
   Palette,
@@ -21,6 +22,7 @@ import {
 import { avatarsApi } from '../../api/users';
 import { api, ApiError } from '../../api/client';
 import { sharesApi, type PathName } from '../../api/shares';
+import { devicesApi, type Device } from '../../api/devices';
 import { useAuth } from '../../context/AuthContext';
 import { useI18n } from '../../i18n/I18nContext';
 import { useTheme, type ThemeMode } from '../../context/ThemeContext';
@@ -36,14 +38,17 @@ import Toast from '../../components/ui/Toast';
 import ThemePicker from '../../components/ThemePicker';
 import AvatarCropModal from '../../components/AvatarCropModal';
 
-type Section = 'account' | 'sharing' | 'appearance' | 'preferences';
+type Section = 'account' | 'devices' | 'sharing' | 'appearance' | 'preferences';
 
 function isSection(value: string | null): value is Section {
-  return value === 'account' || value === 'sharing' || value === 'appearance' || value === 'preferences';
+  return (
+    value === 'account' || value === 'devices' || value === 'sharing' || value === 'appearance' || value === 'preferences'
+  );
 }
 
 const SECTIONS: { key: Section; icon: LucideIcon; labelKey: TranslationKey }[] = [
   { key: 'account', icon: UserRound, labelKey: 'nav.account' },
+  { key: 'devices', icon: Laptop, labelKey: 'devices.title' },
   { key: 'sharing', icon: Link2, labelKey: 'nav.shareSettings' },
   { key: 'appearance', icon: Palette, labelKey: 'settings.appearanceTitle' },
   { key: 'preferences', icon: SlidersHorizontal, labelKey: 'settings.preferencesTitle' },
@@ -653,6 +658,88 @@ const PreferencesSection = () => {
   );
 };
 
+const PLATFORM_NAMES: Record<string, string> = { windows: 'Windows', macos: 'macOS', linux: 'Linux' };
+
+/** Desktop apps signed in to this account, each of which can be disconnected. */
+const DevicesSection = () => {
+  const { t, language } = useI18n();
+  const [devices, setDevices] = useState<Device[] | null>(null);
+  const [error, setError] = useState('');
+  const [revoking, setRevoking] = useState<string | null>(null);
+
+  useEffect(() => {
+    devicesApi
+      .list()
+      .then(setDevices)
+      .catch((err) => setError(err instanceof ApiError ? err.message : t('files.loadFailed')));
+  }, [t]);
+
+  // SQLite writes UTC as "YYYY-MM-DD HH:MM:SS", without the zone.
+  const formatDate = (value: string) =>
+    new Intl.DateTimeFormat(language, { dateStyle: 'medium', timeStyle: 'short' }).format(
+      new Date(`${value.replace(' ', 'T')}Z`),
+    );
+
+  const revoke = async (device: Device) => {
+    if (!window.confirm(t('devices.disconnectConfirm', { device: device.name }))) return;
+    setError('');
+    setRevoking(device.id);
+    try {
+      await devicesApi.revoke(device.id);
+      setDevices((current) => current?.filter((d) => d.id !== device.id) ?? null);
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : t('files.actionFailed'));
+    } finally {
+      setRevoking(null);
+    }
+  };
+
+  return (
+    <section className={`${card} p-6`}>
+      <h2 className="font-semibold text-slate-900 dark:text-slate-100">{t('devices.title')}</h2>
+      <p className="mt-1 mb-4 text-sm text-slate-500 dark:text-slate-400">{t('devices.hint')}</p>
+
+      {error && <div className={`${errorBox} mb-4`}>{error}</div>}
+
+      {devices === null ? (
+        !error && <Loader2 className="mx-auto animate-spin text-[var(--accent-500)]" size={24} />
+      ) : devices.length === 0 ? (
+        <p className="py-6 text-center text-sm text-slate-500 dark:text-slate-400">{t('devices.none')}</p>
+      ) : (
+        <ul className="divide-y divide-slate-200 dark:divide-slate-800">
+          {devices.map((device) => (
+            <li key={device.id} className="flex flex-wrap items-center gap-3 py-3">
+              <Laptop size={20} className="shrink-0 text-slate-400" />
+              <div className="min-w-0 flex-1">
+                <p className="truncate font-medium text-slate-900 dark:text-slate-100">
+                  {device.name}
+                  <span className="ml-2 text-xs font-normal text-slate-500 dark:text-slate-400">
+                    {PLATFORM_NAMES[device.platform] ?? t('devices.platformOther')}
+                  </span>
+                </p>
+                <p className="text-xs text-slate-500 dark:text-slate-400">
+                  {t('devices.connectedOn', { date: formatDate(device.createdAt) })}
+                  {device.lastSeenAt && ` · ${t('devices.lastSeen', { date: formatDate(device.lastSeenAt) })}`}
+                  {device.lastIp && ` · ${device.lastIp}`}
+                </p>
+              </div>
+              <button
+                type="button"
+                disabled={revoking === device.id}
+                onClick={() => void revoke(device)}
+                className={btn.secondary}
+              >
+                {revoking === device.id ? <Loader2 size={16} className="animate-spin" /> : <X size={16} />}
+                {t('devices.disconnect')}
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+    </section>
+  );
+};
+
 const SettingsPage = () => {
   const { t } = useI18n();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -679,6 +766,7 @@ const SettingsPage = () => {
 
         <div className="min-w-0 flex-1 space-y-6">
           {active === 'account' && <AccountSection />}
+          {active === 'devices' && <DevicesSection />}
           {active === 'sharing' && <SharingSection />}
           {active === 'appearance' && <AppearanceSection />}
           {active === 'preferences' && <PreferencesSection />}

@@ -1,5 +1,5 @@
 import { useState, type FormEvent } from 'react';
-import { Navigate } from 'react-router-dom';
+import { Navigate, useSearchParams } from 'react-router-dom';
 import { Eye, EyeOff, Lock, User as UserIcon, Loader2 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useI18n } from '../i18n/I18nContext';
@@ -20,8 +20,12 @@ const LoginPage = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const [searchParams] = useSearchParams();
+  // Only back to the device approval page: anything else could be an open redirect.
+  const requested = searchParams.get('next');
+  const next = requested && /^\/connect(\?|$)/.test(requested) ? requested : '/files';
 
-  if (!isLoading && user) return <Navigate to="/files" replace />;
+  if (!isLoading && user) return <Navigate to={next} replace />;
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();

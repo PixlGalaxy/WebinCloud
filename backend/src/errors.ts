@@ -15,6 +15,7 @@ export class AppError extends Error {
 }
 
 export const badRequest = (key: TranslationKey) => new AppError(400, key);
+export const unauthorized = (key: TranslationKey = 'auth.notAuthenticated') => new AppError(401, key);
 export const forbidden = (key: TranslationKey = 'auth.forbidden') => new AppError(403, key);
 export const notFound = (key: TranslationKey = 'error.notFound') => new AppError(404, key);
 export const conflict = (key: TranslationKey) => new AppError(409, key);

@@ -18,6 +18,9 @@ function identify(req: AuthenticatedRequest): { id: string; kind: 'user' | 'publ
   if (req.user && req.session) {
     return { id: `session:${req.session.id}`, kind: 'user', username: req.user.username };
   }
+  if (req.user && req.device) {
+    return { id: `device:${req.device.id}`, kind: 'user', username: req.user.username };
+  }
   const match = PUBLIC_SHARE_RE.exec(req.path);
   if (match) {
     return { id: `anon:${req.ip}:${match[1]}/${match[2]}`, kind: 'public' };

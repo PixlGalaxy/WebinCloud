@@ -17,6 +17,7 @@ import FileExplorerPage from './pages/files/FileExplorerPage';
 import ShareManagerPage from './pages/share/ShareManagerPage';
 import AdminPage from './pages/admin/AdminPage';
 import SettingsPage from './pages/settings/SettingsPage';
+import ConnectDevicePage from './pages/connect/ConnectDevicePage';
 import PublicSharePage from './pages/public/PublicSharePage';
 
 const App = () => (
@@ -41,6 +42,7 @@ const App = () => (
                     <Route path="/files/*" element={<FileExplorerPage />} />
                     <Route path="/share" element={<ShareManagerPage />} />
                     <Route path="/settings" element={<SettingsPage />} />
+                    <Route path="/connect" element={<ConnectDevicePage />} />
                     {/* My Account and Share Settings live inside Settings now; old links still land there. */}
                     <Route path="/profile" element={<Navigate to="/settings?section=account" replace />} />
                     <Route path="/share-settings" element={<Navigate to="/settings?section=sharing" replace />} />

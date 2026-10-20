@@ -64,6 +64,22 @@ export interface Session {
   pending_action: PendingAction | null;
 }
 
+export interface Device {
+  id: string;
+  user_id: string;
+  name: string;
+  platform: string;
+  access_hash: string | null;
+  access_expires_at: string | null;
+  refresh_hash: string;
+  previous_refresh_hash: string | null;
+  rotated_at: string | null;
+  refresh_expires_at: string;
+  created_at: string;
+  last_seen_at: string | null;
+  last_ip: string | null;
+}
+
 export interface FolderGrant {
   id: string;
   user_id: string;

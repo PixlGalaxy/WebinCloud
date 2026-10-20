@@ -98,7 +98,8 @@ export function createAuthRoutes(
   });
 
   router.post('/logout', requireAuth, (req: AuthenticatedRequest, res) => {
-    authService.logout(req.session!.id);
+    // A device signing out goes through DELETE /api/devices/current instead.
+    if (req.session) authService.logout(req.session.id);
     metrics.forgetUser(req.user!.username);
     logger.auth.info(`Logout as "${req.user!.username}" from ${req.ip}`);
     res.clearCookie('session', { path: '/' });
@@ -108,7 +109,7 @@ export function createAuthRoutes(
   // Same shape as /login, so a page reload restores the forced setup/password
   // prompt instead of leaving the user in front of an API that refuses them.
   router.get('/me', requireAuth, (req: AuthenticatedRequest, res) => {
-    const pending = req.session!.pending_action;
+    const pending = req.session?.pending_action;
     return res.json({
       user: toPublicUser(req.user!),
       mustChangePassword: pending === 'password',

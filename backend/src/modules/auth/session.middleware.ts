@@ -1,20 +1,35 @@
 import type { Request, Response, NextFunction } from 'express';
 import type { Db } from '../../db/client.js';
-import type { User, Session, PendingAction } from '../../types/index.js';
+import type { User, Session, PendingAction, Device } from '../../types/index.js';
 import type { Translate, TranslationKey } from '../../i18n/index.js';
 import { AuthService } from './auth.service.js';
+import type { DevicesService } from '../devices/devices.service.js';
 
 export interface AuthenticatedRequest extends Request {
   user?: User;
+  /** Set for the web interface, signed in with a cookie. */
   session?: Session;
+  /** Set for a desktop app or other client, signed in with a bearer token. */
+  device?: Device;
 }
 
-export function createSessionMiddleware(db: Db, sessionTtlHours: number) {
+export function createSessionMiddleware(db: Db, sessionTtlHours: number, devices: DevicesService) {
   const authService = new AuthService(db, sessionTtlHours);
 
   return (req: AuthenticatedRequest, _res: Response, next: NextFunction) => {
-    const token = req.cookies?.session as string | undefined;
-    if (token) {
+    // A bearer token is a deliberate choice by the client, so it wins over any cookie.
+    const bearer = /^Bearer\s+(\S+)$/i.exec(req.get('authorization') ?? '');
+    if (bearer) {
+      const result = devices.authenticate(bearer[1], req.ip);
+      if (result) {
+        req.user = result.user;
+        req.device = result.device;
+      }
+      return next();
+    }
+
+    const token = req.cookies?.session;
+    if (typeof token === 'string' && token) {
       const result = authService.getSessionByToken(token);
       if (result) {
         req.user = result.user;
@@ -43,10 +58,11 @@ const PENDING_ERROR: Record<PendingAction, TranslationKey> = {
 
 export function createAuthGuards(t: Translate) {
   function requireAuth(req: AuthenticatedRequest, res: Response, next: NextFunction) {
-    if (!req.user || !req.session) {
+    if (!req.user || (!req.session && !req.device)) {
       return res.status(401).json({ error: t('auth.notAuthenticated') });
     }
-    const pending = req.session.pending_action;
+    // Devices never carry a pending action: they cannot sign in with the default password.
+    const pending = req.session?.pending_action;
     if (pending && !ALLOWED_WHILE_PENDING[pending].has(req.originalUrl.split('?')[0])) {
       return res.status(403).json({ error: t(PENDING_ERROR[pending]) });
     }

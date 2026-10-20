@@ -8,6 +8,9 @@ import { createTranslator } from './i18n/index.js';
 import { requestLogger } from './middleware/request-logger.js';
 import { createSessionMiddleware } from './modules/auth/session.middleware.js';
 import { createAuthRoutes } from './modules/auth/auth.routes.js';
+import { AuthService } from './modules/auth/auth.service.js';
+import { DevicesService } from './modules/devices/devices.service.js';
+import { createDevicesRoutes } from './modules/devices/devices.routes.js';
 import { hashPassword, verifyPassword } from './modules/auth/password.js';
 import { createUsersRoutes } from './modules/users/users.routes.js';
 import { createLogsRoutes } from './modules/logs/logs.routes.js';
@@ -87,7 +90,9 @@ export function createApp(db: Db, config: EnvConfig): express.Application {
   const smallJson = express.json({ limit: '1mb' });
   app.use((req, res, next) => (req.path === '/api/files/content' ? largeJson : smallJson)(req, res, next));
   app.use(cookieParser());
-  app.use(createSessionMiddleware(db, config.SESSION_TTL_HOURS));
+  const devices = new DevicesService(db);
+  devices.pruneExpired();
+  app.use(createSessionMiddleware(db, config.SESSION_TTL_HOURS, devices));
   // After the session middleware so req.user/req.session are already resolved.
   app.use(createConnectionTracker(metrics));
 
@@ -121,6 +126,10 @@ export function createApp(db: Db, config: EnvConfig): express.Application {
 
   const { router: authRoutes, loginIpLimiter, loginAccountLimiter } = createAuthRoutes(db, config, t, metrics);
   app.use('/api/auth', authRoutes);
+  app.use(
+    '/api/devices',
+    createDevicesRoutes(devices, new AuthService(db, config.SESSION_TTL_HOURS), t, loginIpLimiter, loginAccountLimiter),
+  );
   app.use('/api/users', createUsersRoutes(db, t, metrics));
   app.use('/api/logs', createLogsRoutes(t));
   ensureAvatarsDir(config);
