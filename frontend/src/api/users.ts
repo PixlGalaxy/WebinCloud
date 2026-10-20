@@ -1,3 +1,4 @@
+import type { Device } from './devices';
 import { api, ApiError } from './client';
 import type { User } from './types';
 
@@ -32,6 +33,10 @@ export const usersApi = {
   create: (input: CreateUserInput) => api.post<User>('/users', input),
   update: (id: string, input: UpdateUserInput) => api.patch<User>(`/users/${id}`, input),
   remove: (id: string) => api.del<void>(`/users/${id}`),
+  /** Admin only: the user's connected desktop apps. */
+  devices: (id: string) => api.get<Device[]>(`/users/${id}/devices`),
+  revokeDevice: (id: string, deviceId: string) =>
+    api.del<void>(`/users/${id}/devices/${encodeURIComponent(deviceId)}`),
 };
 
 export const avatarsApi = {

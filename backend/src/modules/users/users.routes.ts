@@ -7,8 +7,10 @@ import { asyncHandler } from '../../middleware/async-handler.js';
 import { routeParam } from '../../route-params.js';
 import { UsersService, type CreateUserInput, type UpdateUserInput } from './users.service.js';
 import type { MetricsService } from '../admin/metrics.service.js';
+import type { DevicesService } from '../devices/devices.service.js';
+import { logger } from '../../logger.js';
 
-export function createUsersRoutes(db: Db, t: Translate, metrics: MetricsService): Router {
+export function createUsersRoutes(db: Db, t: Translate, metrics: MetricsService, devices: DevicesService): Router {
   const router = Router();
   const users = new UsersService(db, metrics);
   const { requireAuth, requireAdmin } = createAuthGuards(t);
@@ -31,6 +33,21 @@ export function createUsersRoutes(db: Db, t: Translate, metrics: MetricsService)
       res.json(await users.update(routeParam(req.params.id), req.body as UpdateUserInput));
     }),
   );
+
+  // A user's connected desktop apps, so an admin can cut off one (a lost
+  // laptop, say) without resetting the password and signing out all the rest.
+  // Seeing and disconnecting only: an admin never signs a device in for someone.
+  router.get('/:id/devices', (req, res) => {
+    const user = users.get(routeParam(req.params.id));
+    res.json(devices.list(user.id));
+  });
+
+  router.delete('/:id/devices/:deviceId', (req: AuthenticatedRequest, res) => {
+    const user = users.get(routeParam(req.params.id));
+    devices.revoke(user.id, routeParam(req.params.deviceId));
+    logger.auth.info(`"${req.user!.username}" disconnected a device of "${user.username}" from ${req.ip}`);
+    res.status(204).end();
+  });
 
   router.delete('/:id', (req: AuthenticatedRequest, res) => {
     users.remove(routeParam(req.params.id), req.user!.id);

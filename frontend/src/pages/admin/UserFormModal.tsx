@@ -6,6 +6,7 @@ import { ApiError } from '../../api/client';
 import { useI18n } from '../../i18n/I18nContext';
 import Modal from '../../components/ui/Modal';
 import FolderTree from '../../components/FolderTree';
+import UserDevicesPanel from './UserDevicesPanel';
 import { btn, errorBox, input, label } from '../../components/ui/styles';
 
 interface Props {
@@ -103,8 +104,10 @@ const UserFormModal = ({ user, onClose, onSaved }: Props) => {
   };
 
   return (
-    <Modal title={isNew ? t('users.new') : t('users.edit')} onClose={onClose} size="lg">
-      <form onSubmit={submit} className="space-y-6">
+    <Modal title={isNew ? t('users.new') : t('users.edit')} onClose={onClose} size={isNew ? 'lg' : 'xl'}>
+      {/* Editing shows the user's devices beside the form; side by side on wide screens, below it otherwise. */}
+      <div className={isNew ? '' : 'grid gap-6 lg:grid-cols-[minmax(0,1fr)_20rem]'}>
+      <form onSubmit={submit} className="min-w-0 space-y-6">
         {error && <div className={errorBox}>{error}</div>}
 
         <section className="space-y-4">
@@ -324,6 +327,8 @@ const UserFormModal = ({ user, onClose, onSaved }: Props) => {
           </button>
         </div>
       </form>
+      {!isNew && <UserDevicesPanel userId={user.id} />}
+      </div>
     </Modal>
   );
 };

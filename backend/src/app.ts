@@ -130,7 +130,7 @@ export function createApp(db: Db, config: EnvConfig): express.Application {
     '/api/devices',
     createDevicesRoutes(devices, new AuthService(db, config.SESSION_TTL_HOURS), t, loginIpLimiter, loginAccountLimiter),
   );
-  app.use('/api/users', createUsersRoutes(db, t, metrics));
+  app.use('/api/users', createUsersRoutes(db, t, metrics, devices));
   app.use('/api/logs', createLogsRoutes(t));
   ensureAvatarsDir(config);
   app.use('/api/avatars', createAvatarsRoutes(db, config, t));

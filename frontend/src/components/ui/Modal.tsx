@@ -5,12 +5,12 @@ interface Props {
   title: string;
   onClose: () => void;
   children: ReactNode;
-  size?: 'md' | 'lg';
+  size?: 'md' | 'lg' | 'xl';
   /** false hides the close button and ignores Escape/backdrop clicks, for prompts the user must resolve. */
   dismissible?: boolean;
 }
 
-const WIDTH = { md: 'max-w-lg', lg: 'max-w-3xl' };
+const WIDTH = { md: 'max-w-lg', lg: 'max-w-3xl', xl: 'max-w-6xl' };
 
 const Modal = ({ title, onClose, children, size = 'md', dismissible = true }: Props) => {
   useEffect(() => {
