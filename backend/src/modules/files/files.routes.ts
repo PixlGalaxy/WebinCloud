@@ -138,10 +138,11 @@ export function createFilesRoutes(
         req.user!,
         queryPath(req.query.path),
       );
-      const thumbnail = await thumbnails.get(absolute, name, { mtimeMs, size: fileSize }, thumbnailSize(req.query.size));
+      const format = req.query.format === 'png' ? 'png' : 'webp';
+      const thumbnail = await thumbnails.get(absolute, name, { mtimeMs, size: fileSize }, thumbnailSize(req.query.size), format);
       if (!thumbnail) throw notFound();
 
-      res.setHeader('Content-Type', 'image/webp');
+      res.setHeader('Content-Type', format === 'png' ? 'image/png' : 'image/webp');
       res.setHeader('X-Content-Type-Options', 'nosniff');
       // The URL carries the file's modified time, so a cached copy can never be stale.
       res.setHeader('Cache-Control', 'private, max-age=31536000, immutable');

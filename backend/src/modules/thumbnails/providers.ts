@@ -7,6 +7,12 @@ import { runFfmpeg } from './ffmpeg.js';
 export const THUMBNAIL_SIZES = { sm: 128, lg: 512 } as const;
 export type ThumbnailSize = keyof typeof THUMBNAIL_SIZES;
 
+/**
+ * WebP for the browser (small); PNG for the desktop app, whose File Explorer
+ * thumbnails go through Windows' image decoders, which may lack WebP.
+ */
+export type ThumbnailFormat = 'webp' | 'png';
+
 const TIMEOUT_MS = 20_000;
 
 export interface ThumbnailContext {
@@ -16,6 +22,7 @@ export interface ThumbnailContext {
   output: string;
   /** Longest side of the result, in pixels. */
   pixels: number;
+  format: ThumbnailFormat;
 }
 
 /**
@@ -57,7 +64,12 @@ const SAFE_INPUT = [
 /** ffmpeg would hand these to image2 by their extension, so they are steered to the JPEG demuxer. */
 const FORCED_DEMUXER: Record<string, string> = { '.jpg': 'jpeg_pipe', '.jpeg': 'jpeg_pipe' };
 
-const encode = (output: string, pixels: number) => [
+const encode = (output: string, pixels: number, format: ThumbnailFormat) =>
+  format === 'png'
+    ? ['-frames:v', '1', '-vf', scale(pixels), '-c:v', 'png', '-f', 'image2', '-update', '1', '-y', output]
+    : encodeWebp(output, pixels);
+
+const encodeWebp = (output: string, pixels: number) => [
   '-frames:v',
   '1',
   '-vf',
@@ -82,28 +94,28 @@ async function frame(ffmpeg: string, args: string[], output: string): Promise<vo
 const image: ThumbnailProvider = {
   id: 'image',
   supports: (name) => previewKindOf(name) === 'image',
-  async generate({ ffmpeg, input, output, pixels }) {
+  async generate({ ffmpeg, input, output, pixels, format }) {
     const forced = FORCED_DEMUXER[extname(input).toLowerCase()];
     if (forced) {
       try {
-        return await frame(ffmpeg, [...SAFE_INPUT, '-f', forced, '-i', input, ...encode(output, pixels)], output);
+        return await frame(ffmpeg, [...SAFE_INPUT, '-f', forced, '-i', input, ...encode(output, pixels, format)], output);
       } catch {
         // Not a JPEG after all (a WebP saved as .jpg, say): let ffmpeg detect it among the allowed demuxers.
       }
     }
-    await frame(ffmpeg, [...SAFE_INPUT, '-i', input, ...encode(output, pixels)], output);
+    await frame(ffmpeg, [...SAFE_INPUT, '-i', input, ...encode(output, pixels, format)], output);
   },
 };
 
 const video: ThumbnailProvider = {
   id: 'video',
   supports: (name) => previewKindOf(name) === 'video',
-  async generate({ ffmpeg, input, output, pixels }) {
+  async generate({ ffmpeg, input, output, pixels, format }) {
     // A frame a second in usually beats the black one at zero; a clip shorter than that has none, so retry from the start.
     try {
-      await frame(ffmpeg, [...SAFE_INPUT, '-ss', '1', '-i', input, ...encode(output, pixels)], output);
+      await frame(ffmpeg, [...SAFE_INPUT, '-ss', '1', '-i', input, ...encode(output, pixels, format)], output);
     } catch {
-      await frame(ffmpeg, [...SAFE_INPUT, '-i', input, ...encode(output, pixels)], output);
+      await frame(ffmpeg, [...SAFE_INPUT, '-i', input, ...encode(output, pixels, format)], output);
     }
   },
 };

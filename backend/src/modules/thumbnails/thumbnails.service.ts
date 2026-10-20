@@ -4,13 +4,15 @@ import { dirname, join } from 'path';
 import type { EnvConfig } from '../../config/env.js';
 import { logger } from '../../logger.js';
 import { runFfmpeg } from './ffmpeg.js';
-import { PROVIDERS, THUMBNAIL_SIZES, type ThumbnailProvider, type ThumbnailSize } from './providers.js';
+import { type ThumbnailFormat, PROVIDERS, THUMBNAIL_SIZES, type ThumbnailProvider, type ThumbnailSize } from './providers.js';
 
 /** Generating is CPU-heavy, so a burst of requests waits its turn instead of forking a process each. */
 const MAX_PARALLEL = 2;
 
 /** Thumbnails of files changed or deleted this long ago are removed. */
 const MAX_AGE_MS = 30 * 24 * 60 * 60 * 1000;
+
+const FORMATS: ThumbnailFormat[] = ['webp', 'png'];
 
 export class ThumbnailService {
   private available = false;
@@ -49,19 +51,23 @@ export class ThumbnailService {
     return this.available && this.providerFor(name) !== undefined;
   }
 
-  private keyFor(absolute: string, stats: { mtimeMs: number; size: number }, pixels: number): string {
-    return createHash('sha1').update(`${absolute}|${stats.mtimeMs}|${stats.size}|${pixels}`).digest('hex');
+  private keyFor(absolute: string, stats: { mtimeMs: number; size: number }, pixels: number, format: ThumbnailFormat): string {
+    // WebP keys keep their original form, so existing cached thumbnails stay valid.
+    const suffix = format === 'webp' ? '' : `|${format}`;
+    return createHash('sha1').update(`${absolute}|${stats.mtimeMs}|${stats.size}|${pixels}${suffix}`).digest('hex');
   }
 
-  private pathFor(key: string): string {
-    return join(this.cacheDir, key.slice(0, 2), `${key}.webp`);
+  private pathFor(key: string, format: ThumbnailFormat): string {
+    return join(this.cacheDir, key.slice(0, 2), `${key}.${format}`);
   }
 
   /** Deletes every cached size for this exact file version, so a removed or renamed file leaves nothing behind. */
   async evict(absolute: string, stats: { mtimeMs: number; size: number }): Promise<void> {
     await Promise.all(
-      Object.values(THUMBNAIL_SIZES).map((pixels) =>
-        fs.rm(this.pathFor(this.keyFor(absolute, stats, pixels)), { force: true }).catch(() => undefined),
+      Object.values(THUMBNAIL_SIZES).flatMap((pixels) =>
+        FORMATS.map((format) =>
+          fs.rm(this.pathFor(this.keyFor(absolute, stats, pixels, format), format), { force: true }).catch(() => undefined),
+        ),
       ),
     );
   }
@@ -93,13 +99,14 @@ export class ThumbnailService {
     name: string,
     stats: { mtimeMs: number; size: number },
     size: ThumbnailSize,
+    format: ThumbnailFormat = 'webp',
   ): Promise<string | null> {
     const provider = this.providerFor(name);
     if (!this.available || !provider) return null;
 
     const pixels = THUMBNAIL_SIZES[size];
-    const key = this.keyFor(absolute, stats, pixels);
-    const cached = this.pathFor(key);
+    const key = this.keyFor(absolute, stats, pixels, format);
+    const cached = this.pathFor(key, format);
 
     if (await fs.stat(cached).catch(() => null)) {
       this.touch(cached);
@@ -113,7 +120,7 @@ export class ThumbnailService {
         // Written beside the final name and renamed, so a reader never sees half a file.
         const partial = `${cached}.${process.pid}.part`;
         try {
-          await provider.generate({ ffmpeg: this.ffmpeg, input: absolute, output: partial, pixels });
+          await provider.generate({ ffmpeg: this.ffmpeg, input: absolute, output: partial, pixels, format });
           await fs.rename(partial, cached);
         } catch (err) {
           await fs.rm(partial, { force: true }).catch(() => undefined);
