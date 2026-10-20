@@ -6,11 +6,13 @@ interface AppConfig {
   appName: string;
   /** Browser tab title. */
   appTitle: string;
+  /** The product, from the server's BRANDING; empty until loaded. Not editable in the admin panel. */
+  brand: string;
   /** Admin Panel -> Settings: whether hidden files show for users who haven't chosen. */
   showHiddenFilesDefault: boolean;
 }
 
-const FALLBACK: AppConfig = { appName: 'Webin Cloud', appTitle: 'Webin Cloud Server', showHiddenFilesDefault: false };
+const FALLBACK: AppConfig = { appName: 'Webin Cloud', appTitle: 'Webin Cloud Server', brand: '', showHiddenFilesDefault: false };
 
 const AppConfigContext = createContext<AppConfig>(FALLBACK);
 
@@ -24,6 +26,7 @@ export function AppConfigProvider({ children }: { children: ReactNode }) {
         setBranding({
           appName: config.appName || FALLBACK.appName,
           appTitle: config.appTitle || FALLBACK.appTitle,
+          brand: config.brand || '',
           showHiddenFilesDefault: config.showHiddenFiles === true,
         }),
       )

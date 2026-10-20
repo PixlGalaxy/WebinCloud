@@ -1,19 +1,26 @@
 import { FaGithub } from 'react-icons/fa';
 import { useI18n } from '../i18n/I18nContext';
+import { useAppConfig } from '../context/AppConfigContext';
 
 const linkClass =
   'inline-flex items-center gap-1.5 text-[var(--accent-600)] hover:text-[var(--accent-700)] hover:underline dark:text-[var(--accent-400)] dark:hover:text-[var(--accent-300)] transition-colors';
 
 const Footer = () => {
   const { t } = useI18n();
+  // Set only by the server's BRANDING (WC or RC); the admin panel cannot change it.
+  const { brand } = useAppConfig();
   const year = new Date().getFullYear();
 
   return (
     <footer className="border-t border-slate-200 bg-slate-100/60 backdrop-blur-sm dark:border-slate-800 dark:bg-slate-800/40">
       <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-center gap-x-3 gap-y-1 px-6 py-3 text-center text-xs text-slate-500 dark:text-slate-400">
-        <span>{t('footer.copyright', { year })}</span>
-
-        <span aria-hidden="true">&middot;</span>
+        {/* Left out until the server says which product it is, so it never flashes the wrong one. */}
+        {brand && (
+          <>
+            <span>{t('footer.copyright', { year, name: brand })}</span>
+            <span aria-hidden="true">&middot;</span>
+          </>
+        )}
         <a
           href="https://github.com/PixlGalaxy"
           target="_blank"

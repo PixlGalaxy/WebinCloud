@@ -4,6 +4,8 @@ export interface RuntimeConfig {
   language: string;
   appName: string;
   appTitle: string;
+  /** The product (Webin Cloud Server / Ryzhell Cloud Server), set by the server's BRANDING only. */
+  brand: string;
   /** Admin-set system-wide default appearance for signed-out screens — see ThemeContext. */
   defaultThemeMode: string;
   defaultThemeSkin: string;

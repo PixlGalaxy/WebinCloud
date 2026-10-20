@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { copyFileSync, existsSync, mkdirSync, readdirSync } from 'fs';
+import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync } from 'fs';
 import { createWriteStream, promises as fs } from 'fs';
 import { pipeline } from 'stream/promises';
 import { join } from 'path';
@@ -30,18 +30,35 @@ function hasValidSignature(name: string, head: Buffer): boolean {
 }
 
 /**
- * Copies the packaged defaults into the app data volume the first time, so the
- * files are there for an administrator to replace without rebuilding the image.
+ * BRANDING_DIR only holds files an administrator replaced; everything else is
+ * served from the selected brand's defaults. Older versions copied the
+ * defaults there on first boot, which would pin those logos even after
+ * switching BRANDING, so copies identical to any brand's default are removed.
+ * Anything else in the folder is a real replacement and stays.
  */
-export function seedBranding(config: EnvConfig): void {
+export function prepareBranding(config: EnvConfig): void {
   mkdirSync(config.BRANDING_DIR, { recursive: true });
+  logger.info(`Branding: ${config.BRAND.name} (${config.BRAND.id})`);
 
-  const packaged = readdirSync(config.DEFAULT_BRANDING_DIR).filter((name) => name in ASSETS);
-  for (const name of packaged) {
-    const target = join(config.BRANDING_DIR, name);
-    if (existsSync(target)) continue;
-    copyFileSync(join(config.DEFAULT_BRANDING_DIR, name), target);
-    logger.info(`Branding: installed default ${name}`);
+  let packs: string[] = [];
+  try {
+    packs = readdirSync(config.BRANDING_PACKS_DIR).map((brand) => join(config.BRANDING_PACKS_DIR, brand));
+  } catch {
+    return;
+  }
+
+  for (const name of Object.keys(ASSETS)) {
+    const custom = join(config.BRANDING_DIR, name);
+    if (!existsSync(custom)) continue;
+    const content = readFileSync(custom);
+    const isDefault = packs.some((pack) => {
+      const original = join(pack, name);
+      return existsSync(original) && readFileSync(original).equals(content);
+    });
+    if (isDefault) {
+      rmSync(custom, { force: true });
+      logger.info(`Branding: removed an unmodified copy of the default ${name}`);
+    }
   }
 }
 

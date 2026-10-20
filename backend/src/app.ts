@@ -22,7 +22,7 @@ import { ArchivesService } from './modules/archives/archives.service.js';
 import { createArchivesRoutes } from './modules/archives/archives.routes.js';
 import { TransfersService } from './modules/transfers/transfers.service.js';
 import { createTransfersRoutes } from './modules/transfers/transfers.routes.js';
-import { createBrandingRoutes, seedBranding } from './modules/branding/branding.routes.js';
+import { createBrandingRoutes, prepareBranding } from './modules/branding/branding.routes.js';
 import { SharesService } from './modules/shares/shares.service.js';
 import { createSharesRoutes } from './modules/shares/shares.routes.js';
 import { createPublicPathResolver, createPublicShareRoutes } from './modules/shares/public-shares.routes.js';
@@ -96,7 +96,7 @@ export function createApp(db: Db, config: EnvConfig): express.Application {
   // After the session middleware so req.user/req.session are already resolved.
   app.use(createConnectionTracker(metrics));
 
-  seedBranding(config);
+  prepareBranding(config);
   app.use('/api/branding', createBrandingRoutes(config, t));
 
   app.get('/api/health', (_req, res) => res.json({ status: 'ok' }));
@@ -108,6 +108,8 @@ export function createApp(db: Db, config: EnvConfig): express.Application {
       language: settings.getString(SETTINGS_KEYS.defaultLanguage, config.LANGUAGE),
       appName: settings.getString(SETTINGS_KEYS.appName, config.APP_NAME),
       appTitle: settings.getString(SETTINGS_KEYS.appTitle, config.APP_TITLE),
+      // The product, set only by BRANDING: unlike the names above, the admin panel cannot change it.
+      brand: config.BRAND.title,
       defaultThemeMode: settings.getString(SETTINGS_KEYS.defaultThemeMode, 'dark'),
       defaultThemeSkin: settings.getString(SETTINGS_KEYS.defaultThemeSkin, 'default'),
       // Only a display default: hidden entries are still listed by the API and

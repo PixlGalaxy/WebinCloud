@@ -27,6 +27,10 @@ export interface EnvConfig {
   LOCALES_DIR: string;
   /** Administrator-replaceable logo and icons, inside the app data volume. */
   BRANDING_DIR: string;
+  /** Which product this server presents as, from BRANDING (WC or RC). */
+  BRAND: Brand;
+  /** Folder holding one sub-folder of default logos per brand (branding/WebinCloud, branding/RyzhellCloud). */
+  BRANDING_PACKS_DIR: string;
   /** Packaged fallbacks shipped with the image. */
   DEFAULT_BRANDING_DIR: string;
   SESSION_TTL_HOURS: number;
@@ -63,6 +67,31 @@ export interface EnvConfig {
   TRUST_PROXY_SETTING: string;
 }
 
+export interface Brand {
+  id: 'WebinCloud' | 'RyzhellCloud';
+  /** Short name, the default app name. */
+  name: string;
+  /** Full name, the default page title. */
+  title: string;
+}
+
+/**
+ * The products this server can present as. They differ only in name, logo,
+ * icon and favicon; BRANDING picks one (WC by default).
+ */
+export const BRANDS: Record<string, Brand> = {
+  WC: { id: 'WebinCloud', name: 'Webin Cloud', title: 'Webin Cloud Server' },
+  RC: { id: 'RyzhellCloud', name: 'Ryzhell Cloud', title: 'Ryzhell Cloud Server' },
+};
+
+function brandFrom(value: string | undefined): Brand {
+  if (!value) return BRANDS.WC;
+  const key = value.trim().toUpperCase();
+  const brand = BRANDS[key] ?? Object.values(BRANDS).find((b) => b.id.toUpperCase() === key);
+  if (!brand) logger.warn(`Unknown BRANDING "${value}", using WC (Webin Cloud). Valid values: ${Object.keys(BRANDS).join(', ')}`);
+  return brand ?? BRANDS.WC;
+}
+
 export function loadEnv(): EnvConfig {
   const env = process.env;
   // Production unless asked otherwise: a missing or mistyped NODE_ENV must
@@ -74,6 +103,9 @@ export function loadEnv(): EnvConfig {
   const APPDATA_ROOT = resolve(env.APPDATA_ROOT || (isProd ? '/appdata' : join(repoRoot, 'appdata')));
   // Scratch space for generated archives; safe to wipe at any time.
   const TEMP_ROOT = resolve(env.TEMP_ROOT || (isProd ? '/temp' : join(repoRoot, 'temp')));
+
+  const brand = brandFrom(env.BRANDING);
+  const brandingPacks = resolve(env.BRANDING_PACKS_DIR || join(repoRoot, 'branding'));
 
   if (env.LANGUAGE && !isLanguage(env.LANGUAGE)) {
     logger.warn(`Unsupported LANGUAGE "${env.LANGUAGE}", falling back to "en"`);
@@ -107,7 +139,10 @@ export function loadEnv(): EnvConfig {
     THUMBNAILS_DIR: env.THUMBNAILS_DIR || join(TEMP_ROOT, 'thumbnails'),
     FFMPEG_PATH: env.FFMPEG_PATH || 'ffmpeg',
     BRANDING_DIR: env.BRANDING_DIR || join(APPDATA_ROOT, 'branding'),
-    DEFAULT_BRANDING_DIR: env.DEFAULT_BRANDING_DIR || join(repoRoot, 'branding'),
+    BRAND: brand,
+    BRANDING_PACKS_DIR: brandingPacks,
+    // The brand's own logos, unless a folder is forced.
+    DEFAULT_BRANDING_DIR: env.DEFAULT_BRANDING_DIR || join(brandingPacks, brand.id),
     // Shared with the frontend so both render the same strings.
     LOCALES_DIR: resolve(env.LOCALES_DIR || join(repoRoot, 'locales')),
     SESSION_TTL_HOURS: parseInt(env.SESSION_TTL_HOURS || '24', 10),
@@ -119,8 +154,8 @@ export function loadEnv(): EnvConfig {
     // Off by default: behind plain-HTTP nginx a Secure cookie would never be sent back.
     COOKIE_SECURE: env.COOKIE_SECURE === 'true',
     LANGUAGE: isLanguage(env.LANGUAGE) ? env.LANGUAGE : 'en',
-    APP_TITLE: env.APP_TITLE || 'Webin Cloud Server',
-    APP_NAME: env.APP_NAME || 'Webin Cloud',
+    APP_TITLE: env.APP_TITLE || brand.title,
+    APP_NAME: env.APP_NAME || brand.name,
     MAXMIND_LICENSE_KEY: env.MAXMIND_LICENSE_KEY || undefined,
     GEOIP_DIR: env.GEOIP_DIR || join(APPDATA_ROOT, 'geoip'),
     BACKEND_VERSION: backendVersion,
