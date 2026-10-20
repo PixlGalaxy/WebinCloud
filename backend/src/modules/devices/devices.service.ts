@@ -242,6 +242,15 @@ export class DevicesService {
     return { user, device };
   }
 
+  /** Whether the device is still signed in: not disconnected, and its user still active. */
+  isSignedIn(deviceId: string): boolean {
+    return (
+      this.db
+        .prepare('SELECT 1 FROM devices d JOIN users u ON u.id = d.user_id WHERE d.id = ? AND u.is_active = 1')
+        .get(deviceId) !== undefined
+    );
+  }
+
   private activeUser(userId: string): User | null {
     return (this.db.prepare('SELECT * FROM users WHERE id = ? AND is_active = 1').get(userId) as User | undefined) ?? null;
   }

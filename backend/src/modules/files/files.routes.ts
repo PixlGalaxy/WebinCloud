@@ -227,12 +227,22 @@ export function createFilesRoutes(
     });
   });
 
+  /** Optional ISO date for an upload's modification time, between 1980 and 2200; anything else is a 400. */
+  function modifiedAtParam(value: unknown): Date | null {
+    if (value === undefined || value === '') return null;
+    const time = typeof value === 'string' ? Date.parse(value) : NaN;
+    if (Number.isNaN(time) || time < Date.UTC(1980, 0, 1) || time > Date.UTC(2200, 0, 1)) throw badRequest('files.invalidPath');
+    return new Date(time);
+  }
+
   router.post('/upload', (req: AuthenticatedRequest, res, next) => {
     let folderPath: string;
     let onConflict: ConflictMode;
+    let modifiedAt: Date | null;
     try {
       folderPath = queryPath(req.query.path);
       onConflict = conflictMode(req.query.onConflict);
+      modifiedAt = modifiedAtParam(req.query.modifiedAt);
     } catch (err) {
       return next(err);
     }
@@ -240,7 +250,7 @@ export function createFilesRoutes(
     // Files arrive as soon as the body is piped, so the folder has to exist first.
     files
       .prepareUploadFolder(req.user!, folderPath)
-      .then(() => receiveUpload(req, res, next, folderPath, onConflict))
+      .then(() => receiveUpload(req, res, next, folderPath, onConflict, modifiedAt))
       .catch(next);
   });
 
@@ -250,6 +260,7 @@ export function createFilesRoutes(
     next: NextFunction,
     folderPath: string,
     onConflict: ConflictMode,
+    modifiedAt: Date | null,
   ): void {
     const parser = busboy({ headers: req.headers, limits: { fileSize: uploadLimit(config) } });
     const partials: string[] = [];
@@ -296,6 +307,8 @@ export function createFilesRoutes(
             if (truncated) throw failure;
             return fs.rename(partial, target.absolute);
           })
+          // Desktop apps keep the file's own modification time, so both copies compare equal afterwards.
+          .then(() => (modifiedAt ? fs.utimes(target.absolute, new Date(), modifiedAt) : undefined))
           .then(() => {
             saved.push(target.relPath);
             logFileAction(userActor(req.user!), 'uploaded', 'file', basename(target.absolute), target.absolute);

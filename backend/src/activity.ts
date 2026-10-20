@@ -1,4 +1,8 @@
 import { logger } from './logger.js';
+import { changes } from './modules/devices/change-bus.js';
+
+/** Actions that only read; everything else changed the folder the item is in. */
+const READ_ONLY = new Set(['downloaded', 'shared', 'unshared']);
 
 /** Who did it, as it reads in the [SYSTEM] log. */
 export type Actor = string;
@@ -16,4 +20,5 @@ export function logFileAction(
   absolute: string,
 ): void {
   logger.system.info(`${actor} ${action} ${kind}: ${name} on ${absolute}`);
+  if (!READ_ONLY.has(action)) changes.touched(absolute);
 }

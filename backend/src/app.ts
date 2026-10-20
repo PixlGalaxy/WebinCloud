@@ -11,6 +11,7 @@ import { createAuthRoutes } from './modules/auth/auth.routes.js';
 import { AuthService } from './modules/auth/auth.service.js';
 import { DevicesService } from './modules/devices/devices.service.js';
 import { createDevicesRoutes } from './modules/devices/devices.routes.js';
+import { changes } from './modules/devices/change-bus.js';
 import { hashPassword, verifyPassword } from './modules/auth/password.js';
 import { createUsersRoutes } from './modules/users/users.routes.js';
 import { createLogsRoutes } from './modules/logs/logs.routes.js';
@@ -91,6 +92,7 @@ export function createApp(db: Db, config: EnvConfig): express.Application {
   app.use((req, res, next) => (req.path === '/api/files/content' ? largeJson : smallJson)(req, res, next));
   app.use(cookieParser());
   const devices = new DevicesService(db);
+  changes.init(config.DATA_ROOT);
   devices.pruneExpired();
   app.use(createSessionMiddleware(db, config.SESSION_TTL_HOURS, devices));
   // After the session middleware so req.user/req.session are already resolved.
@@ -130,7 +132,7 @@ export function createApp(db: Db, config: EnvConfig): express.Application {
   app.use('/api/auth', authRoutes);
   app.use(
     '/api/devices',
-    createDevicesRoutes(devices, new AuthService(db, config.SESSION_TTL_HOURS), t, loginIpLimiter, loginAccountLimiter),
+    createDevicesRoutes(db, devices, new AuthService(db, config.SESSION_TTL_HOURS), t, loginIpLimiter, loginAccountLimiter),
   );
   app.use('/api/users', createUsersRoutes(db, t, metrics, devices));
   app.use('/api/logs', createLogsRoutes(t));

@@ -7,6 +7,7 @@ import { badRequest, conflict, notFound } from '../../errors.js';
 import { accessFrom, getAccess, listGrants, requireRead, requireWrite } from '../permissions/access-check.js';
 import { requireTreeWrite } from '../permissions/tree-access.js';
 import { markSharesMissing, moveSharesUnder } from '../shares/share-paths.js';
+import { changes } from '../devices/change-bus.js';
 import { assertValidName, joinRelPath, parentOf, resolveSafePath } from './path-safety.js';
 import { inlineMimeOf, isTextFile, previewKindOf, type PreviewKind } from './mime.js';
 import { logFileAction, userActor } from '../../activity.js';
@@ -331,6 +332,8 @@ export class FilesService {
 
       await fs.rename(from, to);
       if (!stats.isDirectory()) void this.thumbnails.evict(from, stats);
+      // The folder it left changed too; the log line below covers the one it went to.
+      changes.touched(from);
 
       const target = joinRelPath(destinationFolder, finalName);
       moveSharesUnder(this.db, relPath, target);
