@@ -10,6 +10,8 @@ import { AuthService, DEFAULT_PASSWORD, isThemeMode, isThemeSkin, toPublicUser }
 import { logger } from '../../logger.js';
 import { AppError, badRequest } from '../../errors.js';
 import { createRateLimiter, type RateLimiter } from '../../middleware/rate-limit.js';
+import { getOrCreateSecret } from '../../db/settings.js';
+import { KnownBrowsers } from './known-browsers.js';
 import type { MetricsService } from '../admin/metrics.service.js';
 import { EMAIL, MAX_PASSWORD_LENGTH, USERNAME, assertUniqueUser } from '../users/validation.js';
 
@@ -35,15 +37,20 @@ export function createAuthRoutes(
     keyFn: (req) => `ip:${req.ip}`,
     describe: (req) => `login attempts from ${req.ip}`,
   });
-  const loginAccountLimiter = createRateLimiter({
-    windowMs: loginWindowMs,
-    max: config.LOGIN_RATE_LIMIT_MAX,
-    keyFn: (req) => {
-      const value = (req.body as { usernameOrEmail?: unknown })?.usernameOrEmail;
-      return typeof value === 'string' && value.trim() ? `account:${value.trim().toLowerCase()}` : null;
-    },
-    describe: (req) => `login attempts against "${(req.body as { usernameOrEmail?: string }).usernameOrEmail}"`,
-  });
+  // Browsers that signed in to the account before are exempt, so wrong guesses
+  // from elsewhere cannot lock its owner out (see KnownBrowsers).
+  const knownBrowsers = new KnownBrowsers(db, getOrCreateSecret(db, 'known_browser_secret'), config.COOKIE_SECURE);
+  const loginAccountLimiter = knownBrowsers.exempt(
+    createRateLimiter({
+      windowMs: loginWindowMs,
+      max: config.LOGIN_RATE_LIMIT_MAX,
+      keyFn: (req) => {
+        const value = (req.body as { usernameOrEmail?: unknown })?.usernameOrEmail;
+        return typeof value === 'string' && value.trim() ? `account:${value.trim().toLowerCase()}` : null;
+      },
+      describe: (req) => `login attempts against "${(req.body as { usernameOrEmail?: string }).usernameOrEmail}"`,
+    }),
+  );
 
   router.post('/login', loginIpLimiter.middleware, loginAccountLimiter.middleware, async (req: AuthenticatedRequest, res) => {
     const { usernameOrEmail, password } = req.body as { usernameOrEmail?: unknown; password?: unknown };
@@ -86,6 +93,7 @@ export function createAuthRoutes(
         path: '/',
         maxAge: config.SESSION_TTL_HOURS * 60 * 60 * 1000,
       });
+      knownBrowsers.remember(res, result.user.id);
       return res.json({
         user: toPublicUser(result.user),
         mustChangePassword: result.mustChangePassword,

@@ -72,11 +72,17 @@ export function createPublicShareRoutes(
     keyFn: (req) => `ip:${req.ip}`,
     describe: (req) => `share unlock attempts from ${req.ip}`,
   });
+  // Keyed by the link's id, after `load` resolved it: the same link is reachable
+  // by its token and by its alias in any letter case, and every spelling must
+  // draw from one budget.
   const unlockShareLimiter = createRateLimiter({
     windowMs: unlockWindowMs,
     max: config.SHARE_UNLOCK_RATE_LIMIT_MAX,
-    keyFn: (req) => `share:${req.params.segment}/${req.params.name}`,
-    describe: (req) => `share unlock attempts against ${req.params.segment}/${req.params.name}`,
+    keyFn: (req) => {
+      const share = (req as PublicRequest).share;
+      return share ? `share:${share.id}` : null;
+    },
+    describe: (req) => `share unlock attempts against share ${(req as PublicRequest).share?.id}`,
   });
 
   /**
@@ -171,8 +177,8 @@ export function createPublicShareRoutes(
   router.post(
     '/unlock',
     unlockIpLimiter.middleware,
-    unlockShareLimiter.middleware,
     load,
+    unlockShareLimiter.middleware,
     asyncHandler(async (req: any, res) => {
       const share = (req as PublicRequest).share!;
       const { password } = req.body as { password?: unknown };
