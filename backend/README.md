@@ -56,6 +56,7 @@ All settings are environment variables; `.env.example` at the repository root li
 | `APPDATA_ROOT` | `../appdata` (`/appdata` in production) | SQLite database, avatars, branding, GeoIP cache |
 | `TEMP_ROOT` | `../temp` (`/temp` in production) | Generated ZIPs and thumbnails |
 | `LANGUAGE` | `en` | Default language: `en`, `es`, `fr` or `nl` |
+| `BRANDING` | `WC` | Brand: `WC` (Webin Cloud) or `RC` (Ryzhell Cloud). Picks the default logos from `branding/<Brand>/`, the default app name and title, and the footer name |
 | `FFMPEG_PATH` | `ffmpeg` | ffmpeg executable used for thumbnails |
 | `TRUST_PROXY` | *(loopback only)* | Extra proxies trusted for `X-Forwarded-For`: `uniquelocal`, `linklocal`, `cloudflare`, IPs or CIDRs, comma-separated. Also editable in Admin → Settings |
 
@@ -73,6 +74,7 @@ src/
   i18n/                server-side translations (strings live in ../locales)
   modules/
     auth/              login, sessions, first-run setup, password hashing
+    devices/           desktop apps: browser (PKCE) and password sign-in, bearer tokens
     users/             user management (admin)
     permissions/       folder grants and the access checks used everywhere
     files/             browse, upload, download, edit, move, search, path safety
@@ -90,12 +92,13 @@ Every module follows the same pattern: a `*.routes.ts` file with the Express rou
 
 ## API overview
 
-Everything is under `/api`. Signed-in requests are authenticated with the `session` cookie set by `POST /api/auth/login`.
+Everything is under `/api`. The web interface is authenticated with the `session` cookie set by `POST /api/auth/login`. Desktop apps and other clients send `Authorization: Bearer <access token>` instead, obtained through `/api/devices` (see [docs/desktop-api.md](../docs/desktop-api.md)); every endpoint accepts either.
 
 | Prefix | Access | Purpose |
 | --- | --- | --- |
 | `/api/health`, `/api/config` | public | Health check and runtime UI settings |
 | `/api/auth` | public / signed in | Login, logout, current user, password change, first-run setup |
+| `/api/devices` | public / signed in | Device sign-in (browser approval or password), token refresh, list and disconnect your devices |
 | `/api/files` | signed in + folder grant | List, upload, download, preview, edit, rename, move, delete, search, change events (SSE) |
 | `/api/archives` | signed in | Start, poll and download ZIP jobs |
 | `/api/transfers` | signed in | Start and poll copy jobs |
@@ -103,7 +106,7 @@ Everything is under `/api`. Signed-in requests are authenticated with the `sessi
 | `/api/public/:segment/:name` | anyone with the link | Public share: info, unlock, list, download, ZIP, upload |
 | `/api/avatars` | signed in | Profile pictures |
 | `/api/branding` | public read, admin write | Logo, icon and favicon |
-| `/api/users`, `/api/permissions`, `/api/logs`, `/api/admin` | admin | User and grant management, logs, dashboard, settings |
+| `/api/users`, `/api/permissions`, `/api/logs`, `/api/admin` | admin | User and grant management (including a user's devices), logs, dashboard, settings |
 
 Errors are JSON objects of the form `{ "error": "<translated message>" }`. See [SECURITY.md](../SECURITY.md) for the access rules of each endpoint.
 

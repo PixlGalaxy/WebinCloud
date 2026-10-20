@@ -66,7 +66,8 @@ src/
 | `/public/:segment/:name` | Public share link | public |
 | `/files/*` | File explorer | signed in |
 | `/share` | Share link manager | signed in |
-| `/settings` | User settings | signed in |
+| `/settings` | User settings (account, devices, sharing, appearance, preferences) | signed in |
+| `/connect` | Approve a desktop app; opened by the app, returns a one-time code to it | signed in (sends you through login and back) |
 | `/admin` | Admin panel | admin |
 
 ## Talking to the API

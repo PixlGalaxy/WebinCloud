@@ -19,11 +19,34 @@ Only the latest published image (`ghcr.io/pixlgalaxy/webincloud:latest`) and the
 
 | | |
 | --- | --- |
-| Last review | 2026-10-11 |
-| Scope | Backend (`backend/src`, every route), frontend previewers, `nginx.conf`, `Dockerfile`, `entrypoint.sh` |
+| Last review | 2026-10-20 |
+| Scope | Backend (`backend/src`, every route, including the device API), frontend previewers, `nginx.conf`, `Dockerfile`, `entrypoint.sh`, GitHub workflows |
 | Dependency audit | `npm audit --omit=dev`: 0 known vulnerabilities in backend and frontend |
 | Open critical / high findings | **None** |
-| Open medium findings | 1 (see [Open findings](#open-findings)) |
+| Open medium findings | 4 (see [Open findings](#open-findings)) |
+
+### Fixed in the 2026-10-19 / 2026-10-20 review
+
+A full review in five parts (code execution, SQL, file access, authentication, client side and infrastructure), followed by a review of the new device API before it was released.
+
+| Severity | Issue | Fix |
+| --- | --- | --- |
+| **High** | **Thumbnails could read other files.** ffmpeg picked its input format from the file's content, so an upload named `x.png` holding a concat list pointing at an HLS playlist made it read any video on the server, outside the user's folders, into the thumbnail. | ffmpeg may only open a fixed list of image and video demuxers (`-format_whitelist`, nested inputs included). `concat`, `hls` and `image2` are left out, and `.jpg` files are forced to the JPEG demuxer. Verified with the exploit chain against ffmpeg 8. |
+| **High** | **Anyone could claim a fresh install.** `admin` / `changeme` is public, so whoever reached a new instance first could complete the setup. | The default password is accepted only from the local network, for both login and setup. Every address the request carries (the connection, `X-Forwarded-For`, `X-Real-IP`, `CF-Connecting-IP`, `Forwarded`) must be private or loopback, so this also holds behind a reverse proxy whose trust is not configured yet. |
+| **High** (deployment) | **Development accounts in production.** The test accounts `admin/admin` and `user/user` were created, and existing accounts with those names reset, whenever `NODE_ENV` was not exactly `production`, for example when it was unset. | Production is the default: only `NODE_ENV=development` or `dev` turns on development mode. `npm run dev` sets it through `backend/dev.env`. |
+| Medium | **Deleting a folder ignored the parent's permission.** A user with write access to a granted folder could delete the whole folder, for everyone. | Deleting needs write access to the parent too, like renaming and moving. |
+| Medium | **Hidden content could be replaced or exposed.** With a non-inheriting grant, overwriting on upload, move or copy replaced items the user could not see, and moving a folder could carry hidden subfolders under a grant that exposed them. | Replacing an item needs write access to it; deleting or moving a folder needs write access to everything inside it. |
+| Medium | **Links followed the path, not the item.** After a file was deleted, an unrelated upload with the same name was served by the old link. | Links follow renames and moves made in the app. A link whose item is gone stops working and is removed after 48 hours unless the item comes back (by design, so a file can be replaced by deleting and re-uploading it). |
+| Medium | **ZIPs could pile up in `/temp`.** Finished archives were not counted, so a link holder could create copies of a whole folder in a loop. | At most 5 finished archives are kept per user or link; starting another drops the oldest. |
+| Medium | **The container ran everything as root**, including ffmpeg on uploaded files. | The backend and ffmpeg run as `PUID:PGID` (default `99:100`); see the README. |
+| Low | **Share password hashes were sent to their owner** by `GET/POST/PATCH /api/shares`. | Removed from the responses; `hasPassword` remains. |
+| Low | **Successful logins counted towards the rate limit**, so signing in and out about ten times locked the account. The admin panel showed only the IP counter, so unblocking the IP did not help. | Successful logins and share unlocks give their attempt back. IP Access also lists and unblocks locked accounts. |
+
+The device API itself was reviewed before release. Three issues were fixed: the password sign-in confirmed whether an account still had the default password, `localhost` was accepted as a redirect, and pending approvals had no per-user limit.
+
+Checked with end-to-end scripts against the Docker image, 100 checks in total:
+- 49 regression checks on files, shares, permissions, rate limits and archives;
+- 51 on devices: the PKCE flow, refresh rotation and reuse, revocation, permissions through a bearer token, and the admin endpoints.
 
 ### Fixed in the 2026-10-11 review
 
@@ -83,15 +106,19 @@ on the fixed code.
 Verified during the review:
 
 - **Passwords**: argon2id for both account passwords and share-link passwords. Account passwords need 8 to 256 characters, and share passwords at most 256.
-- **Sessions**: 256-bit random token in an `HttpOnly`, `SameSite=Lax` cookie. Only its SHA-256 hash is stored. Sessions expire server-side (`SESSION_TTL_HOURS`, expired rows pruned hourly) and are revoked on logout, password change, deactivation and role change. A session opened with default credentials is restricted server-side to the endpoint that fixes them.
+- **Sessions**: 256-bit random token in an `HttpOnly`, `SameSite=Lax` cookie. Only its SHA-256 hash is stored. Sessions expire server-side (`SESSION_TTL_HOURS`, expired rows pruned hourly) and are revoked on logout, password change, deactivation and role change. A session opened with default credentials is restricted server-side to the endpoint that fixes them, and the default password is accepted only from the local network.
+- **Devices** (desktop apps, [docs/desktop-api.md](docs/desktop-api.md)):
+  - **Tokens:** 256-bit bearer tokens, stored as SHA-256. Access tokens last 1 hour. Refresh tokens rotate on every use, and the device is signed out if a replaced one is used again.
+  - **Browser sign-in:** authorization code with PKCE (S256 only). Codes are single use, last 60 seconds and are bound to a loopback redirect (`127.0.0.1` / `[::1]`).
+  - **Who can enrol and disconnect:** devices cannot enrol other devices. A device has exactly its user's permissions. Devices are revoked with the user's sessions, and individually by the user or an admin (logged).
 - **CSRF**: `SameSite=Lax` plus a `Sec-Fetch-Site` check that refuses state-changing requests initiated from another site or a sibling subdomain.
 - **Authorization**: every `/api/*` router applies `requireAuth`, and the admin routers (`users`, `permissions`, `logs`, `admin`, `admin/ip-access`, branding writes) also apply `requireAdmin`. File access goes through `requireRead` / `requireWrite` against folder grants. Jobs (archives, transfers), shares and path names are checked for ownership.
 - **Path safety**: client paths go through `normalizeRelPath`, which rejects `..` and NUL, and then `resolveSafePath`, which keeps them inside `DATA_ROOT` both lexically and after resolving symlinks (`realpath`), so a link that leaves the volume is refused. File names are validated (`assertValidName`). Search, archive and copy walks use `lstat` and skip symlinks.
 - **SQL**: every query is a prepared statement with bound parameters. The single interpolated column name comes from a fixed union type.
 - **Content served inline**: the MIME types allowed inline never include `text/html` or `image/svg+xml`, so text, HTML and SVG files are served as `text/plain`, always with `nosniff`. The HTML preview runs in an `<iframe sandbox="allow-scripts">` with no `allow-same-origin`, so it gets an opaque origin.
 - **Uploads**: avatars accept PNG, JPEG, WebP or GIF up to 5 MB. Branding files are checked by magic bytes and limited to 5 MB. File uploads (signed-in and public) honour `MAX_UPLOAD_MB` per file. Files are written to a randomly named `.part` first and renamed when complete. Public uploads never overwrite existing files.
-- **Subprocesses**: ffmpeg runs through `execFile`, with no shell, a fixed argument list, an absolute input path and a timeout.
-- **Abuse limits**: login is rate-limited per IP and per account, and share unlocking per IP and per share. Archive and copy jobs are capped at 5 running per owner. JSON bodies are limited to 1 MB (10 MB for the text editor's save). Banned IPs are rejected before any other middleware. Restarting services from the admin panel is throttled through the database. Behind another reverse proxy, **Trusted proxies** (Admin → Settings, or `TRUST_PROXY`) must list that proxy so these limits see each visitor's real IP; only the listed proxies (plus the bundled nginx) are believed in `X-Forwarded-For`, so a client cannot forge its address.
+- **Subprocesses**: ffmpeg runs through `execFile`, with no shell, a fixed argument list, an absolute input path, a timeout and a whitelist of input formats, as an unprivileged user (`PUID`).
+- **Abuse limits**: login is rate-limited per IP and per account, and share unlocking per IP and per share. Archive and copy jobs are capped at 5 running per owner. JSON bodies are limited to 1 MB (10 MB for the text editor's save). Banned IPs are rejected before any other middleware. Restarting services from the admin panel is throttled through the database. Behind another reverse proxy, **Trusted proxies** (Admin → Settings, or `TRUST_PROXY`) must list that proxy so these limits see each visitor's real IP. Only the listed proxies (plus the bundled nginx) are believed in `X-Forwarded-For`. Note that with a broad value such as `uniquelocal`, any device that can reach the container directly from a private address can claim another IP, so expose the container port only to the proxy.
 - **Misc**: `x-powered-by` is disabled and `server_tokens` is off. The share-unlock cookie is an HMAC tied to the password hash and to a server-checked expiry, so changing the password or waiting 12 h invalidates it. It is compared in constant time. The backend listens on loopback only inside the container.
 
 ## Endpoint inventory
@@ -107,7 +134,11 @@ a share link (plus password cookie if the share has one).
 | `/api/branding/:name` | `POST`, `DELETE` | Admin | Magic-byte check, 5 MB cap |
 | `/api/auth/login` | `POST` | Public | Rate-limited per IP and per account |
 | `/api/auth/logout`, `/me`, `/appearance`, `/change-password` | `POST`/`GET` | Auth | Password change revokes all sessions |
-| `/api/auth/complete-setup` | `POST` | Auth (username `admin`) | Re-verifies current password |
+| `/api/auth/complete-setup` | `POST` | Auth (username `admin`) | Re-verifies current password; local network only |
+| `/api/devices/login` | `POST` | Public | Rate-limited like `/auth/login`; refuses the default password |
+| `/api/devices/token` | `POST` | Public (holder of a code + verifier, or a refresh token) | Codes single use and 60 s; refresh rotates |
+| `/api/devices/authorize` | `POST` | Auth (browser session only, not a device) | Loopback redirect, S256, max 10 pending per user |
+| `/api/devices`, `/api/devices/:id`, `/api/devices/current` | `GET`, `DELETE` | Auth, own devices | |
 | `/api/files` (`/`, `/download`, `/raw`, `/thumbnail`, `/content`, `/search`, `/events`) | `GET` | Auth + read grant | |
 | `/api/files` (`/mkdir`, `/rename`, `/move`, `/content`, `/upload`, `/check-conflicts`, `DELETE /`) | write methods | Auth + write grant | Rename/move also need write access to the parent |
 | `/api/archives` | `POST`, `GET /:id`, `GET /:id/download`, `DELETE /:id` | Auth, job owner | Max 500 items, per-entry read check |
@@ -118,7 +149,7 @@ a share link (plus password cookie if the share has one).
 | `/api/public/:segment/:name` | `GET /`, `POST /unlock` | Public / Link | Unlock is rate-limited |
 | `/api/public/:segment/:name` | `/list`, `/download`, `/archive*`, `/upload` | Link | Expiry, password, download/upload flags and the owner's current access are all checked |
 | `/api/public/<alias>/<folder>/.../<name>` | same as above | Public / Link | Path-name links span several segments; a resolver rewrites them to the token form (`/api/public/<id>/<name>/...`) before the router, so the same checks apply |
-| `/api/users`, `/api/permissions`, `/api/logs`, `/api/admin/*`, `/api/admin/ip-access/*` | all | Admin | |
+| `/api/users` (including `/:id/devices`), `/api/permissions`, `/api/logs`, `/api/admin/*`, `/api/admin/ip-access/*` | all | Admin | Disconnecting a user's device is logged |
 
 ## Open findings
 
@@ -128,14 +159,19 @@ design decision or is mitigated by how the app is deployed.
 ### Medium
 
 1. **No Content-Security-Policy.** The other headers are in place. A CSP (`default-src 'self'`, with exceptions for `blob:`/`data:` media and inline styles) would limit the impact of any future XSS. It needs testing against the PDF, video and office previewers before it is enabled, and the HTML preview (`<iframe srcdoc>` inherits the page's CSP) would need its own delivery path, since user HTML legitimately carries inline scripts.
+2. **CSS injection from a crafted `.docx`.** `docx-preview` copies colour values from the document into a `<style>` element unchecked. A crafted file can restyle the app page around its preview (phishing, UI redress) and make the browser fetch attacker URLs. No script runs. Fix: render it in a sandboxed iframe, or strip rules outside `.docx` after rendering.
+3. **Disk can still be filled through upload links.** There is no default `MAX_UPLOAD_MB`, no per-link or per-user quota, and no rate limit on public uploads.
+4. **Dependabot auto-merge publishes to `:latest`.** Unless `main` requires the image build to pass, a compromised dependency release could reach users without review. Require status checks, add a Dependabot cooldown, and pin GitHub Actions and the base image by digest.
 
 ### Low / informational
 
-- **Account lockout:** the per-account login limit (10 per 15 min by default) lets anyone who knows a username block that user's logins temporarily. This is an accepted trade-off against password guessing.
+- **Account lockout:** the per-account login limit (10 failures per 15 min by default) lets anyone who knows a username block that user's logins temporarily. This is an accepted trade-off against password guessing. An admin can lift it in IP Access.
+- **Share unlock limit per alias spelling:** aliases are matched case-insensitively, but the per-link unlock limit counts each spelling separately, so `Alice` and `ALICE` get separate budgets. The per-IP limit still applies.
 - **Guessable link URLs with path names:** each user gets a default path name equal to their username, so `/public/<username>/<file name>` can be guessed. Path-name links also show the item's folder path from the data root (`/public/<alias>/clients/acme/contract.pdf`) to anyone holding the link. Use the random-token URL, or a password, for anything sensitive.
 - **Upload limit is per file, not a quota:** `MAX_UPLOAD_MB` caps each file; there is still no per-user or per-link total, nor a rate limit on public uploads. Give upload links an expiry and a password, and watch free space.
 - **CSRF guard depends on `Sec-Fetch-Site`:** clients that omit the header (very old browsers, non-browser tools) fall back to `SameSite=Lax` alone, which does not cover sibling subdomains. Every current browser sends it.
-- **Container runs as root** (the Node process and the nginx master). Running Node as an unprivileged user would reduce the impact of a compromise, but bind-mounted volumes owned by the host user make this a breaking change for existing installs.
+- **nginx master runs as root** to bind port 80; its workers, the backend and ffmpeg do not.
+- **Changes over SMB are invisible to link tracking:** a file renamed outside the app looks deleted to its links (removed after 48 hours), and anything placed at a link's path within 48 hours of a deletion is served by it.
 - **`COOKIE_SECURE` defaults to `false`** and nginx sends no HSTS, because TLS is expected at an outer proxy. Production deployments must use HTTPS and set `COOKIE_SECURE=true`.
 - **Logs:** failed logins log the submitted username, which may contain a password typed into the wrong field. Logs are visible only to admins.
 - **Admins can demote or deactivate themselves** (only self-deletion is blocked), which can lock an instance out of its last admin. No security impact, but worth a guard.
@@ -143,7 +179,7 @@ design decision or is mitigated by how the app is deployed.
 
 ## Deployment checklist
 
-- [ ] Sign in and complete the first-run setup **before** exposing the instance.
+- [ ] Complete the first-run setup from the local network (the default password is refused from anywhere else).
 - [ ] Put the container behind HTTPS and set **Cookie secure** (Admin → Settings) / `COOKIE_SECURE=true`.
 - [ ] Add HSTS at the TLS-terminating proxy.
 - [ ] Do not publish port `4000`; only expose port `80` of the container (the backend listens on loopback anyway unless `HOST` is changed).
@@ -151,4 +187,6 @@ design decision or is mitigated by how the app is deployed.
 - [ ] Behind another reverse proxy, set **Trusted proxies** in Admin → Settings (for example `uniquelocal`) so logins, rate limits and bans see real client IPs.
 - [ ] Do not bind-mount directories that contain symlinks pointing outside the data folder.
 - [ ] Give upload links an expiry and a password, and watch free space on `/data` (the per-file cap is not a quota).
-- [ ] Back up the `/appdata` volume: it holds accounts, permissions, share links and the signing secret.
+- [ ] Back up the `/appdata` volume: it holds accounts, permissions, share links, devices and the signing secret.
+- [ ] Set `PUID`/`PGID` to the owner of your files (default `99:100`, nobody:users) and make sure `/data` is writable by it.
+- [ ] Do not set `NODE_ENV` to `development` or `dev` on a real instance.

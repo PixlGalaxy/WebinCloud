@@ -14,13 +14,15 @@ Everything runs in a single container: an nginx front end and a Node.js backend,
 ## Features
 
 - Accounts with an administrator role; the admin creates users and grants them folders as read-only or read-write.
-- File manager: upload by drag and drop with progress, download, create folders, rename, delete.
+- File manager: upload by dropping files or whole folders anywhere on the window, with a queue you can keep adding to while it uploads; download, create folders, rename, delete.
 - Recursive search from any folder, showing the full path of each match.
 - In-browser preview for images, PDF, video, audio and text, with syntax highlighting and an editor for text files.
 - Optional thumbnails of images and videos in the file list, loaded as you scroll, with a larger preview on hover.
-- Share links for a file or a folder, with optional password, optional expiry (never by default), and download and upload permissions handled separately.
+- Share links for a file or a folder, with optional password, optional expiry (never by default), and download and upload permissions handled separately. Each link shows when it was last used, follows its item when it is renamed or moved, and warns when the item is gone (see [Share links](#share-links)).
+- Desktop app for Windows that signs in with the browser and, in the coming versions, puts your files in File Explorer. Each user manages their connected devices, and admins can disconnect any of them (see [Desktop app](#desktop-app)).
 - ZIP downloads: pick several items, or a whole folder, and the archive is built in the background while you keep browsing.
 - English and Spanish, light and dark theme, and a replaceable logo and favicon.
+- Two brands from the same image, **Webin Cloud** and **Ryzhell Cloud**, chosen with the `BRANDING` variable (see [Branding](#branding)).
 
 ## Running it
 
@@ -57,6 +59,7 @@ services:
       - "8080:80"
     environment:
       LANGUAGE: en
+      BRANDING: WC        # WC = Webin Cloud, RC = Ryzhell Cloud
       PUID: 99
       PGID: 100
       UMASK: "002"
@@ -85,9 +88,26 @@ Inside the container:
 /data                     files your users see
 /appdata
   webincloud.sqlite       accounts, permissions, share links
-  branding/               logo.png, icon.png, favicon.ico
+  branding/               your replacements for logo.png, icon.png, favicon.ico (empty by default)
 /temp                     generated archives, disposable
 ```
+
+## Branding
+
+The same image serves two brands. `BRANDING` picks one:
+
+| `BRANDING` | Brand | Footer | Default app name and title |
+| --- | --- | --- | --- |
+| `WC` (default) | Webin Cloud | © *year* Webin Cloud Server | Webin Cloud / Webin Cloud Server |
+| `RC` | Ryzhell Cloud | © *year* Ryzhell Cloud Server | Ryzhell Cloud / Ryzhell Cloud Server |
+
+- **What it changes:** the logo, icon and favicon, the default app name and tab title, and the name in the footer.
+- **Fixed by `BRANDING`:** the footer always names one of these two brands. The admin panel cannot change it, and neither can any other variable.
+- **Still editable:** the app name, the title and the logos can be changed in **Admin Panel → Settings**. Logos replaced there, or dropped into `/appdata/branding`, take priority over the brand's own.
+- **Unknown values** fall back to `WC`, with a warning in the log.
+- **Where the brands live:** each brand's default logos are in `branding/<Brand>/` in this repository (`branding/WebinCloud`, `branding/RyzhellCloud`).
+
+Switching `BRANDING` on an existing install takes effect on the next start. Older versions copied the default logos into `/appdata/branding`; copies that were never modified are removed at start-up, so the new brand's logos show. Logos you uploaded yourself are kept.
 
 ## File ownership
 
@@ -111,7 +131,7 @@ Almost everything is configured from **Admin Panel → Settings** once the app i
 
 `.env` is now only for the very first boot's starting values, before the panel has anything saved. See `.env.example` for the full list with defaults.
 
-The logo and icons can still be replaced from the filesystem instead of the panel, if you prefer: they live in `/appdata/branding` (`logo.png`, `icon.png`, `favicon.ico`), and a reload picks up any change.
+The logo and icons can still be replaced from the filesystem instead of the panel, if you prefer: drop `logo.png`, `icon.png` or `favicon.ico` into `/appdata/branding` and a reload picks it up. Anything not replaced there comes from the brand set by `BRANDING`.
 
 ```
 docker cp my-logo.png webincloud:/appdata/branding/logo.png
@@ -132,6 +152,21 @@ For local development, the app may also seed `admin` / `admin` and `user` / `use
 | `DATA_ROOT` | `/data` | Files the users browse |
 | `APPDATA_ROOT` | `/appdata` | SQLite database and app metadata |
 | `TEMP_ROOT` | `/temp` | Temporary ZIP and scratch files |
+
+## Share links
+
+- **Last used:** each link shows when it was last opened, through the page or directly by its file URL.
+- **Renamed or moved items:** a link follows its item when you rename or move it in the app, or the folder it is in. The URL stays the one you handed out.
+- **Deleted items:** if the item disappears, whether deleted in the app or over SMB, the link stops working and shows a warning in **Shared links**. If a file or folder with the same name comes back to the same place within 48 hours, the old link serves it again, which is handy for replacing a file by deleting and re-uploading it. Otherwise the link is removed after 48 hours.
+- **The check** runs when you open **Shared links** and every 15 minutes. It never removes anything while `/data` is empty or not mounted, for example with an Unraid array stopped.
+
+## Desktop app
+
+The [Windows app](https://github.com/PixlGalaxy/WebinCloudClient) connects to your server like OneDrive does. You enter the server address, then approve the computer in your browser; a username and password typed into the app also work.
+
+- **Devices:** each computer appears in **Settings → Devices**, with its last use and IP, and can be disconnected there. Changing your password disconnects them all.
+- **Admins:** in **Admin → Users → Edit**, the user's connected devices are listed next to the form, and any of them can be disconnected.
+- **For developers:** the sign-in protocol and the device endpoints are documented in [docs/desktop-api.md](docs/desktop-api.md).
 
 ## Behind a reverse proxy
 
