@@ -11,7 +11,7 @@ import {
 import { UploadCloud } from 'lucide-react';
 import { filesApi, type ConflictMode, type ExistingFile } from '../api/files';
 import { publicShareApi } from '../api/shares';
-import { postFile } from '../api/upload';
+import { uploadFile } from '../api/upload';
 import ConflictModal from '../pages/files/ConflictModal';
 import UploadDialog from '../components/upload/UploadDialog';
 import { useI18n } from '../i18n/I18nContext';
@@ -110,10 +110,18 @@ export function UploadProvider({ children }: { children: ReactNode }) {
 
   const queue = useUploadQueue({
     send: (item, mode, onProgress, signal) =>
-      postFile(
+      uploadFile(
         item.scope.kind === 'user'
-          ? filesApi.uploadUrl(item.dir, mode)
-          : publicShareApi.uploadUrl(item.scope.segment, item.scope.name, item.dir),
+          ? {
+              postUrl: filesApi.uploadUrl(item.dir, mode),
+              sessionsUrl: filesApi.uploadSessionsUrl,
+              fields: { path: item.dir, onConflict: mode },
+            }
+          : {
+              postUrl: publicShareApi.uploadUrl(item.scope.segment, item.scope.name, item.dir),
+              sessionsUrl: publicShareApi.uploadSessionsUrl(item.scope.segment, item.scope.name),
+              fields: { path: item.dir },
+            },
         item.file,
         onProgress,
         signal,

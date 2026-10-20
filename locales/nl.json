@@ -37,6 +37,7 @@
   "files.previewSheetEmpty": "Dit werkblad bevat geen gegevens — er is niets te zien",
   "files.tooLargeToEdit": "Dit bestand is te groot om te openen in de editor",
   "files.tooLarge": "Het bestand overschrijdt de maximale uploadgrootte",
+  "files.uploadIncomplete": "De upload is onvolledig aangekomen. Probeer het opnieuw",
   "files.invalidContent": "Ongeldige inhoud",
   "files.searchQueryRequired": "Een zoekterm is verplicht",
   "archives.nothingSelected": "Selecteer minimaal één item",

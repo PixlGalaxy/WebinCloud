@@ -40,6 +40,7 @@ const BACKEND_KEYS = [
   'files.notPreviewable',
   'files.tooLargeToEdit',
   'files.tooLarge',
+  'files.uploadIncomplete',
   'files.invalidContent',
   'files.searchQueryRequired',
   'archives.nothingSelected',

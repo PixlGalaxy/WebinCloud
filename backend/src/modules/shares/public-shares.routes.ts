@@ -13,6 +13,7 @@ import { logFileAction, PUBLIC_ACTOR } from '../../activity.js';
 import { assertValidName, joinRelPath, normalizeRelPath, resolveSafePath } from '../files/path-safety.js';
 import { inlineMimeOf, previewKindOf } from '../files/mime.js';
 import { partialPath, uploadLimit } from '../files/files.routes.js';
+import { declaredSize, UploadSessions } from '../files/upload-sessions.js';
 import { SHARE_COOKIE_PREFIX, UNLOCK_TTL_MS, type SharesService } from './shares.service.js';
 import type { ArchiveOwner, ArchivesService } from '../archives/archives.service.js';
 import { routeParam } from '../../route-params.js';
@@ -320,30 +321,39 @@ export function createPublicShareRoutes(
     }),
   );
 
+  /**
+   * The folder an upload lands in, after every check a link upload needs: the
+   * link takes uploads, and its owner can still write there. Run for each
+   * request of a chunked upload too, so a link turned off midway stops it.
+   */
+  const uploadFolder = (share: Share, raw: unknown): { inner: string; folderAbsolute: string } => {
+    if (share.allow_upload !== 1 || share.target_type !== 'folder') throw forbidden();
+    const inner = innerPath(share, raw);
+    if (!shares.ownerAccess(share, dataRelPath(share, inner)).write) throw forbidden();
+    return { inner, folderAbsolute: resolveSafePath(shareRoot(share), inner) };
+  };
+
+  /** Uploaded folders keep their structure, so the destination may not exist yet. */
+  const ensureFolder = async (inner: string, folderAbsolute: string): Promise<void> => {
+    for (const segment of inner.split('/')) if (segment) assertValidName(segment);
+    const created = await fs.mkdir(folderAbsolute, { recursive: true });
+    if (created) logFileAction(PUBLIC_ACTOR, 'created', 'folder', basename(folderAbsolute), folderAbsolute);
+  };
+
   router.post('/upload', load, requireUnlocked, (req: any, res, next) => {
     const share = (req as PublicRequest).share!;
-    if (share.allow_upload !== 1 || share.target_type !== 'folder') return next(forbidden());
 
     let folderAbsolute: string;
     let inner: string;
     try {
-      inner = innerPath(share, req.query.path);
-      if (!shares.ownerAccess(share, dataRelPath(share, inner)).write) return next(forbidden());
-      folderAbsolute = resolveSafePath(shareRoot(share), inner);
+      ({ inner, folderAbsolute } = uploadFolder(share, req.query.path));
     } catch (err) {
       return next(err);
     }
 
-    // Uploaded folders keep their structure, so the destination may not exist yet.
-    ensureFolder()
+    ensureFolder(inner, folderAbsolute)
       .then(receive)
       .catch(next);
-
-    async function ensureFolder(): Promise<void> {
-      for (const segment of inner.split('/')) if (segment) assertValidName(segment);
-      const created = await fs.mkdir(folderAbsolute, { recursive: true });
-      if (created) logFileAction(PUBLIC_ACTOR, 'created', 'folder', basename(folderAbsolute), folderAbsolute);
-    }
 
     function receive(): void {
       const parser = busboy({ headers: req.headers, limits: { fileSize: uploadLimit(config) } });
@@ -417,6 +427,71 @@ export function createPublicShareRoutes(
       req.pipe(parser);
     }
   });
+
+  // Large files, in chunks as for signed-in users. A session belongs to the link,
+  // and is counted against the visitor's IP so one visitor cannot use up the link's allowance.
+  const linkUploads = new UploadSessions<{ inner: string; name: string }>('Public');
+  const linkOwner = (req: any) => `share:${(req as PublicRequest).share!.id}`;
+  const visitorQuota = (req: any) => `${linkOwner(req)}:${req.ip}`;
+
+  router.post(
+    '/upload/sessions',
+    load,
+    requireUnlocked,
+    asyncHandler(async (req: any, res) => {
+      const share = (req as PublicRequest).share!;
+      const { path, name, size } = req.body as Record<string, unknown>;
+      const { inner, folderAbsolute } = uploadFolder(share, path);
+      if (typeof name !== 'string') throw badRequest('files.invalidName');
+      assertValidName(name);
+      const bytes = declaredSize(size, uploadLimit(config));
+
+      await ensureFolder(inner, folderAbsolute);
+      const partial = partialPath(join(folderAbsolute, name));
+      res.status(201).json(await linkUploads.create(linkOwner(req), visitorQuota(req), partial, bytes, { inner, name }));
+    }),
+  );
+
+  router.put(
+    '/upload/sessions/:id/chunks/:index',
+    load,
+    requireUnlocked,
+    asyncHandler(async (req: any, res) => {
+      const id = routeParam(req.params.id);
+      uploadFolder((req as PublicRequest).share!, linkUploads.meta(id, linkOwner(req)).inner);
+      await linkUploads.writeChunk(id, linkOwner(req), routeParam(req.params.index), req);
+      res.status(204).end();
+    }),
+  );
+
+  router.post(
+    '/upload/sessions/:id/complete',
+    load,
+    requireUnlocked,
+    asyncHandler(async (req: any, res) => {
+      const share = (req as PublicRequest).share!;
+      const saved = await linkUploads.complete(routeParam(req.params.id), linkOwner(req), async (partial, meta) => {
+        const { folderAbsolute } = uploadFolder(share, meta.inner);
+        // Public uploads never replace an existing file, as above.
+        const destination = freeName(folderAbsolute, meta.name);
+        await fs.rename(partial, destination);
+        logFileAction(PUBLIC_ACTOR, 'uploaded', 'file', basename(destination), destination);
+        return basename(destination);
+      });
+      logger.info(`Public upload of 1 file(s) to share ${share.id}`);
+      res.status(201).json({ uploaded: [saved] });
+    }),
+  );
+
+  router.delete(
+    '/upload/sessions/:id',
+    load,
+    requireUnlocked,
+    asyncHandler(async (req: any, res) => {
+      await linkUploads.cancel(routeParam(req.params.id), linkOwner(req));
+      res.status(204).end();
+    }),
+  );
 
   return { router, unlockIpLimiter };
 }

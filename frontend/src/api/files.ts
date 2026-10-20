@@ -82,5 +82,8 @@ export const filesApi = {
   uploadUrl: (path: string, onConflict: ConflictMode) =>
     `/backend/api/files/upload?path=${encode(path)}&onConflict=${onConflict}`,
 
+  /** Large files go here instead, in chunks. */
+  uploadSessionsUrl: '/backend/api/files/upload/sessions',
+
   eventsUrl: (path: string) => `/backend/api/files/events?path=${encode(path)}`,
 };

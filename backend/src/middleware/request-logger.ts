@@ -6,6 +6,7 @@ import { logger } from '../logger.js';
 // forwarded IP to hide behind. Anyone hitting /api/health from outside the
 // container still shows up as their real IP and gets logged like anything else.
 const LOCAL_IPS = new Set(['127.0.0.1', '::1', '::ffff:127.0.0.1']);
+const CHUNK_RE = /\/upload\/sessions\/[^/?]+\/chunks\//;
 
 export function requestLogger(req: Request, res: Response, next: NextFunction) {
   // The log viewer polls these; logging them would feed itself with its own requests.
@@ -21,6 +22,8 @@ export function requestLogger(req: Request, res: Response, next: NextFunction) {
     const ms = Number(process.hrtime.bigint() - startedAt) / 1e6;
     // Scrolling a grid of thumbnails would otherwise bury the log in one line per image.
     if (res.statusCode < 400 && req.originalUrl.startsWith('/api/files/thumbnail')) return;
+    // Same for the chunks of a large upload: one line per 8 MB. Its start and completion are still logged.
+    if (res.statusCode < 400 && CHUNK_RE.test(req.originalUrl)) return;
 
     const message = `${req.method} ${req.originalUrl} ${res.statusCode} ${ms.toFixed(1)}ms`;
     if (res.statusCode >= 500) logger.error(message);

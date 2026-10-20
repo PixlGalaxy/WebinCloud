@@ -1,7 +1,7 @@
 import { Router, type NextFunction, type Response } from 'express';
 import { randomBytes } from 'crypto';
 import { createWriteStream, promises as fs, watch } from 'fs';
-import { basename } from 'path';
+import { basename, dirname } from 'path';
 import { pipeline } from 'stream/promises';
 import busboy from 'busboy';
 import type { Db } from '../../db/client.js';
@@ -15,6 +15,9 @@ import { logger } from '../../logger.js';
 import { logFileAction, userActor } from '../../activity.js';
 import { FilesService, type ConflictMode } from './files.service.js';
 import { normalizeRelPath } from './path-safety.js';
+import { declaredSize, UploadSessions } from './upload-sessions.js';
+import { requireWrite } from '../permissions/access-check.js';
+import { routeParam } from '../../route-params.js';
 import { SERVE_OPTIONS } from '../../serve-options.js';
 import type { ThumbnailService } from '../thumbnails/thumbnails.service.js';
 import type { ThumbnailSize } from '../thumbnails/providers.js';
@@ -53,6 +56,12 @@ export function createFilesRoutes(
 ): Router {
   const router = Router();
   const files = new FilesService(db, config.DATA_ROOT, thumbnails);
+  const uploads = new UploadSessions<{
+    folderPath: string;
+    name: string;
+    onConflict: ConflictMode;
+    modifiedAt: Date | null;
+  }>('Chunked');
   const { requireAuth } = createAuthGuards(t);
 
   router.use(requireAuth);
@@ -340,6 +349,63 @@ export function createFilesRoutes(
 
     req.pipe(parser);
   }
+
+  // Large files: declared first, then sent as chunks in parallel, then moved into place.
+  const ownerOf = (req: AuthenticatedRequest) => `user:${req.user!.id}`;
+
+  router.post(
+    '/upload/sessions',
+    asyncHandler(async (req: AuthenticatedRequest, res) => {
+      const { path, name, size, onConflict, modifiedAt } = req.body as Record<string, unknown>;
+      const folderPath = normalizeRelPath(path);
+      if (typeof name !== 'string') throw badRequest('files.invalidName');
+      const bytes = declaredSize(size, uploadLimit(config));
+      const mode = conflictMode(onConflict);
+      const mtime = modifiedAtParam(modifiedAt);
+
+      await files.prepareUploadFolder(req.user!, folderPath);
+      // Checked now so a clash is reported before any byte is sent, and again on completion.
+      const target = files.uploadTarget(req.user!, folderPath, name, mode);
+      const meta = { folderPath, name, onConflict: mode, modifiedAt: mtime };
+      res.status(201).json(await uploads.create(ownerOf(req), ownerOf(req), partialPath(target.absolute), bytes, meta));
+    }),
+  );
+
+  router.put(
+    '/upload/sessions/:id/chunks/:index',
+    asyncHandler(async (req: AuthenticatedRequest, res) => {
+      const id = routeParam(req.params.id);
+      // A long upload can outlive the grant: every chunk needs write access still.
+      requireWrite(db, req.user!, uploads.meta(id, ownerOf(req)).folderPath);
+      await uploads.writeChunk(id, ownerOf(req), routeParam(req.params.index), req);
+      res.status(204).end();
+    }),
+  );
+
+  router.post(
+    '/upload/sessions/:id/complete',
+    asyncHandler(async (req: AuthenticatedRequest, res) => {
+      const user = req.user!;
+      const relPath = await uploads.complete(routeParam(req.params.id), ownerOf(req), async (partial, meta) => {
+        // Re-checks write access and the name, which may have been taken meanwhile.
+        const target = files.uploadTarget(user, meta.folderPath, meta.name, meta.onConflict);
+        await fs.rename(partial, target.absolute);
+        if (meta.modifiedAt) await fs.utimes(target.absolute, new Date(), meta.modifiedAt);
+        logFileAction(userActor(user), 'uploaded', 'file', basename(target.absolute), target.absolute);
+        return target.relPath;
+      });
+      logger.info(`Uploaded 1 file(s) to "${dirname(relPath) === '.' ? '/' : dirname(relPath)}"`);
+      res.status(201).json({ uploaded: [relPath] });
+    }),
+  );
+
+  router.delete(
+    '/upload/sessions/:id',
+    asyncHandler(async (req: AuthenticatedRequest, res) => {
+      await uploads.cancel(routeParam(req.params.id), ownerOf(req));
+      res.status(204).end();
+    }),
+  );
 
   return router;
 }

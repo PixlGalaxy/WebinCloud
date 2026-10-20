@@ -37,6 +37,7 @@
   "files.previewSheetEmpty": "Cette feuille ne contient pas de données — rien à prévisualiser",
   "files.tooLargeToEdit": "Ce fichier est trop volumineux pour être ouvert dans l'éditeur",
   "files.tooLarge": "Le fichier dépasse la taille maximale d'envoi",
+  "files.uploadIncomplete": "L'envoi est arrivé incomplet. Veuillez réessayer",
   "files.invalidContent": "Contenu invalide",
   "files.searchQueryRequired": "Un terme de recherche est requis",
   "archives.nothingSelected": "Sélectionnez au moins un élément",

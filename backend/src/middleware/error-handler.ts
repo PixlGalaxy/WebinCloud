@@ -31,6 +31,13 @@ export function createErrorHandler(t: Translate) {
       return res.status(tooLarge ? 413 : 400).json({ error: t(tooLarge ? 'error.payloadTooLarge' : 'error.invalidInput') });
     }
 
+    // res.download / res.sendFile report the client's own faults this way, such as a
+    // Range past the end of the file (416, its Content-Range already set).
+    const sendError = err as Error & { status?: unknown; expose?: unknown };
+    if (typeof sendError.status === 'number' && sendError.status >= 400 && sendError.status < 500 && sendError.expose === true) {
+      return res.status(sendError.status).json({ error: t(sendError.status === 404 ? 'error.notFound' : 'error.invalidInput') });
+    }
+
     logger.error('Unhandled request error', err);
     return res.status(500).json({ error: t('error.internal') });
   };

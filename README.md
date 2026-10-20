@@ -14,7 +14,7 @@ Everything runs in a single container: an nginx front end and a Node.js backend,
 ## Features
 
 - Accounts with an administrator role; the admin creates users and grants them folders as read-only or read-write.
-- File manager: upload by dropping files or whole folders anywhere on the window, with a queue you can keep adding to while it uploads; download, create folders, rename, delete.
+- File manager: upload by dropping files or whole folders anywhere on the window, with a queue you can keep adding to while it uploads (large files go up as parallel chunks, retried on their own if the connection drops); download, create folders, rename, delete.
 - Recursive search from any folder, showing the full path of each match.
 - In-browser preview for images, PDF, video, audio and text, with syntax highlighting and an editor for text files.
 - Optional thumbnails of images and videos in the file list, loaded as you scroll, with a larger preview on hover.
@@ -174,6 +174,7 @@ The container listens on port 80 and serves the interface at `/` and its API und
 
 - Set `COOKIE_SECURE=true` once you terminate TLS, so the session cookie is marked `Secure`.
 - Disable request buffering and raise the body size limit, or large uploads will fail.
+- When users upload from far away (high latency), raise the proxy's request body buffers. nginx, and so Nginx Proxy Manager, lets a browser send only 64 KB of each HTTP/2 request before it has to wait for the proxy, which holds one request to a few Mb/s across countries. The app sends large files as several 8 MB chunks at once to soften this. In Nginx Proxy Manager, add `client_body_buffer_size 16m;` and `http2_body_preread_size 16m;` to the proxy host's **Advanced** tab.
 - Live views (the dashboard, logs and folder refreshes) use event streams. The container marks them with `X-Accel-Buffering: no`, so nginx-based proxies such as Nginx Proxy Manager stream them without extra configuration. For other proxies, turn off response buffering for `/backend/`; if a proxy still holds the stream back, the dashboard falls back to refreshing once a second.
 - Set the trusted proxies so the app sees each visitor's real IP instead of the proxy's (see below).
 

@@ -7,7 +7,8 @@ const PUBLIC_SHARE_RE = /^\/api\/public\/([^/]+)\/([^/]+)/;
 
 function classify(method: string, path: string): Activity {
   if (method === 'GET' && /\/download(\/|$)/.test(path)) return 'downloading';
-  if (method === 'POST' && /\/upload(\/|$)/.test(path)) return 'uploading';
+  // Chunked uploads also PUT their chunks and DELETE a cancelled session.
+  if (method !== 'GET' && /\/upload(\/|$)/.test(path)) return 'uploading';
   if (method === 'DELETE' || method === 'PATCH' || method === 'PUT') return 'modifying';
   if (method === 'POST' && /\/mkdir$/.test(path)) return 'modifying';
   return 'browsing';
@@ -57,7 +58,10 @@ export function createConnectionTracker(metrics: MetricsService) {
 
     res.on('finish', () => {
       if (res.statusCode >= 200 && res.statusCode < 300) {
-        if (activity === 'uploading') metrics.recordOperation('upload');
+        // A chunked upload counts once, when it completes.
+        if (activity === 'uploading' && req.method === 'POST' && /\/upload(\/sessions\/[^/]+\/complete)?$/.test(req.path)) {
+          metrics.recordOperation('upload');
+        }
         if (activity === 'downloading') metrics.recordOperation('download');
       }
     });

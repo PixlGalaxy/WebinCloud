@@ -135,6 +135,23 @@ Content-Type: application/json
 
 A device cannot approve other devices (`POST /devices/authorize` refuses bearer tokens). There is no way for an admin to sign a device in on someone else's behalf.
 
+## Transferring large files
+
+A single connection across a high-latency link carries only so much, however fast both ends are. Send and fetch large files in parallel pieces instead.
+
+**Uploading.** A file up to 8 MB goes in one `POST /backend/api/files/upload?path=<folder>&onConflict=<fail|overwrite|keepBoth>&modifiedAt=<ISO date>` (multipart, field `files`). A larger one goes in chunks:
+
+| Request | Body | Result |
+| --- | --- | --- |
+| `POST /backend/api/files/upload/sessions` | JSON `{ "path", "name", "size", "onConflict", "modifiedAt" }` (the last two optional) | **201** `{ "id", "chunkSize" }`. 409 if the name is taken and `onConflict` is `fail`, 413 over the server's upload limit |
+| `PUT /backend/api/files/upload/sessions/:id/chunks/:index` | `application/octet-stream`, bytes `index × chunkSize` up to the next chunk or the end of the file | **204**. 400 if the body is not exactly that chunk's length |
+| `POST /backend/api/files/upload/sessions/:id/complete` | none | **201** `{ "uploaded": ["<path>"] }`. 400 while chunks are missing |
+| `DELETE /backend/api/files/upload/sessions/:id` | none | **204**; drops the partial file |
+
+Send several chunks at once (the web interface sends 6) and in any order. A chunk that fails can be sent again; on 409 the server is still writing an earlier copy of it, so wait a moment first. The file only appears in the folder once completed. An upload with no chunk for 10 minutes is dropped, and a user can hold 10 unfinished uploads at a time (429 beyond that).
+
+**Downloading.** `GET /backend/api/files/download?path=<file>` honours `Range`, so a client can fetch several byte ranges of one file at once and write each at its offset.
+
 ## Client requirements
 
 - **Store tokens in the OS secret store** (Windows Credential Manager, macOS Keychain), never in plain settings files or logs.
