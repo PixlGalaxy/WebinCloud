@@ -174,9 +174,35 @@ The container listens on port 80 and serves the interface at `/` and its API und
 
 - Set `COOKIE_SECURE=true` once you terminate TLS, so the session cookie is marked `Secure`.
 - Disable request buffering and raise the body size limit, or large uploads will fail.
-- When users upload from far away (high latency), raise the proxy's request body buffers. nginx, and so Nginx Proxy Manager, lets a browser send only 64 KB of each HTTP/2 request before it has to wait for the proxy, which holds one request to a few Mb/s across countries. The app sends large files as several 8 MB chunks at once to soften this. In Nginx Proxy Manager, add `client_body_buffer_size 16m;` and `http2_body_preread_size 16m;` to the proxy host's **Advanced** tab.
+- If anyone uploads from far away, raise the proxy's request body buffers, or uploads crawl at a few Mb/s (see [Upload speed over long distances](#upload-speed-over-long-distances)).
 - Live views (the dashboard, logs and folder refreshes) use event streams. The container marks them with `X-Accel-Buffering: no`, so nginx-based proxies such as Nginx Proxy Manager stream them without extra configuration. For other proxies, turn off response buffering for `/backend/`; if a proxy still holds the stream back, the dashboard falls back to refreshing once a second.
 - Set the trusted proxies so the app sees each visitor's real IP instead of the proxy's (see below).
+
+### Upload speed over long distances
+
+> [!IMPORTANT]
+> With Nginx Proxy Manager (or any nginx) in front of the container, add these two lines to the proxy host, or uploads from another city or country will be far slower than either connection allows:
+>
+> ```nginx
+> client_body_buffer_size 16m;
+> http2_body_preread_size 16m;
+> ```
+>
+> In Nginx Proxy Manager: **Hosts → Proxy Hosts →** the Webin Cloud host **→ Edit → Advanced → Custom Nginx Configuration**, then **Save**.
+
+They go in the proxy in front, not in the container's own `nginx.conf`: the slow stretch is the one between the browser and that proxy, while the container only talks to the proxy over the local network.
+
+Why it matters: over HTTP/2, nginx lets a browser send only 64 KB of a request before it has to wait for the proxy to ask for more. Each wait costs one round trip, so the speed of one request is at most 64 KB divided by the latency:
+
+| Latency (round trip) | Typical case | Per request, default | With the lines above |
+| --- | --- | --- | --- |
+| 1 ms | Same network | ~500 Mb/s | Line speed |
+| 30 ms | Same country | ~17 Mb/s | Line speed |
+| 80 ms | Between countries (e.g. United States to Peru) | ~6.5 Mb/s | Line speed |
+
+The app softens this on its own by sending files over 8 MB as 8 MB chunks, six at a time, but only the proxy setting removes the limit. The rest then depends on the network: the sender's upload speed (many "1 Gb" plans upload far slower than they download), losses on the route between countries, and the receiving server's TCP buffers.
+
+If the site is proxied through Cloudflare (orange cloud), the browser's connection ends at Cloudflare instead, so this setting helps less.
 
 ### Real client IPs
 
