@@ -44,8 +44,9 @@ const scale = (pixels: number) => `scale=w=${pixels}:h=${pixels}:force_original_
  * called "x.png" holding a concat list or an HLS playlist makes ffmpeg read
  * other files on the server into the thumbnail. image2 is left out too: it
  * reads "%d" in a name as a pattern, which reaches the file's neighbours.
+ * ico and apng read only the one file they are given.
  */
-const DEMUXERS = 'png_pipe,jpeg_pipe,gif,webp_pipe,bmp_pipe,mov,matroska,ogg';
+const DEMUXERS = 'png_pipe,jpeg_pipe,gif,webp_pipe,bmp_pipe,ico,apng,mov,matroska,ogg';
 
 /** Options that keep a crafted file from reaching the network, other files, or hogging the CPU. */
 const SAFE_INPUT = [
@@ -61,8 +62,18 @@ const SAFE_INPUT = [
   DEMUXERS,
 ];
 
-/** ffmpeg would hand these to image2 by their extension, so they are steered to the JPEG demuxer. */
-const FORCED_DEMUXER: Record<string, string> = { '.jpg': 'jpeg_pipe', '.jpeg': 'jpeg_pipe' };
+/**
+ * ffmpeg would hand JPEGs to image2 by their extension, so they are steered to
+ * the JPEG demuxer; icons and animated PNGs go straight to theirs. ffmpeg picks
+ * the largest image of a multi-size icon.
+ */
+const FORCED_DEMUXER: Record<string, string> = {
+  '.jpg': 'jpeg_pipe',
+  '.jpeg': 'jpeg_pipe',
+  '.jfif': 'jpeg_pipe',
+  '.ico': 'ico',
+  '.apng': 'apng',
+};
 
 const encode = (output: string, pixels: number, format: ThumbnailFormat) =>
   format === 'png'

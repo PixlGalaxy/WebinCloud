@@ -14,7 +14,7 @@ export function toFilesUrl(path: string): string {
 // One muted, non-office color per category, chosen so none of them repeats a
 // bright/neon hue: everything sits in the 500-600 Tailwind range.
 const ICONS: Array<[RegExp, LucideIcon, string]> = [
-  [/\.(png|jpe?g|gif|webp|svg|bmp|avif)$/i, Image, 'text-violet-500 dark:text-violet-400'],
+  [/\.(png|jpe?g|jfif|gif|webp|svg|bmp|avif|ico|apng)$/i, Image, 'text-violet-500 dark:text-violet-400'],
   [/\.(mp4|webm|mkv|mov|avi)$/i, Video, 'text-orange-500 dark:text-orange-400'],
   [/\.(mp3|wav|ogg|flac|m4a)$/i, Music, 'text-pink-500 dark:text-pink-400'],
   [/\.(zip|tar|gz|rar|7z)$/i, FileArchive, 'text-amber-600 dark:text-amber-500'],
