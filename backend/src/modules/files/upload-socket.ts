@@ -8,8 +8,17 @@ import { SOCKET_CHUNK_SIZE, writeSocketChunk } from './upload-sessions.js';
 
 /** Session id (16 bytes) and chunk index (4 bytes) ahead of each chunk's data. */
 const HEADER_BYTES = 20;
-/** Upload sockets open at once across the server, each holding up to one chunk in memory. */
+/** Upload sockets open at once across the server. */
 const MAX_SOCKETS = 256;
+/**
+ * Chunk bytes one socket may hold in memory while they wait to be written: a
+ * client keeps up to 8 MiB unacknowledged per socket. Holding them, instead of
+ * waiting for each write, lets the line keep flowing through the second-long
+ * pauses some file systems make while they commit (btrfs on hard disks does).
+ */
+const MAX_BUFFERED_PER_SOCKET = 8 * 1024 * 1024 + SOCKET_CHUNK_SIZE;
+/** The same across every socket, so a burst of uploads cannot run the server out of memory. */
+const MAX_BUFFERED_TOTAL = 512 * 1024 * 1024;
 /** Upload sockets one user, or one visitor of a link, may hold at once (a client opens 32 per destination). */
 const MAX_SOCKETS_PER_KEY = 64;
 /** How often an open socket re-checks that its sign-in or link still allows uploading. */
@@ -88,6 +97,10 @@ export function attachUploadSocket(server: Server, options: UploadSocketOptions)
     perMessageDeflate: false,
   });
   const perKey = new Map<string, number>();
+  /** Bytes received and not yet written, across every socket. */
+  let bufferedTotal = 0;
+  /** Sockets paused for memory, re-checked whenever a write frees some. */
+  const waiting = new Set<() => void>();
 
   server.on('upgrade', (req: IncomingMessage, socket: Duplex, head: Buffer) => {
     const path = (req.url ?? '').split('?')[0];
@@ -127,6 +140,22 @@ export function attachUploadSocket(server: Server, options: UploadSocketOptions)
     // Only chunks actually stored count as activity: junk must not keep a socket alive.
     let lastStored = Date.now();
     let failures = 0;
+    let buffered = 0;
+    let paused = false;
+
+    // Reading stops while this socket, or the server as a whole, holds too much unwritten data.
+    const flow = () => {
+      const full = buffered > MAX_BUFFERED_PER_SOCKET || bufferedTotal > MAX_BUFFERED_TOTAL;
+      if (full && !paused) {
+        paused = true;
+        ws.pause();
+        waiting.add(flow);
+      } else if (!full && paused) {
+        paused = false;
+        waiting.delete(flow);
+        ws.resume();
+      }
+    };
 
     const idle = setInterval(() => {
       if (Date.now() - lastStored >= IDLE_MS) ws.close(1000, 'idle');
@@ -134,6 +163,7 @@ export function attachUploadSocket(server: Server, options: UploadSocketOptions)
 
     ws.on('close', () => {
       clearInterval(idle);
+      waiting.delete(flow);
       const held = (perKey.get(identity.key) ?? 1) - 1;
       if (held > 0) perKey.set(identity.key, held);
       else perKey.delete(identity.key);
@@ -162,8 +192,10 @@ export function attachUploadSocket(server: Server, options: UploadSocketOptions)
       const id = formatId(data.subarray(0, 16));
       const index = data.readUInt32BE(16);
 
-      // One chunk at a time per socket: reading stops until it is on disk, so memory stays bounded.
-      ws.pause();
+      // Held until written, within the limits above; acknowledged only once written.
+      buffered += data.length;
+      bufferedTotal += data.length;
+      flow();
       writeSocketChunk(id, identity.owner, index, data.subarray(HEADER_BYTES))
         .then(() => {
           lastStored = Date.now();
@@ -176,7 +208,13 @@ export function attachUploadSocket(server: Server, options: UploadSocketOptions)
           reply({ id, index, status: known ? err.status : 500, error: options.t(known ? err.key : 'error.internal') });
           if (++failures >= MAX_FAILURES_IN_A_ROW) ws.close(1008, 'too many refused chunks');
         })
-        .finally(() => ws.resume());
+        .finally(() => {
+          buffered -= data.length;
+          bufferedTotal -= data.length;
+          flow();
+          // Memory freed here may let sockets paused for the server-wide limit read again.
+          for (const other of [...waiting]) other();
+        });
     });
   }
 }

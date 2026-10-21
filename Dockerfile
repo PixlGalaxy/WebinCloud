@@ -65,6 +65,11 @@ ENV NODE_ENV=production \
     PGID=100 \
     UMASK=002
 
+# File work runs on libuv's thread pool, 4 threads by default. A disk that pauses
+# while committing (btrfs on hard disks) would otherwise tie up every thread with
+# upload writes, stalling listings, downloads and thumbnails behind them.
+ENV UV_THREADPOOL_SIZE=16
+
 # WebinCloud_Data holds user files, WebinCloud_AppData the database and avatars,
 # and WebinCloud_Temp the generated archives, which are disposable. A new named
 # volume copies these folders' owner, so it starts out writable by the default PUID:PGID.

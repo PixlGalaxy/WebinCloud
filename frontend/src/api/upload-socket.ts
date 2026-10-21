@@ -7,8 +7,12 @@ import { ApiError } from './client';
  * stops growing much past this many.
  */
 const SOCKETS = 32;
-/** Bytes sent and not yet acknowledged per socket: enough to keep one long-distance connection busy. */
-const WINDOW_BYTES = 4 * 1024 * 1024;
+/**
+ * Bytes sent and not yet acknowledged per socket. Besides keeping a long-distance
+ * connection busy, it rides out the pauses of a second or two some servers' disks
+ * make while committing, during which the server keeps reading but cannot acknowledge.
+ */
+const WINDOW_BYTES = 8 * 1024 * 1024;
 /** Times a chunk is sent before its file fails. */
 const ATTEMPTS = 5;
 /** Sockets in a row that failed to open, with none open, before giving up. */
