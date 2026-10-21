@@ -15,7 +15,8 @@
     "busboy": "^1.6.0",
     "cookie-parser": "^1.4.6",
     "express": "^5.3.0",
-    "maxmind": "^5.0.7"
+    "maxmind": "^5.0.7",
+    "ws": "8.22.0"
   },
   "devDependencies": {
     "@types/archiver": "^8.0.0",
@@ -24,6 +25,7 @@
     "@types/cookie-parser": "^1.4.7",
     "@types/express": "^5.0.6",
     "@types/node": "^26.6.5",
+    "@types/ws": "8.18.1",
     "tsx": "^4.7.0",
     "typescript": "~7.0.2"
   }

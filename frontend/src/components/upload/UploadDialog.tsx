@@ -15,6 +15,22 @@ const STATUS_ICON = {
   cancelled: <Ban size={16} className="text-amber-500" />,
 };
 
+/** "2.35 GB": two decimals below 10, so a big upload visibly moves. */
+function amount(bytes: number): string {
+  const units = ['B', 'KB', 'MB', 'GB', 'TB'];
+  const exponent = bytes > 0 ? Math.min(Math.floor(Math.log(bytes) / Math.log(1024)), units.length - 1) : 0;
+  const value = bytes / 1024 ** exponent;
+  return `${exponent === 0 ? value : value.toFixed(value < 10 ? 2 : value < 100 ? 1 : 0)} ${units[exponent]}`;
+}
+
+/** Line speed in bits, as internet plans are sold: "650 Mb/s". */
+function rate(bytesPerSecond: number): string {
+  const bits = bytesPerSecond * 8;
+  if (bits >= 1e9) return `${(bits / 1e9).toFixed(2)} Gb/s`;
+  if (bits >= 1e6) return `${(bits / 1e6).toFixed(bits >= 1e8 ? 0 : 1)} Mb/s`;
+  return `${Math.round(bits / 1e3)} kb/s`;
+}
+
 const Row = memo(function Row({ item, onRemove }: { item: UploadItem; onRemove: (id: number) => void }) {
   const { t } = useI18n();
 
@@ -38,8 +54,10 @@ const Row = memo(function Row({ item, onRemove }: { item: UploadItem; onRemove: 
         {item.status === 'error' && <p className="mt-0.5 text-xs text-rose-600 dark:text-rose-400">{item.error}</p>}
       </div>
 
-      <span className="hidden w-20 shrink-0 text-right text-xs text-slate-500 dark:text-slate-400 sm:block">
-        {item.status === 'uploading' ? `${Math.round(item.progress * 100)}%` : formatSize(item.file.size)}
+      <span className="hidden shrink-0 whitespace-nowrap text-right text-xs tabular-nums text-slate-500 dark:text-slate-400 sm:block">
+        {item.status === 'uploading'
+          ? `${amount(item.progress * item.file.size)} / ${amount(item.file.size)}${item.speed ? ` @ ${rate(item.speed)}` : ''}`
+          : formatSize(item.file.size)}
       </span>
 
       <button

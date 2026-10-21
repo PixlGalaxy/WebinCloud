@@ -85,5 +85,8 @@ export const filesApi = {
   /** Large files go here instead, in chunks. */
   uploadSessionsUrl: '/backend/api/files/upload/sessions',
 
+  /** Upload socket that carries those chunks, under /backend. */
+  uploadSocketPath: '/api/uploads/socket',
+
   eventsUrl: (path: string) => `/backend/api/files/events?path=${encode(path)}`,
 };

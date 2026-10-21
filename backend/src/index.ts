@@ -78,9 +78,9 @@ async function main() {
     );
     logger.info(config.MAX_UPLOAD_MB > 0 ? `Upload limit: ${config.MAX_UPLOAD_MB} MB per file` : 'Upload limit: none');
   };
-  const app = createApp(db, config);
-  if (config.HOST) app.listen(config.PORT, config.HOST, onListening);
-  else app.listen(config.PORT, onListening);
+  const { app, attachSockets } = createApp(db, config);
+  const server = config.HOST ? app.listen(config.PORT, config.HOST, onListening) : app.listen(config.PORT, onListening);
+  attachSockets(server);
 }
 
 main().catch((err) => {

@@ -13,7 +13,7 @@ import { logFileAction, PUBLIC_ACTOR } from '../../activity.js';
 import { assertValidName, joinRelPath, normalizeRelPath, resolveSafePath } from '../files/path-safety.js';
 import { inlineMimeOf, previewKindOf } from '../files/mime.js';
 import { partialPath, uploadLimit } from '../files/files.routes.js';
-import { declaredSize, UploadSessions } from '../files/upload-sessions.js';
+import { chunkSizeFor, declaredSize, UploadSessions } from '../files/upload-sessions.js';
 import { SHARE_COOKIE_PREFIX, UNLOCK_TTL_MS, type SharesService } from './shares.service.js';
 import type { ArchiveOwner, ArchivesService } from '../archives/archives.service.js';
 import { routeParam } from '../../route-params.js';
@@ -446,7 +446,7 @@ export function createPublicShareRoutes(
     requireUnlocked,
     asyncHandler(async (req: any, res) => {
       const share = (req as PublicRequest).share!;
-      const { path, name, size } = req.body as Record<string, unknown>;
+      const { path, name, size, transport } = req.body as Record<string, unknown>;
       const { inner, folderAbsolute } = uploadFolder(share, path);
       if (typeof name !== 'string') throw badRequest('files.invalidName');
       assertValidName(name);
@@ -454,7 +454,17 @@ export function createPublicShareRoutes(
 
       await ensureFolder(inner, folderAbsolute);
       const partial = partialPath(join(folderAbsolute, name));
-      res.status(201).json(await linkUploads.create(linkOwner(req), visitorQuota(req), partial, bytes, { inner, name }));
+      const session = await linkUploads.create(linkOwner(req), visitorQuota(req), partial, bytes, { inner, name }, {
+        chunkSize: chunkSizeFor(transport),
+        // Read fresh each time: the link may have been turned off, expired or deleted since.
+        guard: () => {
+          const current = shares.findById(share.id);
+          if (!current) throw notFound();
+          shares.assertUsable(current);
+          uploadFolder(current, inner);
+        },
+      });
+      res.status(201).json(session);
     }),
   );
 

@@ -115,11 +115,13 @@ export function UploadProvider({ children }: { children: ReactNode }) {
           ? {
               postUrl: filesApi.uploadUrl(item.dir, mode),
               sessionsUrl: filesApi.uploadSessionsUrl,
+              socketPath: filesApi.uploadSocketPath,
               fields: { path: item.dir, onConflict: mode },
             }
           : {
               postUrl: publicShareApi.uploadUrl(item.scope.segment, item.scope.name, item.dir),
               sessionsUrl: publicShareApi.uploadSessionsUrl(item.scope.segment, item.scope.name),
+              socketPath: publicShareApi.uploadSocketPath(item.scope.segment, item.scope.name),
               fields: { path: item.dir },
             },
         item.file,

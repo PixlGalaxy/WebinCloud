@@ -15,8 +15,15 @@ export interface UploadItem {
   name: string;
   status: UploadStatus;
   progress: number;
+  /** Bytes per second over the last few seconds, while uploading. */
+  speed?: number;
   error?: string;
 }
+
+/** Four refreshes a second read as live, without re-rendering the list on every one of hundreds of events. */
+const REFRESH_MS = 250;
+/** The speed shown is the average over this window, so it reads steady rather than jumping with each chunk. */
+const SPEED_WINDOW_MS = 3000;
 
 /** A chosen file plus the folders it sat in inside a chosen folder ("" for a plain file). */
 export interface Picked {
@@ -113,23 +120,29 @@ export function useUploadQueue({ send, confirm, onFinished }: Options) {
     const worker = async () => {
       while (!abort.signal.aborted && cursor < todo.length) {
         const item = todo[cursor++];
-        patch(item.id, { status: 'uploading', progress: 0 });
+        patch(item.id, { status: 'uploading', progress: 0, speed: undefined });
 
-        let shown = 0;
+        let shownAt = 0;
+        const samples: { at: number; bytes: number }[] = [];
         try {
           await send(
             item,
             mode,
             (fraction) => {
-              // Whole percents only: hundreds of events per second would re-render the list for nothing.
-              const percent = Math.floor(fraction * 100);
-              if (percent === shown) return;
-              shown = percent;
-              patch(item.id, { progress: fraction });
+              const now = performance.now();
+              const bytes = fraction * item.file.size;
+              samples.push({ at: now, bytes });
+              while (samples.length > 1 && now - samples[0].at > SPEED_WINDOW_MS) samples.shift();
+              if (now - shownAt < REFRESH_MS) return;
+              shownAt = now;
+
+              const first = samples[0];
+              const speed = now > first.at ? ((bytes - first.bytes) / (now - first.at)) * 1000 : undefined;
+              patch(item.id, { progress: fraction, speed });
             },
             abort.signal,
           );
-          patch(item.id, { status: 'done', progress: 1 });
+          patch(item.id, { status: 'done', progress: 1, speed: undefined });
         } catch (err) {
           if (abort.signal.aborted) patch(item.id, { status: 'cancelled', progress: 0 });
           else patch(item.id, { status: 'error', error: err instanceof Error ? err.message : String(err) });

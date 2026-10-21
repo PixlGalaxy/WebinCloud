@@ -330,6 +330,10 @@ export class SharesService {
   }
 
   /** Resolves /public/<segment>/<name>, by token first and then by alias. */
+  findById(id: string): Share | null {
+    return (this.db.prepare('SELECT * FROM shares WHERE id = ?').get(id) as Share | undefined) ?? null;
+  }
+
   findPublic(segment: string, name: string): Share | null {
     const byToken = this.db
       .prepare('SELECT * FROM shares WHERE id = ? AND name = ?')

@@ -14,7 +14,7 @@ Everything runs in a single container: an nginx front end and a Node.js backend,
 ## Features
 
 - Accounts with an administrator role; the admin creates users and grants them folders as read-only or read-write.
-- File manager: upload by dropping files or whole folders anywhere on the window, with a queue you can keep adding to while it uploads (large files go up as parallel chunks, retried on their own if the connection drops); download, create folders, rename, delete.
+- File manager: upload by dropping files or whole folders anywhere on the window, with a queue you can keep adding to while it uploads (files over 1 MB stream over 32 WebSocket connections at once, with live progress and speed, and a chunk is sent again on its own if a connection drops); download, create folders, rename, delete.
 - Recursive search from any folder, showing the full path of each match.
 - In-browser preview for images, PDF, video, audio and text, with syntax highlighting and an editor for text files.
 - Optional thumbnails of images and videos in the file list, loaded as you scroll, with a larger preview on hover.
@@ -174,6 +174,7 @@ The container listens on port 80 and serves the interface at `/` and its API und
 
 - Set `COOKIE_SECURE=true` once you terminate TLS, so the session cookie is marked `Secure`.
 - Disable request buffering and raise the body size limit, or large uploads will fail.
+- Turn on WebSocket support for the host (in Nginx Proxy Manager: **Websockets Support**, on the **Details** tab). Uploads stream over WebSockets; without it they still work over plain HTTP, only slower.
 - If anyone uploads from far away, raise the proxy's request body buffers, or uploads crawl at a few Mb/s (see [Upload speed over long distances](#upload-speed-over-long-distances)).
 - Live views (the dashboard, logs and folder refreshes) use event streams. The container marks them with `X-Accel-Buffering: no`, so nginx-based proxies such as Nginx Proxy Manager stream them without extra configuration. For other proxies, turn off response buffering for `/backend/`; if a proxy still holds the stream back, the dashboard falls back to refreshing once a second.
 - Set the trusted proxies so the app sees each visitor's real IP instead of the proxy's (see below).
@@ -200,7 +201,20 @@ Why it matters: over HTTP/2, nginx lets a browser send only 64 KB of a request b
 | 30 ms | Same country | ~17 Mb/s | Line speed |
 | 80 ms | Between countries (e.g. United States to Peru) | ~6.5 Mb/s | Line speed |
 
-The app softens this on its own by sending files over 8 MB as 8 MB chunks, six at a time, but only the proxy setting removes the limit. The rest then depends on the network: the sender's upload speed (many "1 Gb" plans upload far slower than they download), losses on the route between countries, and the receiving server's TCP buffers.
+Over a long distance, one connection carries far less than the line can, however fast both ends are: every lost or reordered packet makes the sender slow down, and recovering takes many round trips. The app works around it by streaming files over 1 MB as 1 MB chunks over 32 WebSocket connections at once. A browser opens at most 6 HTTP connections to a site, but WebSockets are not counted against that. Measured from the United States to Peru: 1 connection ~100 Mb/s, 6 ~270 Mb/s, 32 ~600 Mb/s. Without WebSocket support in the proxy, uploads fall back to 8 MB chunks over HTTP, six at a time, and the lines above matter most.
+
+The rest depends on the network: the sender's upload speed (many "1 Gb" plans upload far slower than they download), losses on the route between countries, and the receiving server.
+
+#### Intel network cards (`ixgbe`): turn off Flow Director ATR
+
+If uploads from far away stay slow, check the server's network card. Intel cards on the `ixgbe` driver (X520, X540, X550, 82599) spread incoming packets over CPU cores with *Flow Director ATR*, which makes long-distance TCP connections arrive out of order; the sender reads that as loss and keeps slowing down. Turning it off took one connection from the United States to Peru from ~7 to ~100 Mb/s:
+
+```bash
+ethtool -i eth0 | head -1          # driver: ixgbe
+ethtool -K eth0 ntuple on          # turns ATR off; the card resets and the network drops for a few seconds
+```
+
+It lasts until the next reboot. On Unraid, add `ethtool -K eth0 ntuple on` to `/boot/config/go` to apply it at every start.
 
 If the site is proxied through Cloudflare (orange cloud), the browser's connection ends at Cloudflare instead, so this setting helps less.
 

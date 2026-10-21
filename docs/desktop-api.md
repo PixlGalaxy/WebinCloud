@@ -150,6 +150,8 @@ A single connection across a high-latency link carries only so much, however fas
 
 Send several chunks at once (the web interface sends 6) and in any order. A chunk that fails can be sent again; on 409 the server is still writing an earlier copy of it, so wait a moment first. The file only appears in the folder once completed. An upload with no chunk for 10 minutes is dropped, and a user can hold 10 unfinished uploads at a time (429 beyond that).
 
+**Over upload sockets (faster).** Open the upload as above with `"transport": "socket"`: chunks are then 1 MiB. Open several WebSockets to `wss://<server>/backend/api/uploads/socket` with the same `Authorization: Bearer <token>` header (the web interface opens 32). Each binary message carries one chunk: the session id as 16 bytes (its UUID without dashes), the chunk index as 4 big-endian bytes, then the chunk's bytes. The server answers each with a JSON text message, `{ "id", "index", "ok": true }` or `{ "id", "index", "status", "error" }` (409, 429 and 5xx are worth sending again). Keep a few chunks in flight per socket. Complete the upload over HTTP as above. A socket closes with code 4403 once the device is signed out, 1009 for a message over one chunk, and after 2 minutes without traffic. If sockets cannot be opened (a proxy without WebSocket support), send the chunks with `PUT` instead.
+
 **Downloading.** `GET /backend/api/files/download?path=<file>` honours `Range`, so a client can fetch several byte ranges of one file at once and write each at its offset.
 
 ## Client requirements

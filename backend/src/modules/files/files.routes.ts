@@ -15,7 +15,7 @@ import { logger } from '../../logger.js';
 import { logFileAction, userActor } from '../../activity.js';
 import { FilesService, type ConflictMode } from './files.service.js';
 import { normalizeRelPath } from './path-safety.js';
-import { declaredSize, UploadSessions } from './upload-sessions.js';
+import { chunkSizeFor, declaredSize, UploadSessions } from './upload-sessions.js';
 import { requireWrite } from '../permissions/access-check.js';
 import { routeParam } from '../../route-params.js';
 import { SERVE_OPTIONS } from '../../serve-options.js';
@@ -356,7 +356,7 @@ export function createFilesRoutes(
   router.post(
     '/upload/sessions',
     asyncHandler(async (req: AuthenticatedRequest, res) => {
-      const { path, name, size, onConflict, modifiedAt } = req.body as Record<string, unknown>;
+      const { path, name, size, onConflict, modifiedAt, transport } = req.body as Record<string, unknown>;
       const folderPath = normalizeRelPath(path);
       if (typeof name !== 'string') throw badRequest('files.invalidName');
       const bytes = declaredSize(size, uploadLimit(config));
@@ -367,7 +367,12 @@ export function createFilesRoutes(
       // Checked now so a clash is reported before any byte is sent, and again on completion.
       const target = files.uploadTarget(req.user!, folderPath, name, mode);
       const meta = { folderPath, name, onConflict: mode, modifiedAt: mtime };
-      res.status(201).json(await uploads.create(ownerOf(req), ownerOf(req), partialPath(target.absolute), bytes, meta));
+      const user = req.user!;
+      const session = await uploads.create(ownerOf(req), ownerOf(req), partialPath(target.absolute), bytes, meta, {
+        chunkSize: chunkSizeFor(transport),
+        guard: () => requireWrite(db, user, folderPath),
+      });
+      res.status(201).json(session);
     }),
   );
 

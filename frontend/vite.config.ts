@@ -27,6 +27,8 @@ export default defineConfig({
         target: `http://localhost:${process.env.VITE_BACKEND_PORT || 4000}`,
         changeOrigin: true,
         rewrite: (path) => path.replace(/^\/backend/, ''),
+        // Upload sockets.
+        ws: true,
       },
     },
   },

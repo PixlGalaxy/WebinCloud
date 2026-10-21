@@ -1,16 +1,24 @@
 import { randomUUID } from 'crypto';
 import { createWriteStream, promises as fs } from 'fs';
+import { resolve, sep } from 'path';
+import type { FileHandle } from 'fs/promises';
 import { Transform, type Readable } from 'stream';
 import { pipeline } from 'stream/promises';
 import { badRequest, conflict, notFound, payloadTooLarge, tooManyRequests } from '../../errors.js';
 import { logger } from '../../logger.js';
 
 /**
- * Bytes per chunk. A file this size or smaller is sent in one plain upload, so
+ * Bytes per chunk sent over HTTP. A file this size or smaller is sent in one plain upload, so
  * only large files pay for the extra requests. Small enough that a chunk always
  * finishes well inside Node's 5-minute request timeout, even on a slow link.
  */
 export const CHUNK_SIZE = 8 * 1024 * 1024;
+/**
+ * Bytes per chunk sent over an upload socket. Sockets stream chunks back to back
+ * without a request per chunk, so small chunks cost nothing in speed and keep
+ * the memory held per socket low.
+ */
+export const SOCKET_CHUNK_SIZE = 1024 * 1024;
 
 /** Unfinished uploads one user, or one visitor of a link, may hold at once. */
 const MAX_SESSIONS_PER_QUOTA = 10;
@@ -18,6 +26,8 @@ const MAX_SESSIONS_PER_QUOTA = 10;
 const MAX_SESSIONS_PER_OWNER = 50;
 /** An upload with no chunk arriving or being written for this long is dropped, with its partial file. */
 const IDLE_MS = 10 * 60 * 1000;
+/** How often a socket upload re-checks that its writer may still write there. */
+const GUARD_INTERVAL_MS = 5000;
 
 /** Largest file taken even with no upload limit set: beyond any real file, and it keeps offsets sane. */
 const MAX_FILE_BYTES = 16 * 1024 ** 4;
@@ -29,6 +39,11 @@ export function declaredSize(value: unknown, limit: number): number {
   return value;
 }
 
+/** Chunk size for a new session: 1 MiB when its chunks come over an upload socket, 8 MiB over HTTP. */
+export function chunkSizeFor(transport: unknown): number {
+  return transport === 'socket' ? SOCKET_CHUNK_SIZE : CHUNK_SIZE;
+}
+
 interface Session<T> {
   id: string;
   owner: string;
@@ -36,13 +51,71 @@ interface Session<T> {
   /** Hidden `.part` file the chunks are written into, beside the destination. */
   partial: string;
   size: number;
+  chunkSize: number;
   chunks: number;
   received: Set<number>;
   writing: Set<number>;
   finishing: boolean;
   lastActivity: number;
+  /** Throws once the writer may no longer write there (grant revoked, link turned off). */
+  guard: () => void;
+  lastGuard: number;
+  /** Opened on the first socket chunk and shared by all of them; closed when the session ends. */
+  handle: Promise<FileHandle> | null;
   /** What the route needs to place the file once complete. */
   meta: T;
+}
+
+interface CreateOptions {
+  chunkSize: number;
+  guard: () => void;
+}
+
+/** Every live session, whichever service owns it, so an upload socket can find the one a chunk is for. */
+const live = new Map<string, UploadSessions<unknown>>();
+
+/**
+ * Partial files of the uploads in progress, kept in a file so a restart can
+ * remove the ones its lost sessions left behind in users' folders.
+ */
+const journal = { path: '', partials: new Map<string, string>(), timer: null as NodeJS.Timeout | null };
+/** The temp names partialPath() makes: "<name>.<12 hex>.part". Nothing else is ever removed. */
+const PARTIAL_NAME = /\.[0-9a-f]{12}\.part$/;
+
+function saveJournal(): void {
+  if (!journal.path || journal.timer) return;
+  journal.timer = setTimeout(() => {
+    journal.timer = null;
+    fs.writeFile(journal.path, JSON.stringify([...journal.partials.values()])).catch((err) =>
+      logger.warn(`Could not save the list of uploads in progress: ${String(err)}`),
+    );
+  }, 1000);
+}
+
+/**
+ * Removes the partial files a previous run left (its sessions died with it),
+ * then keeps the list at `path` for this run. Only files inside `dataRoot`
+ * with the partial-file name pattern are touched.
+ */
+export async function recoverUploads(path: string, dataRoot: string): Promise<void> {
+  journal.path = path;
+  const root = resolve(dataRoot) + sep;
+  let left: unknown = [];
+  try {
+    left = JSON.parse(await fs.readFile(path, 'utf8'));
+  } catch {
+    // No list yet, or unreadable: nothing to recover.
+  }
+  let removed = 0;
+  for (const partial of Array.isArray(left) ? left : []) {
+    if (typeof partial !== 'string' || !resolve(partial).startsWith(root) || !PARTIAL_NAME.test(partial)) continue;
+    await fs
+      .rm(partial, { force: true })
+      .then(() => removed++)
+      .catch(() => undefined);
+  }
+  if (removed > 0) logger.info(`Removed ${removed} partial file(s) left by uploads interrupted by a restart`);
+  saveJournal();
 }
 
 /** Fails the stream as soon as it carries more than `expected` bytes, and at the end if it carried fewer. */
@@ -58,6 +131,16 @@ function exactly(expected: number): Transform {
       callback(seen === expected ? null : badRequest('files.uploadIncomplete'));
     },
   });
+}
+
+/**
+ * Writes one chunk that arrived over an upload socket. `owner` is who the socket
+ * signed in as; a session belonging to anyone else is reported as missing.
+ */
+export function writeSocketChunk(id: string, owner: string, index: number, data: Buffer): Promise<void> {
+  const sessions = live.get(id);
+  if (!sessions) return Promise.reject(notFound());
+  return sessions.writeBuffer(id, owner, index, data);
 }
 
 /**
@@ -85,6 +168,7 @@ export class UploadSessions<T> {
     partial: string,
     size: number,
     meta: T,
+    options: CreateOptions,
   ): Promise<{ id: string; chunkSize: number }> {
     let byQuota = 0;
     let byOwner = 0;
@@ -104,14 +188,21 @@ export class UploadSessions<T> {
       quota,
       partial,
       size,
-      chunks: Math.ceil(size / CHUNK_SIZE),
+      chunkSize: options.chunkSize,
+      chunks: Math.ceil(size / options.chunkSize),
       received: new Set(),
       writing: new Set(),
       finishing: false,
       lastActivity: Date.now(),
+      guard: options.guard,
+      lastGuard: Date.now(),
+      handle: null,
       meta,
     });
-    return { id, chunkSize: CHUNK_SIZE };
+    live.set(id, this as UploadSessions<unknown>);
+    journal.partials.set(id, partial);
+    saveJournal();
+    return { id, chunkSize: options.chunkSize };
   }
 
   /** Unknown and foreign sessions look the same, so ids cannot be probed. */
@@ -125,16 +216,20 @@ export class UploadSessions<T> {
     return this.owned(id, owner).meta;
   }
 
+  /** Bytes chunk `rawIndex` must carry, after checking it may be written now. */
+  private claim(session: Session<T>, rawIndex: string | number): { index: number; start: number; expected: number } {
+    const index = typeof rawIndex === 'number' ? rawIndex : /^\d{1,9}$/.test(rawIndex) ? Number(rawIndex) : NaN;
+    if (!Number.isInteger(index) || index < 0 || index >= session.chunks) throw badRequest('error.invalidInput');
+    if (session.finishing || session.writing.has(index)) throw conflict('files.uploadIncomplete');
+
+    const start = index * session.chunkSize;
+    return { index, start, expected: Math.min(session.chunkSize, session.size - start) };
+  }
+
   /** Writes chunk `index` from `body`, which must carry exactly that chunk's bytes. Sending a chunk again replaces it. */
   async writeChunk(id: string, owner: string, rawIndex: string, body: Readable): Promise<void> {
     const session = this.owned(id, owner);
-    if (!/^\d{1,9}$/.test(rawIndex)) throw badRequest('error.invalidInput');
-    const index = Number(rawIndex);
-    if (index >= session.chunks) throw badRequest('error.invalidInput');
-    if (session.finishing || session.writing.has(index)) throw conflict('files.uploadIncomplete');
-
-    const start = index * CHUNK_SIZE;
-    const expected = Math.min(CHUNK_SIZE, session.size - start);
+    const { index, start, expected } = this.claim(session, rawIndex);
 
     session.writing.add(index);
     session.received.delete(index);
@@ -153,6 +248,39 @@ export class UploadSessions<T> {
     }
   }
 
+  /** The same for a chunk that arrived whole over an upload socket. */
+  async writeBuffer(id: string, owner: string, index: number, data: Buffer): Promise<void> {
+    const session = this.owned(id, owner);
+    const claim = this.claim(session, index);
+    if (data.length !== claim.expected) throw badRequest('files.uploadIncomplete');
+
+    // Sockets have no request per chunk to re-check permissions on, so do it here, every few seconds.
+    if (Date.now() - session.lastGuard >= GUARD_INTERVAL_MS) {
+      session.guard();
+      session.lastGuard = Date.now();
+    }
+
+    session.writing.add(claim.index);
+    session.received.delete(claim.index);
+    session.lastActivity = Date.now();
+    try {
+      session.handle ??= fs.open(session.partial, 'r+');
+      const handle = await session.handle;
+      let written = 0;
+      while (written < data.length) {
+        const { bytesWritten } = await handle.write(data, written, data.length - written, claim.start + written);
+        written += bytesWritten;
+      }
+      session.received.add(claim.index);
+    } catch (err) {
+      if (!this.sessions.has(id)) throw notFound();
+      throw err;
+    } finally {
+      session.writing.delete(claim.index);
+      session.lastActivity = Date.now();
+    }
+  }
+
   /**
    * Once every chunk is in, hands the partial file to `place`, which moves it
    * into its final location. Whatever happens, the session ends here, and the
@@ -165,9 +293,10 @@ export class UploadSessions<T> {
 
     session.finishing = true;
     try {
+      await this.release(session);
       return await place(session.partial, session.meta);
     } finally {
-      this.sessions.delete(id);
+      this.forget(id);
       await fs.rm(session.partial, { force: true }).catch(() => undefined);
     }
   }
@@ -175,16 +304,33 @@ export class UploadSessions<T> {
   async cancel(id: string, owner: string): Promise<void> {
     const session = this.sessions.get(id);
     if (!session || session.owner !== owner || session.finishing) return;
-    this.sessions.delete(id);
+    this.forget(id);
+    await this.release(session);
     await fs.rm(session.partial, { force: true }).catch(() => undefined);
+  }
+
+  private forget(id: string): void {
+    this.sessions.delete(id);
+    live.delete(id);
+    journal.partials.delete(id);
+    saveJournal();
+  }
+
+  /** Closes the file a socket upload kept open, so it can be moved or removed. */
+  private async release(session: Session<T>): Promise<void> {
+    if (!session.handle) return;
+    const handle = session.handle;
+    session.handle = null;
+    await handle.then((h) => h.close()).catch(() => undefined);
   }
 
   private async dropIdle(): Promise<void> {
     const cutoff = Date.now() - IDLE_MS;
     for (const [id, session] of this.sessions) {
       if (session.finishing || session.writing.size > 0 || session.lastActivity >= cutoff) continue;
-      this.sessions.delete(id);
+      this.forget(id);
       logger.info(`${this.label} upload ${id} abandoned by its client, removing its partial file`);
+      await this.release(session);
       await fs.rm(session.partial, { force: true }).catch(() => undefined);
     }
   }

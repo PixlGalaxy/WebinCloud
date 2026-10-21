@@ -113,6 +113,9 @@ export const publicShareApi = {
   /** Large files go here instead, in chunks. */
   uploadSessionsUrl: (segment: string, name: string) => `/backend/api${publicBase(segment, name)}/upload/sessions`,
 
+  /** Upload socket that carries those chunks, under /backend. */
+  uploadSocketPath: (segment: string, name: string) => `/api${publicBase(segment, name)}/uploads/socket`,
+
   /** Empty `paths` archives the whole shared folder. */
   startArchive: (segment: string, name: string, paths: string[]) =>
     api.post<ArchiveJob>(`${publicBase(segment, name)}/archive`, { paths }),
