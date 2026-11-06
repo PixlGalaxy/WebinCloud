@@ -149,6 +149,8 @@ Set those as `PUID` and `PGID` on the container and restart it. The log then sho
 
 Avoid "fixing" the folder instead: `chmod 777` opens it to every user on the machine, and `chown -R 99:100` on a home directory takes it away from its owner and can break their SSH keys (`~/.ssh` must stay theirs and private) and other programs.
 
+**Single files that still say "permission denied".** With the right `PUID`, a few items can still belong to someone else, typically files another container wrote as root with mode `600` (a `config.json` in its data folder, for example). The app answers **403** for those and logs `Permission denied: open <path>`. That is the host protecting the file, not a bug. Leave it that way if the file belongs to another service; give it to the app's user only if you really want to manage it from here (`sudo chown 1001:1001 <file>`), knowing the service that owns it may need it back.
+
 **Mount a dedicated folder, not a whole home.** Everything under `/data` can be browsed, downloaded and shared through the app, including files such as credentials or other services' configuration. Create a folder for the app (`mkdir ~/webincloud`) and mount that on `/data`.
 
 ## Configuration

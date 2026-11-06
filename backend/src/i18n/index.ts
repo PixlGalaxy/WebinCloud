@@ -38,6 +38,7 @@ const BACKEND_KEYS = [
   'files.cannotMoveIntoOwnSubfolder',
   'files.noFilesUploaded',
   'files.notPreviewable',
+  'files.permissionDenied',
   'files.tooLargeToEdit',
   'files.tooLarge',
   'files.uploadIncomplete',

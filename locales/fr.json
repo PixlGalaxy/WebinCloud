@@ -29,6 +29,7 @@
   "files.alreadyExists": "Un élément portant ce nom existe déjà",
   "files.noFilesUploaded": "Aucun fichier n'a été téléchargé",
   "files.notPreviewable": "Ce type de fichier ne peut pas être prévisualisé",
+  "files.permissionDenied": "Le serveur n'a pas le droit d'ouvrir cet élément : sur l'hôte, il appartient à un autre utilisateur que celui de l'application",
   "files.previewFailed": "Impossible de prévisualiser ce fichier",
   "files.previewNotOfficeFormat": "Cela ne ressemble pas à un fichier Word moderne — un .doc ancien (ou un autre format) sauvegardé sous l'extension .docx ne peut pas être prévisualisé ici",
   "files.previewTruncated": "Cette feuille est volumineuse — seule une partie est affichée ici",

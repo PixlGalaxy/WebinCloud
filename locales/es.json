@@ -29,6 +29,7 @@
   "files.alreadyExists": "Ya existe un elemento con ese nombre",
   "files.noFilesUploaded": "No se subió ningún archivo",
   "files.notPreviewable": "Este tipo de archivo no se puede previsualizar",
+  "files.permissionDenied": "El servidor no tiene permiso para abrir esto: en el host pertenece a otro usuario distinto al de la app",
   "files.previewFailed": "No se pudo previsualizar este archivo",
   "files.previewNotOfficeFormat": "Esto no parece un Word moderno — un .doc antiguo (u otro formato) guardado con nombre .docx no se puede previsualizar aquí",
   "files.previewTruncated": "Esta hoja es grande — solo se muestra una parte",
