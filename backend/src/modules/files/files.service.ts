@@ -11,6 +11,7 @@ import { changes } from '../devices/change-bus.js';
 import { assertValidName, joinRelPath, parentOf, resolveSafePath } from './path-safety.js';
 import { inlineMimeOf, isTextFile, previewKindOf, type PreviewKind } from './mime.js';
 import { logFileAction, userActor } from '../../activity.js';
+import { logger } from '../../logger.js';
 import type { ThumbnailService } from '../thumbnails/thumbnails.service.js';
 
 /** Editing is meant for source and config files, not multi-megabyte logs. */
@@ -138,7 +139,12 @@ export class FilesService {
     let names: string[];
     try {
       names = await fs.readdir(absolute);
-    } catch {
+    } catch (err) {
+      // The client only sees a 404; leave the admin a reason when it is a permissions problem.
+      const code = (err as NodeJS.ErrnoException).code;
+      if (code === 'EACCES' || code === 'EPERM') {
+        logger.warn(`Cannot list "${relPath || '/'}": ${code}, the backend user cannot read it (check PUID/PGID and the folder's permissions)`);
+      }
       throw notFound();
     }
 

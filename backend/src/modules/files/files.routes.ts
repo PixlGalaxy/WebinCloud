@@ -10,7 +10,7 @@ import type { Translate } from '../../i18n/index.js';
 import type { AuthenticatedRequest } from '../auth/session.middleware.js';
 import { createAuthGuards } from '../auth/session.middleware.js';
 import { asyncHandler } from '../../middleware/async-handler.js';
-import { badRequest, notFound, payloadTooLarge } from '../../errors.js';
+import { AppError, badRequest, notFound, payloadTooLarge } from '../../errors.js';
 import { logger } from '../../logger.js';
 import { logFileAction, userActor } from '../../activity.js';
 import { FilesService, type ConflictMode } from './files.service.js';
@@ -23,6 +23,16 @@ import type { ThumbnailService } from '../thumbnails/thumbnails.service.js';
 import type { ThumbnailSize } from '../thumbnails/providers.js';
 
 const CONFLICT_MODES: ConflictMode[] = ['fail', 'overwrite', 'keepBoth'];
+
+/** Why fs.watch failed, with the fix for the causes an admin can act on. */
+function watchFailure(err: unknown): string {
+  const code = (err as NodeJS.ErrnoException)?.code;
+  if (code === 'ENOSPC') return 'ENOSPC: the host ran out of inotify watches; raise fs.inotify.max_user_watches';
+  if (code === 'EMFILE') return 'EMFILE: too many open files; raise fs.inotify.max_user_instances or the open-file limit';
+  if (code === 'EACCES' || code === 'EPERM') return `${code}: the backend user cannot read this folder; check PUID/PGID and the folder's permissions`;
+  if (code === 'ENOENT') return 'ENOENT: the folder does not exist';
+  return code ?? String(err);
+}
 
 function conflictMode(value: unknown): ConflictMode {
   return CONFLICT_MODES.includes(value as ConflictMode) ? (value as ConflictMode) : 'fail';
@@ -205,6 +215,44 @@ export function createFilesRoutes(
       return next(err);
     }
 
+    let timer: NodeJS.Timeout | null = null;
+    let heartbeat: NodeJS.Timeout | null = null;
+    let closed = false;
+    const send = (chunk: string) => {
+      if (!closed) res.write(chunk);
+    };
+    const notify = () => {
+      // Editors touch a file several times; collapse the burst into one message.
+      if (timer) clearTimeout(timer);
+      timer = setTimeout(() => send(`data: changed\n\n`), 150);
+    };
+
+    // Before any header goes out: if the folder cannot be watched (inotify
+    // limit, permissions...), answer with a plain error. A non-200 reply also
+    // stops the browser's EventSource from reconnecting every few seconds; the
+    // listing keeps working, it just won't refresh on its own.
+    let watcher: ReturnType<typeof watch>;
+    try {
+      watcher = watch(absolute, notify);
+    } catch (err) {
+      logger.warn(`Live refresh unavailable for "${queryPath(req.query.path) || '/'}": ${watchFailure(err)}`);
+      return next(new AppError(503, 'error.internal'));
+    }
+
+    const cleanup = () => {
+      if (closed) return;
+      closed = true;
+      if (heartbeat) clearInterval(heartbeat);
+      if (timer) clearTimeout(timer);
+      watcher.close();
+    };
+    watcher.on('error', (err) => {
+      logger.warn(`Live refresh stopped for "${queryPath(req.query.path) || '/'}": ${watchFailure(err)}`);
+      cleanup();
+      res.end();
+    });
+    req.on('close', cleanup);
+
     res.writeHead(200, {
       'Content-Type': 'text/event-stream',
       'Cache-Control': 'no-cache, no-transform',
@@ -212,29 +260,7 @@ export function createFilesRoutes(
       'X-Accel-Buffering': 'no',
     });
     res.write('retry: 5000\n\n');
-
-    let timer: NodeJS.Timeout | null = null;
-    const notify = () => {
-      // Editors touch a file several times; collapse the burst into one message.
-      if (timer) clearTimeout(timer);
-      timer = setTimeout(() => res.write(`data: changed\n\n`), 150);
-    };
-
-    let watcher: ReturnType<typeof watch> | null = null;
-    try {
-      watcher = watch(absolute, notify);
-      watcher.on('error', () => res.end());
-    } catch {
-      return next(notFound());
-    }
-
-    const heartbeat = setInterval(() => res.write(': ping\n\n'), 30_000);
-
-    req.on('close', () => {
-      clearInterval(heartbeat);
-      if (timer) clearTimeout(timer);
-      watcher?.close();
-    });
+    heartbeat = setInterval(() => send(': ping\n\n'), 30_000);
   });
 
   /** Optional ISO date for an upload's modification time, between 1980 and 2200; anything else is a 400. */
