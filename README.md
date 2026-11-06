@@ -121,9 +121,35 @@ The backend runs as an unprivileged user, never as root, so everything it create
 
 The defaults are `nobody:users`, what Unraid uses for its shares, so on Unraid nothing needs changing: every Unraid user is in the `users` group and can edit what the app writes over SMB. Elsewhere, set them to your own user, which `id` prints (often `1000`). Set `UMASK` to `000` if users outside the group must write too, and `PUID=0` to go back to running as root.
 
-`/appdata` and `/temp` are handed to that user on every start. `/data` is your content and is never changed, except an empty folder, which is simply taken over. If it is not writable, the container log says so at startup.
+`/appdata` and `/temp` are handed to that user on every start. `/data` is your content and is never changed, except an empty folder, which is simply taken over. If it is not readable or not writable, the container log says so at startup.
 
 **Upgrading from a version that ran as root:** files the app already created belong to root, and it can no longer modify them. Give them to `PUID:PGID` once on the host: on Unraid, **Tools → Docker Safe New Permissions** on the share; elsewhere, `chown -R 99:100 /path/to/files && chmod -R u+rwX,g+rwX /path/to/files`.
+
+### Empty file list, or `EACCES` in the log
+
+**Symptom:** the root folder comes back empty or "not found", and the log shows lines such as:
+
+```
+[ENTRYPOINT] WARNING: /data is not readable by 99:100, so file listings will come back empty (404).
+WARN  Cannot list "/": EACCES, the backend user cannot read it (check PUID/PGID and the folder's permissions)
+WARN  Live refresh unavailable for "/": EACCES: the backend user cannot read this folder; ...
+```
+
+**Why:** a bind mount keeps the host's owners and permissions; it does not translate users. The app touches files as user `PUID`, a plain number, and Linux grants access by comparing that number with the folder's owner. If the folder you mount on `/data` belongs to someone else and does not let "others" in, the app cannot open it. A Linux home directory is the usual case: `/home/alice` belongs to `alice` (say uid `1001`) with mode `750`, so the default user `99` falls under "others" and is refused. Versions that ran as root did not hit this, because root bypasses permissions.
+
+**Fix:** make the app run as the folder's owner instead of changing the folder. On the host, print that owner's ids:
+
+```bash
+id -u alice && id -g alice    # e.g. 1001 and 1001
+# or, for any folder:
+stat -c '%u %g' /path/you/mount
+```
+
+Set those as `PUID` and `PGID` on the container and restart it. The log then shows `running the backend as 1001:1001`, the app can read and write the folder, and what it creates belongs to that user, who can keep editing it from their own session.
+
+Avoid "fixing" the folder instead: `chmod 777` opens it to every user on the machine, and `chown -R 99:100` on a home directory takes it away from its owner and can break their SSH keys (`~/.ssh` must stay theirs and private) and other programs.
+
+**Mount a dedicated folder, not a whole home.** Everything under `/data` can be browsed, downloaded and shared through the app, including files such as credentials or other services' configuration. Create a folder for the app (`mkdir ~/webincloud`) and mount that on `/data`.
 
 ## Configuration
 
