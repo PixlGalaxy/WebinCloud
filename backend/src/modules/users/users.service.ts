@@ -113,8 +113,11 @@ export class UsersService {
         id,
       );
 
-    // A deactivated user, a demoted admin or a new password must stop old sessions and devices.
-    if (input.isActive === false || input.role !== undefined || input.password) {
+    // A deactivated user, a demoted admin or a new password must stop old sessions and devices. The user form
+    // sends the role on every save, so only a real demotion counts: any other edit (email, name, making them
+    // admin) signed their desktop apps out.
+    const demoted = existing.role === 'admin' && input.role !== undefined && input.role !== 'admin';
+    if (input.isActive === false || demoted || input.password) {
       this.db.prepare('DELETE FROM sessions WHERE user_id = ?').run(id);
       this.db.prepare('DELETE FROM devices WHERE user_id = ?').run(id);
       this.metrics.forgetUser(existing.username);
