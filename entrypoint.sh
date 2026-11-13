@@ -52,7 +52,10 @@ if [ "$PUID" != 0 ]; then
     if ! su-exec "$PUID:$PGID" test -w "$DATA_DIR" && [ -z "$(ls -A "$DATA_DIR" 2>/dev/null)" ]; then
         chown "$PUID:$PGID" "$DATA_DIR"
     fi
-    if ! su-exec "$PUID:$PGID" test -w "$DATA_DIR"; then
+    if ! su-exec "$PUID:$PGID" test -r "$DATA_DIR" || ! su-exec "$PUID:$PGID" test -x "$DATA_DIR"; then
+        echo "[ENTRYPOINT] WARNING: $DATA_DIR is not readable by $PUID:$PGID, so file listings will come back empty (404)."
+        echo "[ENTRYPOINT] Set PUID/PGID to the owner of the host folder, or run: chown -R $PUID:$PGID <host folder>"
+    elif ! su-exec "$PUID:$PGID" test -w "$DATA_DIR"; then
         echo "[ENTRYPOINT] WARNING: $DATA_DIR is not writable by $PUID:$PGID, so uploads and edits will fail."
         echo "[ENTRYPOINT] Give the files to that user on the host (Unraid: Tools > Docker Safe New Permissions),"
         echo "[ENTRYPOINT] or run: chown -R $PUID:$PGID <host folder> && chmod -R u+rwX,g+rwX <host folder>"

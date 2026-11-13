@@ -15,6 +15,13 @@ const BODY_PARSER_ERRORS = new Set([
 
 export function createErrorHandler(t: Translate) {
   return (err: Error, _req: Request, res: Response, _next: NextFunction) => {
+    // A stream that already started can't switch to a JSON error: cut it, so the
+    // client sees a failed transfer instead of a truncated "success".
+    if (res.headersSent) {
+      logger.warn(`Request failed after the response started: ${err.message}`);
+      return res.destroy();
+    }
+
     if (err instanceof AppError) {
       if (err.headers) {
         for (const [name, value] of Object.entries(err.headers)) res.setHeader(name, value);
@@ -36,6 +43,14 @@ export function createErrorHandler(t: Translate) {
     const sendError = err as Error & { status?: unknown; expose?: unknown };
     if (typeof sendError.status === 'number' && sendError.status >= 400 && sendError.status < 500 && sendError.expose === true) {
       return res.status(sendError.status).json({ error: t(sendError.status === 404 ? 'error.notFound' : 'error.invalidInput') });
+    }
+
+    // The host's permissions refuse the backend user (PUID) on this item, e.g. a
+    // file another container wrote as root with mode 600. Not a crash: say so.
+    const fsError = err as NodeJS.ErrnoException;
+    if (fsError.code === 'EACCES' || fsError.code === 'EPERM') {
+      logger.warn(`Permission denied: ${fsError.syscall ?? 'access'} ${fsError.path ?? ''} (check PUID/PGID and the file's owner)`);
+      return res.status(403).json({ error: t('files.permissionDenied') });
     }
 
     logger.error('Unhandled request error', err);

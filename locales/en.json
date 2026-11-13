@@ -29,6 +29,7 @@
   "files.alreadyExists": "An item with that name already exists",
   "files.noFilesUploaded": "No files were uploaded",
   "files.notPreviewable": "This file type cannot be previewed",
+  "files.permissionDenied": "The server isn't allowed to open this item: its owner on the host is a different user than the app's",
   "files.previewFailed": "This file could not be previewed",
   "files.previewNotOfficeFormat": "This does not look like a modern Word file — a legacy .doc (or another format) saved with a .docx name cannot be previewed here",
   "files.previewTruncated": "This sheet is large — only part of it is shown here",

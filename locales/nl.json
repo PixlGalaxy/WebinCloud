@@ -29,6 +29,7 @@
   "files.alreadyExists": "Er bestaat al een item met die naam",
   "files.noFilesUploaded": "Geen bestanden geüpload",
   "files.notPreviewable": "Dit bestandstype kan niet worden getoond in de voorvertoning",
+  "files.permissionDenied": "De server mag dit item niet openen: op de host is het van een andere gebruiker dan die van de app",
   "files.previewFailed": "Dit bestand kon niet worden getoond in de voorvertoning",
   "files.previewNotOfficeFormat": "Dit ziet er niet uit als een modern Word-bestand — een oudere .doc (of een ander formaat) opgeslagen met een .docx-naam kan hier niet worden geopend",
   "files.previewTruncated": "Dit werkblad is groot — slechts een deel ervan wordt getoond",
