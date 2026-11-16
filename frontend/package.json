@@ -27,7 +27,7 @@
     "d3-zoom": "^3.0.1",
     "docx-preview": "^0.4.1",
     "iso-3166-1": "^2.1.1",
-    "lucide-react": "^1.71.0",
+    "lucide-react": "^1.72.0",
     "react": "^19.3.1",
     "react-dom": "^19.3.1",
     "react-icons": "^5.7.0",
@@ -58,6 +58,6 @@
     "tailwindcss": "^4.3.3",
     "typescript": "~6.0.2",
     "typescript-eslint": "^8.72.2",
-    "vite": "^8.3.7"
+    "vite": "^8.3.8"
   }
 }
