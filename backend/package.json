@@ -11,12 +11,12 @@
   "dependencies": {
     "archiver": "^8.0.0",
     "argon2": "^0.45.2",
-    "better-sqlite3": "^13.0.3",
+    "better-sqlite3": "^13.1.1",
     "busboy": "^1.6.0",
     "cookie-parser": "^1.4.6",
     "express": "^5.3.0",
-    "maxmind": "^5.0.8",
-    "ws": "8.22.2"
+    "maxmind": "^5.0.9",
+    "ws": "8.23.0"
   },
   "devDependencies": {
     "@types/archiver": "^8.0.0",
