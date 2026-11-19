@@ -46,6 +46,8 @@ const TEXT_EXTENSIONS = new Set([
   '.conf', '.env', '.xml', '.html', '.htm', '.css', '.scss', '.less', '.js', '.jsx', '.ts', '.tsx',
   '.mjs', '.cjs', '.py', '.rb', '.go', '.rs', '.java', '.kt', '.c', '.h', '.cpp', '.hpp', '.cs',
   '.php', '.sh', '.bash', '.zsh', '.ps1', '.sql', '.gitignore', '.dockerfile', '.tf', '.svg',
+  // Game-server configuration (Minecraft and its mods) and start scripts.
+  '.properties', '.cfg', '.json5', '.snbt', '.bat', '.cmd',
 ]);
 
 /**

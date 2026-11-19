@@ -21,7 +21,7 @@ const ICONS: Array<[RegExp, LucideIcon, string]> = [
   [/\.pdf$/i, FileText, 'text-rose-600 dark:text-rose-500'],
   [/\.html?$/i, FileText, 'text-cyan-600 dark:text-cyan-500'],
   [
-    /\.(txt|md|json|ya?ml|log|csv|[jt]sx?|css|xml|sh|py|rb|go|rs|java|sql)$/i,
+    /\.(txt|md|json5?|ya?ml|toml|log|csv|[jt]sx?|css|xml|sh|py|rb|go|rs|java|sql|properties|cfg|conf|ini|snbt|bat|cmd|ps1)$/i,
     FileText,
     'text-slate-400 dark:text-slate-500',
   ],
