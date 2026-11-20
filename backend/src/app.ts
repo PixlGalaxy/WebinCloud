@@ -36,6 +36,7 @@ import { createAdminRoutes } from './modules/admin/admin.routes.js';
 import { UpdateCheckService } from './modules/admin/update-check.service.js';
 import { IpBansService } from './modules/admin/ip-bans.service.js';
 import { createIpBanMiddleware } from './middleware/ip-ban.js';
+import { ScannerGuard } from './modules/admin/scanner-guard.js';
 import { rejectCrossSiteWrites } from './middleware/csrf.js';
 import { createIpAccessRoutes } from './modules/admin/ip-access.routes.js';
 import { attachUploadSocket, type SocketIdentity } from './modules/files/upload-socket.js';
@@ -92,13 +93,26 @@ export function createApp(db: Db, config: EnvConfig): App {
   const backendStartedAt = Date.now();
   const updateCheck = new UpdateCheckService(config.IMAGE_REVISION, config.UPDATE_CHECK_ENABLED);
   const ipBans = new IpBansService(db);
+  const scanner = new ScannerGuard();
+  const blocked = (ip: string | undefined) => ipBans.isBanned(ip) || scanner.isBlocked(ip);
 
   // The bundled nginx (loopback) plus any outer proxies from TRUST_PROXY, so
   // req.ip is the visitor's address rather than the proxy's.
   app.set('trust proxy', config.TRUST_PROXY);
   app.disable('x-powered-by');
-  // Before anything else — a banned IP shouldn't get session/cookie handling, let alone a route.
-  app.use(createIpBanMiddleware(ipBans));
+  // For the bundled nginx, ahead of the ban check below so it can always get an answer.
+  // gate: may this address have pages and assets (auth_request: 204 yes, 403 no)?
+  // miss: a static file or odd root path did not exist; counts toward the scanner block.
+  // Reachable from outside too, which is harmless: both only ever concern the caller's own address.
+  app.get('/api/internal/gate', (req, res) => {
+    res.status(blocked(req.ip) ? 403 : 204).end();
+  });
+  app.get('/api/internal/miss', (req, res) => {
+    scanner.miss(req.ip);
+    res.status(404).json({ error: t('error.notFound') });
+  });
+  // Before anything else — a banned or blocked IP shouldn't get session/cookie handling, let alone a route.
+  app.use(createIpBanMiddleware(ipBans, scanner));
   app.use(rejectCrossSiteWrites);
   app.use(requestLogger);
   // Only the text editor's save needs a big body (files up to 2 MB, more once
@@ -140,7 +154,7 @@ export function createApp(db: Db, config: EnvConfig): App {
   );
 
   // Anonymous: everything below is reachable with just the link.
-  const { router: publicShareRoutes, unlockIpLimiter } = createPublicShareRoutes(config, shares, archives);
+  const { router: publicShareRoutes, unlockIpLimiter } = createPublicShareRoutes(config, shares, archives, scanner);
   app.use(createPublicPathResolver(shares));
   app.use('/api/public/:segment/:name', publicShareRoutes);
 
@@ -168,8 +182,13 @@ export function createApp(db: Db, config: EnvConfig): App {
   app.use('/api/shares', createSharesRoutes(db, config, t, shares));
 
   app.use('/api/admin', createAdminRoutes(t, metrics, settings, config, backendStartedAt, updateCheck));
-  app.use('/api/admin/ip-access', createIpAccessRoutes(t, loginIpLimiter, loginAccountLimiter, unlockIpLimiter, ipBans));
+  app.use('/api/admin/ip-access', createIpAccessRoutes(t, loginIpLimiter, loginAccountLimiter, unlockIpLimiter, scanner, ipBans));
 
+  // No route matched: what a scanner probing for paths gets, never what a page of the app asks for.
+  app.use((req, _res, next) => {
+    scanner.miss(req.ip);
+    next();
+  });
   app.use(createNotFoundHandler(t));
   app.use(createErrorHandler(t));
 
@@ -185,7 +204,7 @@ export function createApp(db: Db, config: EnvConfig): App {
     const req = raw as express.Request;
     parseCookies(req, {} as express.Response, () => undefined);
     const ip = req.ip ?? 'unknown';
-    if (ipBans.isBanned(ip)) throw forbidden('error.ipBanned');
+    if (blocked(ip)) throw forbidden('error.ipBanned');
 
     const track = (id: string, info: { kind: 'user'; username: string } | { kind: 'public' }) => {
       metrics.recordActivity(id, { ip, activity: 'uploading', ...info });
@@ -203,7 +222,7 @@ export function createApp(db: Db, config: EnvConfig): App {
           owner: `user:${user.id}`,
           key: `user:${user.id}`,
           stillAllowed: () =>
-            !ipBans.isBanned(ip) &&
+            !blocked(ip) &&
             devices.isSignedIn(device.id) &&
             track(`device:${device.id}`, { kind: 'user', username: user.username }),
         };
@@ -224,7 +243,7 @@ export function createApp(db: Db, config: EnvConfig): App {
           return (
             !!current &&
             !current.session.pending_action &&
-            !ipBans.isBanned(ip) &&
+            !blocked(ip) &&
             track(`session:${session.id}`, { kind: 'user', username: user.username })
           );
         },
@@ -263,7 +282,7 @@ export function createApp(db: Db, config: EnvConfig): App {
       key: `share:${shareId}:${ip}`,
       stillAllowed: () => {
         const current = shares.findById(shareId);
-        return !!current && canUpload(current) && !ipBans.isBanned(ip) && track(visitor, { kind: 'public' });
+        return !!current && canUpload(current) && !blocked(ip) && track(visitor, { kind: 'public' });
       },
     };
   };

@@ -519,6 +519,7 @@
   "ipAccess.sourceLogin": "Login attempts",
   "ipAccess.sourceLoginAccount": "Login attempts on this account",
   "ipAccess.sourceShareUnlock": "Share-unlock attempts",
+  "ipAccess.sourceScanner": "Requests for missing paths (scanner)",
   "ipAccess.unblockButton": "Unblock",
   "ipAccess.unblockConfirm": "Unblock this IP now?",
   "ipAccess.bannedTitle": "Banned IPs",

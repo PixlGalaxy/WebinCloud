@@ -5,15 +5,16 @@ import { createAuthGuards } from '../auth/session.middleware.js';
 import type { AuthenticatedRequest } from '../auth/session.middleware.js';
 import type { RateLimiter } from '../../middleware/rate-limit.js';
 import type { IpBansService } from './ip-bans.service.js';
+import type { ScannerGuard } from './scanner-guard.js';
 
-type RateLimitSource = 'login' | 'loginAccount' | 'shareUnlock';
+type RateLimitSource = 'login' | 'loginAccount' | 'shareUnlock' | 'scanner';
 
 /**
  * How each limiter keys its buckets. `loginAccount` counts attempts against
  * one account from anywhere, so it can lock an account while its owner's IP
  * is clear; listing it here lets the admin see and lift that too.
  */
-const KEY_PREFIX: Record<RateLimitSource, string> = { login: 'ip:', loginAccount: 'account:', shareUnlock: 'ip:' };
+const KEY_PREFIX: Record<RateLimitSource, string> = { login: 'ip:', loginAccount: 'account:', shareUnlock: 'ip:', scanner: 'ip:' };
 
 function isSource(value: string): value is RateLimitSource {
   return value in KEY_PREFIX;
@@ -24,14 +25,17 @@ export function createIpAccessRoutes(
   loginIpLimiter: RateLimiter,
   loginAccountLimiter: RateLimiter,
   unlockIpLimiter: RateLimiter,
+  scanner: ScannerGuard,
   ipBans: IpBansService,
 ): Router {
   const router = Router();
   const { requireAuth, requireAdmin } = createAuthGuards(t);
-  const limiters: Record<RateLimitSource, RateLimiter> = {
+  // Addresses blocked for probing missing paths are listed and lifted like the rate limits.
+  const limiters: Record<RateLimitSource, Pick<RateLimiter, 'listBlocked' | 'clear'>> = {
     login: loginIpLimiter,
     loginAccount: loginAccountLimiter,
     shareUnlock: unlockIpLimiter,
+    scanner,
   };
 
   router.use(requireAuth, requireAdmin);

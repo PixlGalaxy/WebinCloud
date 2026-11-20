@@ -17,6 +17,7 @@ import { chunkSizeFor, declaredSize, UploadSessions } from '../files/upload-sess
 import { SHARE_COOKIE_PREFIX, UNLOCK_TTL_MS, type SharesService } from './shares.service.js';
 import type { ArchiveOwner, ArchivesService } from '../archives/archives.service.js';
 import { routeParam } from '../../route-params.js';
+import type { ScannerGuard } from '../admin/scanner-guard.js';
 import { SERVE_OPTIONS } from '../../serve-options.js';
 
 interface PublicRequest extends Express.Request {
@@ -60,6 +61,7 @@ export function createPublicShareRoutes(
   config: EnvConfig,
   shares: SharesService,
   archives: ArchivesService,
+  scanner: ScannerGuard,
 ): { router: Router; unlockIpLimiter: RateLimiter } {
   const router = Router({ mergeParams: true });
 
@@ -99,7 +101,11 @@ export function createPublicShareRoutes(
 
   const load = (req: any, _res: any, next: any) => {
     const share = shares.findPublic(req.params.segment, req.params.name);
-    if (!share) return next(notFound());
+    if (!share) {
+      // Guessing link names is probing too.
+      scanner.miss(req.ip);
+      return next(notFound());
+    }
     try {
       shares.assertUsable(share);
     } catch (err) {

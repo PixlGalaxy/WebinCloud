@@ -18,6 +18,7 @@ const SOURCE_LABEL: Record<RateLimitSource, TranslationKey> = {
   login: 'ipAccess.sourceLogin',
   loginAccount: 'ipAccess.sourceLoginAccount',
   shareUnlock: 'ipAccess.sourceShareUnlock',
+  scanner: 'ipAccess.sourceScanner',
 };
 
 /** A row action that asks "are you sure?" inline instead of a modal — same pattern as the Services page's restart button. */

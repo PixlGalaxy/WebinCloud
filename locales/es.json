@@ -519,6 +519,7 @@
   "ipAccess.sourceLogin": "Intentos de inicio de sesión",
   "ipAccess.sourceLoginAccount": "Intentos de inicio de sesión en esta cuenta",
   "ipAccess.sourceShareUnlock": "Intentos de desbloqueo de enlaces",
+  "ipAccess.sourceScanner": "Peticiones a rutas inexistentes (escáner)",
   "ipAccess.unblockButton": "Desbloquear",
   "ipAccess.unblockConfirm": "¿Desbloquear esta IP ahora?",
   "ipAccess.bannedTitle": "IPs bloqueadas",

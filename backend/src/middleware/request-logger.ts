@@ -6,6 +6,8 @@ const CHUNK_RE = /\/upload\/sessions\/[^/?]+\/chunks\//;
 export function requestLogger(req: Request, res: Response, next: NextFunction) {
   // The log viewer polls these; logging them would feed itself with its own requests.
   if (req.originalUrl.startsWith('/api/logs')) return next();
+  // nginx asks /api/internal/gate before every page and asset; nginx's own log already has those requests.
+  if (req.originalUrl.startsWith('/api/internal/')) return next();
 
   const startedAt = process.hrtime.bigint();
 

@@ -154,7 +154,7 @@ export const systemApi = {
   get: () => api.get<SystemInfo>('/admin/system'),
 };
 
-export type RateLimitSource = 'login' | 'loginAccount' | 'shareUnlock';
+export type RateLimitSource = 'login' | 'loginAccount' | 'shareUnlock' | 'scanner';
 
 export interface RateLimitedIp {
   ip: string;

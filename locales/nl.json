@@ -519,6 +519,7 @@
   "ipAccess.sourceLogin": "Inlogpogingen",
   "ipAccess.sourceLoginAccount": "Inlogpogingen op dit account",
   "ipAccess.sourceShareUnlock": "Ontgrendelpogingen",
+  "ipAccess.sourceScanner": "Verzoeken naar niet-bestaande paden (scanner)",
   "ipAccess.unblockButton": "Deblokkeren",
   "ipAccess.unblockConfirm": "Dit IP nu deblokkeren?",
   "ipAccess.bannedTitle": "Geblokkeerde IP's",

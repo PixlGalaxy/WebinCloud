@@ -519,6 +519,7 @@
   "ipAccess.sourceLogin": "Tentatives de connexion",
   "ipAccess.sourceLoginAccount": "Tentatives de connexion sur ce compte",
   "ipAccess.sourceShareUnlock": "Tentatives de déverrouillage de lien",
+  "ipAccess.sourceScanner": "Requêtes vers des chemins inexistants (scanner)",
   "ipAccess.unblockButton": "Débloquer",
   "ipAccess.unblockConfirm": "Débloquer cette IP maintenant ?",
   "ipAccess.bannedTitle": "IP bloquées",
