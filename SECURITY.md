@@ -21,7 +21,7 @@ Only the latest published image (`ghcr.io/pixlgalaxy/webincloud:latest`) and the
 | --- | --- |
 | Last review | 2026-11-20 |
 | Scope | Backend (`backend/src`, every route, including the device API), frontend previewers, `nginx.conf`, `Dockerfile`, `entrypoint.sh`, GitHub workflows |
-| Dependency audit | `npm audit --omit=dev`: 0 in the frontend; in the backend one moderate advisory (`minimatch` via `archiver`, GHSA-g3hv-75wg-m249), not reachable: it needs an attacker-controlled glob, and the app only calls `archive.append` |
+| Dependency audit | `npm audit --omit=dev`: 0 known vulnerabilities in backend and frontend. `minimatch` (GHSA-g3hv-75wg-m249, through `archiver` → `readdir-glob`) is pinned to the fixed 11.0.5 with an npm override until `archiver` takes it itself |
 | Open critical / high findings | **None** |
 | Open medium findings | 4 (see [Open findings](#open-findings)) |
 
