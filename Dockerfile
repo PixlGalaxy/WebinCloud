@@ -1,5 +1,5 @@
 # 1: Frontend build
-FROM node:26-alpine AS build-frontend
+FROM node:26.13.1-alpine AS build-frontend
 WORKDIR /app/frontend
 COPY frontend/package.json frontend/package-lock.json ./
 RUN npm ci
@@ -11,7 +11,7 @@ RUN npm run build
 # better-sqlite3 and argon2 are native modules: when no prebuilt binary matches
 # the running Node ABI they fall back to node-gyp, which needs this toolchain.
 # It never reaches the final image, which only receives the built output.
-FROM node:26-alpine AS build-backend
+FROM node:26.13.1-alpine AS build-backend
 RUN apk add --no-cache python3 make g++
 WORKDIR /app/backend
 COPY backend/package.json backend/package-lock.json ./
@@ -20,7 +20,7 @@ COPY backend ./
 RUN npm run build && npm prune --omit=dev
 
 # 3: Final image, nginx + Node.js
-FROM node:26-alpine
+FROM node:26.13.1-alpine
 WORKDIR /app
 
 # Filled in by the publish workflow (docker/metadata-action's resolved tag and

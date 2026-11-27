@@ -8,6 +8,11 @@ updates:
     open-pull-requests-limit: 15
     schedule:
       interval: "daily"
+    # Wait before proposing a freshly published version: hijacked releases
+    # (Axios, Shai-Hulud, ChainDrop...) are usually caught and pulled within days.
+    # Security updates are not delayed by this.
+    cooldown:
+      default-days: 7
     groups:
       frontend-deps:
         patterns:
@@ -21,6 +26,11 @@ updates:
     open-pull-requests-limit: 15
     schedule:
       interval: "daily"
+    # Wait before proposing a freshly published version: hijacked releases
+    # (Axios, Shai-Hulud, ChainDrop...) are usually caught and pulled within days.
+    # Security updates are not delayed by this.
+    cooldown:
+      default-days: 7
     groups:
       backend-deps:
         patterns:
@@ -34,6 +44,11 @@ updates:
     open-pull-requests-limit: 5
     schedule:
       interval: "weekly"
+    # Wait before proposing a freshly published version: hijacked releases
+    # (Axios, Shai-Hulud, ChainDrop...) are usually caught and pulled within days.
+    # Security updates are not delayed by this.
+    cooldown:
+      default-days: 7
     groups:
       docker-deps:
         patterns:
@@ -44,6 +59,11 @@ updates:
     open-pull-requests-limit: 5
     schedule:
       interval: "weekly"
+    # Wait before proposing a freshly published version: hijacked releases
+    # (Axios, Shai-Hulud, ChainDrop...) are usually caught and pulled within days.
+    # Security updates are not delayed by this.
+    cooldown:
+      default-days: 7
     groups:
       actions-deps:
         patterns:
